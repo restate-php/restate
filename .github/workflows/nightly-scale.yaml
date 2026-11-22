@@ -1,0 +1,103 @@
+# The scale tests' large cases (TESTING.md, "Scale tests"): the PHPUnit group `scale`, too slow for
+# every pull request. Long journals (up to 3000 runs), wide fan-out (up to 1000 futures), wide state
+# under eager, lazy and partial eager state, and contention on virtual-object keys, under php -S and,
+# for contention, FrankenPHP's threads. Each job uploads its measurements (JSON lines) as an artifact.
+name: Nightly scale
+
+on:
+  schedule:
+    - cron: '23 2 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-scale-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # Every step runs in the devenv shell, with the project's toolchain.
+    shell: devenv shell -- bash -e {0}
+
+jobs:
+  scale:
+    name: composer test:scale
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up devenv
+        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+
+      - name: Set up Composer cache
+        uses: ./.github/actions/composer-cache
+
+      - name: Set up Cargo cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            extension/target/
+          key: cargo-integration-${{ hashFiles('extension/Cargo.lock', 'extension/rust-toolchain.toml') }}
+          restore-keys: |
+            cargo-integration-
+            cargo-check-php8.5-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      - name: Test
+        run: composer test:scale
+        env:
+          RESTATE_PHP_TEST_SCALE_REPORT: ${{ github.workspace }}/var/scale-report.jsonl
+
+      - name: Upload the scale report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scale-report-php-cli
+          path: var/scale-report.jsonl
+          if-no-files-found: ignore
+
+  contention-frankenphp:
+    name: contention under FrankenPHP
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up devenv
+        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+
+      - name: Set up Composer cache
+        uses: ./.github/actions/composer-cache
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      # Builds the frankenphp-extension image, then runs the contention cases against it.
+      - name: Test
+        run: bash bin/test-frankenphp.sh --group scale --filter ContentionTest
+        env:
+          RESTATE_PHP_TEST_SCALE_REPORT: ${{ github.workspace }}/var/scale-report.jsonl
+
+      - name: Upload the scale report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scale-report-frankenphp
+          path: var/scale-report.jsonl
+          if-no-files-found: ignore

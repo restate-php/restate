@@ -1,0 +1,89 @@
+# The upstream Restate SDK test suite (restatedev/e2e sdk-tests.jar) against the PHP test
+# services, through the action the official SDKs use. Locally: bin/conformance-upstream-local.sh.
+name: Upstream SDK tests
+
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - '.github/workflows/upstream.yaml'
+      - 'bin/build-extension.sh'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'docker/**'
+      - 'extension/**'
+      - 'packages/**'
+      - 'test-services/**'
+  pull_request:
+    paths: *paths
+  workflow_dispatch:
+  # The release (.github/workflows/release.yaml) runs it on the commit it releases.
+  workflow_call:
+
+# Inside a called workflow github.workflow is the caller's name, so the group names this
+# workflow itself; manual runs and the release's call (workflow_dispatch) get a group of their
+# own and are never cancelled by a push.
+concurrency:
+  group: upstream-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event_name }}
+  cancel-in-progress: true
+
+# contents: read checks out the repository. The action publishes the JUnit results as a check
+# run and a pull request comment (EnricoMi/publish-unit-test-result-action), hence checks and
+# pull-requests write; issues: read lets it find its earlier comment when the repository is
+# private and is harmless in a public one.
+permissions:
+  contents: read
+  issues: read
+  checks: write
+  pull-requests: write
+
+env:
+  SERVICE_IMAGE: restate.local/restate-php-test-services:upstream-extension-caddy
+  # The integration harness's default (Restate\Testing\RestateContainer::DEFAULT_IMAGE);
+  # the first step fails when the two differ.
+  RESTATE_IMAGE: docker.restate.dev/restatedev/restate:1.8.1
+
+jobs:
+  sdk-tests:
+    name: restatedev/e2e sdk-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check the Restate image against the integration harness
+        run: |
+          if ! grep -qF "DEFAULT_IMAGE = '$RESTATE_IMAGE';" packages/testing/src/RestateContainer.php; then
+            echo "::error file=.github/workflows/upstream.yaml::RESTATE_IMAGE ($RESTATE_IMAGE) differs from RestateContainer::DEFAULT_IMAGE"
+            exit 1
+          fi
+
+      # Images tagged restate.local/* are never pulled by the suite, so it uses this build.
+      - name: Build the test-services image
+        run: docker build --target upstream-extension-caddy -f docker/Dockerfile -t "$SERVICE_IMAGE" .
+
+      # Pinned by tag, not by commit: the action downloads sdk-tests.jar from the release named
+      # after the ref it runs at (github.action_ref), so a SHA pin breaks the download. Upstream
+      # has moved the v2.3 tag after the release (the jar asset stayed the same); locally
+      # bin/conformance-upstream-local.sh pins the jar by SHA-256.
+      - name: Run the upstream SDK tests
+        uses: restatedev/e2e/sdk-tests@v2.3
+        with:
+          serviceContainerImage: ${{ env.SERVICE_IMAGE }}
+          restateContainerImage: ${{ env.RESTATE_IMAGE }}
+          exclusionsFile: test-services/exclusions.yaml
+          testArtifactOutput: upstream-sdk-tests-report
+
+      # A suite that cannot start (for example, no test matches) reports nothing and exits 0.
+      - name: Fail when no tests ran
+        run: |
+          python3 - <<'PY'
+          import glob, sys, xml.etree.ElementTree as ET
+          total = sum(int(ET.parse(f).getroot().get("tests", 0)) for f in glob.glob("test-report/*/*.xml"))
+          print(f"{total} tests ran")
+          sys.exit(0 if total > 0 else 1)
+          PY

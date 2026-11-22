@@ -1,0 +1,37 @@
+# Apache httpd mod_proxy_fcgi in front of php-fpm (the fpm-extension-apache image). Rendered by entrypoint.sh
+# (RESTATE_PHP_FPM_FRONT=apache); the profile decides the proxy-sendcl and ProxyTimeout lines.
+ServerRoot /etc/apache2
+ServerName localhost
+Listen ${RESTATE_PHP_FPM_PORT}
+PidFile /tmp/apache2.pid
+User www-data
+Group www-data
+ErrorLog /proc/self/fd/2
+LogLevel warn
+
+LoadModule mpm_event_module /usr/lib/apache2/modules/mod_mpm_event.so
+LoadModule authz_core_module /usr/lib/apache2/modules/mod_authz_core.so
+LoadModule env_module /usr/lib/apache2/modules/mod_env.so
+LoadModule rewrite_module /usr/lib/apache2/modules/mod_rewrite.so
+LoadModule proxy_module /usr/lib/apache2/modules/mod_proxy.so
+LoadModule proxy_fcgi_module /usr/lib/apache2/modules/mod_proxy_fcgi.so
+
+DocumentRoot ${RESTATE_PHP_FPM_ROOT}
+<Directory ${RESTATE_PHP_FPM_ROOT}>
+    Require all granted
+</Directory>
+
+# Every request goes to the router script; REQUEST_URI stays the request's own path.
+RewriteEngine On
+RewriteRule ^ /${RESTATE_PHP_FPM_SCRIPT_NAME} [L]
+<FilesMatch "\.php$">
+    SetHandler "proxy:fcgi://127.0.0.1:9000"
+</FilesMatch>
+
+# Restate sends bodies without a length. mod_proxy_fcgi (2.4.47+) prefetches 16 KiB and sends CONTENT_LENGTH only if
+# the whole body fit; above that it streams without a length and php-fpm reads an empty body, unless proxy-sendcl
+# makes it spool the body and send the length.
+${RESTATE_PHP_FPM_APACHE_SENDCL}
+
+# At least the handlers' abort timeout (Restate's default: 600 s); Timeout, 60 s, by default.
+${RESTATE_PHP_FPM_APACHE_TIMEOUT}

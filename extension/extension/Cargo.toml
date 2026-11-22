@@ -1,0 +1,35 @@
+# The package name is the PHP module name: ext-php-rs registers the module under
+# CARGO_PKG_NAME, so `extension_loaded('restate')` and `ext-restate` to Composer. The
+# version is the extension version (`Restate\Extension\version()`,
+# `phpversion('restate')`); docs/EXTENSION_VERSIONS.md says when to bump it.
+[package]
+name = "restate"
+version = "0.1.0"
+edition = "2021"
+description = "The Restate PHP extension (module restate), built with ext-php-rs."
+license = "MIT"
+authors = ["Márk Sági-Kazár <mark.sagikazar@gmail.com>"]
+repository = "https://github.com/restate-php/restate"
+publish = false
+
+[lib]
+# Cargo builds librestate.so; bin/build-extension.sh copies it to restate.so, the
+# file name `extension=restate` looks for in PHP's extension_dir.
+name = "restate"
+crate-type = ["cdylib"]
+# Glue only: the logic and its tests live in restate-php-core, and the
+# integration suite exercises the built extension. A Rust test binary of this
+# crate would need stand-ins for every Zend symbol ext-php-rs leaves for PHP
+# to resolve at load time.
+test = false
+doctest = false
+
+[dependencies]
+ext-php-rs = "=0.16.5"
+restate-php-core = { path = "../core" }
+
+[features]
+# Soak tests only (tests/Soak): `Restate\Extension\diagnostics()`, live-object
+# counters and a counting global allocator (src/diagnostics.rs). Off by
+# default, so no release build has it.
+diagnostics = []

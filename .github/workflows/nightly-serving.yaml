@@ -1,0 +1,151 @@
+# Serving tests too slow or heavy for every pull request (TESTING.md, "Serving: large bodies,
+# PHP-FPM and front-door hazards"): the large-bodies group on every server, the serving-hazards
+# group (front doors at their defaults, front-door timeouts, clear_env), and the upstream Restate
+# SDK test suite against php-fpm behind nginx. Each job runs the same command as locally.
+name: Nightly serving
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-serving-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # The integration harness's default (Restate\Testing\RestateContainer::DEFAULT_IMAGE).
+  RESTATE_IMAGE: docker.restate.dev/restatedev/restate:1.8.1
+
+jobs:
+  large-bodies:
+    name: large bodies (${{ matrix.server }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        server: [php-cli, nginx-fpm, nginx-fpm-h2c, caddy-fpm]
+    defaults:
+      run:
+        shell: devenv shell -- bash -e {0}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up devenv
+        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+
+      - name: Set up Composer cache
+        uses: ./.github/actions/composer-cache
+
+      - name: Set up Cargo cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            extension/target/
+          key: cargo-integration-${{ hashFiles('extension/Cargo.lock', 'extension/rust-toolchain.toml') }}
+          restore-keys: |
+            cargo-integration-
+            cargo-check-php8.5-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      # RESTATE_PHP_TEST_REPORT_MEMORY prints each large case's peak RSS into the log.
+      - name: Run the large-bodies group
+        env:
+          SERVER: ${{ matrix.server }}
+          RESTATE_PHP_TEST_REPORT_MEMORY: '1'
+        run: |
+          if [ "$SERVER" = php-cli ]; then
+            composer test:large-bodies
+          else
+            composer build:extension
+            RESTATE_PHP_TEST_SERVER=$SERVER bash bin/test-fpm.sh --group large-bodies
+          fi
+
+  serving-hazards:
+    name: composer test:serving-hazards
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: devenv shell -- bash -e {0}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up devenv
+        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+
+      - name: Set up Composer cache
+        uses: ./.github/actions/composer-cache
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      # Builds the fpm-extension-apache image (php-fpm with nginx, Caddy and Apache) and runs the
+      # serving-hazards group against it.
+      - name: Test
+        run: composer test:serving-hazards
+
+  upstream-fpm-nginx:
+    name: restatedev/e2e sdk-tests (upstream-fpm-nginx)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    # The action publishes the JUnit results as a check run (as upstream.yaml does).
+    permissions:
+      contents: read
+      issues: read
+      checks: write
+      pull-requests: write
+    env:
+      SERVICE_IMAGE: restate.local/restate-php-test-services:upstream-fpm-nginx
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check the Restate image against the integration harness
+        run: |
+          if ! grep -qF "DEFAULT_IMAGE = '$RESTATE_IMAGE';" packages/testing/src/RestateContainer.php; then
+            echo "::error file=.github/workflows/nightly-serving.yaml::RESTATE_IMAGE ($RESTATE_IMAGE) differs from RestateContainer::DEFAULT_IMAGE"
+            exit 1
+          fi
+
+      # Images tagged restate.local/* are never pulled by the suite, so it uses this build.
+      - name: Build the test-services image
+        run: docker build --target upstream-fpm-nginx -f docker/Dockerfile -t "$SERVICE_IMAGE" .
+
+      # Pinned by tag, not by commit, for the reason upstream.yaml gives.
+      - name: Run the upstream SDK tests
+        uses: restatedev/e2e/sdk-tests@v2.3
+        with:
+          serviceContainerImage: ${{ env.SERVICE_IMAGE }}
+          restateContainerImage: ${{ env.RESTATE_IMAGE }}
+          exclusionsFile: test-services/exclusions.yaml
+          testArtifactOutput: upstream-fpm-nginx-sdk-tests-report
+
+      - name: Fail when no tests ran
+        run: |
+          python3 - <<'PY'
+          import glob, sys, xml.etree.ElementTree as ET
+          total = sum(int(ET.parse(f).getroot().get("tests", 0)) for f in glob.glob("test-report/*/*.xml"))
+          print(f"{total} tests ran")
+          sys.exit(0 if total > 0 else 1)
+          PY

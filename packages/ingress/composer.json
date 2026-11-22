@@ -1,0 +1,39 @@
+{
+  "name": "restate/ingress",
+  "description": "Restate ingress client for PHP: calls, sends and attaches to Restate services from code that is not a handler, over any PSR-18 HTTP client. Needs no PHP extension.",
+  "type": "library",
+  "keywords": [
+    "restate",
+    "durable-execution",
+    "workflows",
+    "client",
+    "psr-18"
+  ],
+  "homepage": "https://github.com/restate-php/restate",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Márk Sági-Kazár",
+      "email": "mark.sagikazar@gmail.com"
+    }
+  ],
+  "support": {
+    "issues": "https://github.com/restate-php/restate/issues",
+    "source": "https://github.com/restate-php/restate"
+  },
+  "require": {
+    "php": "~8.4.0 || ~8.5.0 || ~8.6.0",
+    "ext-json": "*",
+    "psr/http-client": "^1.0",
+    "psr/http-factory": "^1.1",
+    "restate/common": "self.version"
+  },
+  "suggest": {
+    "guzzlehttp/guzzle": "A PSR-18 HTTP client (and PSR-17 factories) for Restate\\Ingress\\IngressClient::connect()."
+  },
+  "autoload": {
+    "psr-4": {
+      "Restate\\Ingress\\": "src/"
+    }
+  }
+}

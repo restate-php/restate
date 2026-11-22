@@ -1,0 +1,78 @@
+# Failure-injection scenarios too slow for every pull request (TESTING.md, "Failure scenarios"):
+# the failure-nightly group (Restate restarts, graceful shutdowns, network faults through the fault
+# proxy, request stalls, back-pressure codes, container OOM kills, expired request identity, the
+# full truncation sweep) on php -S, on php-fpm behind each front door and on FrankenPHP (classic
+# mode, thread-safe extension: the only server for SIGTERM to FrankenPHP). Each job runs the same
+# command as locally.
+name: Nightly failure
+
+on:
+  schedule:
+    - cron: '47 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-failure-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # Every step runs in the devenv shell, with the project's toolchain.
+    shell: devenv shell -- bash -e {0}
+
+jobs:
+  failure:
+    name: failure-nightly (${{ matrix.server }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        server: [php-cli, nginx-fpm, nginx-fpm-h2c, caddy-fpm, frankenphp]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up devenv
+        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+
+      - name: Set up Composer cache
+        uses: ./.github/actions/composer-cache
+
+      - name: Set up Cargo cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            extension/target/
+          key: cargo-integration-${{ hashFiles('extension/Cargo.lock', 'extension/rust-toolchain.toml') }}
+          restore-keys: |
+            cargo-integration-
+            cargo-check-php8.5-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      - name: Run the failure-nightly group
+        env:
+          SERVER: ${{ matrix.server }}
+        run: |
+          if [ "$SERVER" = php-cli ]; then
+            composer test:failure
+          elif [ "$SERVER" = frankenphp ]; then
+            composer build:extension
+            # Builds the frankenphp-extension image (the extension compiled against FrankenPHP's
+            # thread-safe PHP), then runs the group against it.
+            bash bin/test-frankenphp.sh --group failure-nightly
+          else
+            composer build:extension
+            RESTATE_PHP_TEST_SERVER=$SERVER bash bin/test-fpm.sh --group failure-nightly
+          fi

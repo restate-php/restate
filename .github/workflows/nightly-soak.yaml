@@ -1,0 +1,73 @@
+# The soak suite (TESTING.md, "Soak suite"): bin/test-soak.sh in the dev shell, as a developer
+# runs it, against FrankenPHP worker-mode images built with the extension's diagnostics feature.
+#
+# - Nightly: frame replay (about a million requests), concurrency and bailouts
+#   (`bin/test-soak.sh nightly`, about 30 minutes).
+# - Weekly (Sunday): about 300,000 invocations through Restate (`bin/test-soak.sh restate`).
+# - By hand: any of them, optionally --quick.
+#
+# The checkpoints, latency windows and summaries (var/soak/) are uploaded as an artifact either
+# way, so slopes can be compared across runs when a threshold needs recalibrating.
+name: Soak tests
+
+on:
+  schedule:
+    - cron: '41 1 * * *'
+    - cron: '11 4 * * 0'
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'nightly, frames, concurrency, bailout, restate or all'
+        required: true
+        default: nightly
+      quick:
+        description: 'Quick run (a few percent of the requests)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: soak-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event.schedule }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # Every step runs in the devenv shell, with the project's toolchain.
+    shell: devenv shell -- bash -e {0}
+
+jobs:
+  soak:
+    name: bin/test-soak.sh ${{ inputs.suite || (github.event.schedule == '11 4 * * 0' && 'restate' || 'nightly') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up devenv
+        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+
+      - name: Set up Composer cache
+        uses: ./.github/actions/composer-cache
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      - name: Run the soak suite
+        env:
+          SUITE: ${{ inputs.suite || (github.event.schedule == '11 4 * * 0' && 'restate' || 'nightly') }}
+          QUICK: ${{ inputs.quick && 'yes' || '' }}
+        run: bash bin/test-soak.sh ${QUICK:+--quick} "$SUITE"
+
+      - name: Keep the soak reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: soak-reports
+          path: var/soak/
+          if-no-files-found: ignore

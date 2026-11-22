@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://devenv.sh/devenv.schema.json
+inputs:
+  # The extension's flake (extension/flake.nix, docs/decisions/0037-extension-flake.md): its overlay
+  # adds `restate` to every PHP of nixpkgs, and devenv.nix exposes its builds as outputs. A git
+  # input sees git-tracked files only, as with flakes: `git add` a new file before Nix can see it.
+  ext-restate:
+    url: git+file:.?dir=extension
+    overlays:
+      - default
+  # The extension flake's nixpkgs, which is ext-php-rs.nix's: one nixpkgs for the shell and every
+  # Nix build, and ext-php-rs.cachix.org has the PHP headers and cargo-zigbuild for it.
+  nixpkgs:
+    follows: ext-restate/nixpkgs
+  # languages.rust.toolchainFile builds the toolchain of extension/rust-toolchain.toml with it,
+  # the same one the extension flake builds with.
+  rust-overlay:
+    follows: ext-restate/rust-overlay
+  # restate-server for the test harness's RestateProcess (docs/decisions/0038-native-restate-for-the-test-harness.md):
+  # the official release binaries (restate-bin), at RestateContainer::DEFAULT_IMAGE's version. nixpkgs' restate is
+  # unfree and built from source, which takes long.
+  nix-restate:
+    url: github:sagikazarmark/nix-restate
+    inputs:
+      nixpkgs:
+        follows: nixpkgs

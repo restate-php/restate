@@ -1,0 +1,6 @@
+# Upstream SDK test suite (restatedev/e2e sdk-tests v2.3) cases the PHP SDK cannot pass yet, excluded by exact name.
+# Each entry is a JUnit method name (a full-match pattern; the suite's `--exclusions-file`, used locally and in CI), with a
+# comment naming why the case is excluded and what change removes the entry.
+#
+# Nothing is excluded: the full suite runs.
+exclusions: {}

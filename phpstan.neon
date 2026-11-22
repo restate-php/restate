@@ -1,0 +1,35 @@
+includes:
+    - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+    - vendor/phpstan/phpstan-phpunit/rules.neon
+
+parameters:
+    level: 8
+    paths:
+        - packages
+        - bin/check-packages.php
+        - tests
+    excludePaths:
+        # Deliberately leaky input for tests/Unit/PHPStan/PublicApiBoundaryRuleTest.php.
+        - tests/PHPStan/Fixtures
+        - tests/PHPStan/Stubs
+    scanFiles:
+        # The Restate extension's classes and functions; the extension is not loaded during analysis.
+        - extension/restate.stub.php
+        # FrankenPHP's worker-mode function (tests/Integration/Support/worker.php).
+        - tests/PHPStan/Stubs/frankenphp.php
+
+services:
+    -
+        # The public API boundary: docs/decisions/0016-public-api-boundary.md.
+        class: Restate\Tests\PHPStan\PublicApiBoundaryRule
+        arguments:
+            # Public types and members tagged @internal; the decision doc lists each with its reason.
+            allowedInternal:
+                - Restate\Endpoint::create
+                - Restate\Endpoint::handleHttpRequest
+                - Restate\AttachTarget::toArray
+                - Restate\RunRetryPolicy::toArray
+                - Restate\Ingress\Invocation::__construct
+        tags:
+            - phpstan.rules.rule

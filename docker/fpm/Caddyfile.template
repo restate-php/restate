@@ -1,0 +1,22 @@
+# Caddy php_fastcgi in front of php-fpm, with the settings docs/SERVING.md ("PHP-FPM and FastCGI") recommends.
+# Rendered by entrypoint.sh (RESTATE_PHP_FPM_FRONT=caddy, RESTATE_PHP_FPM_PROFILE=recommended).
+{
+	admin off
+	auto_https off
+	servers {
+		# h2c with prior knowledge, which Restate speaks to a deployment registered without use_http_11.
+		protocols h1 h2c
+	}
+}
+
+:${RESTATE_PHP_FPM_PORT} {
+	root * ${RESTATE_PHP_FPM_ROOT}
+	rewrite * /${RESTATE_PHP_FPM_SCRIPT_NAME}
+	php_fastcgi 127.0.0.1:9000 {
+		# Restate sends bodies without a length. php_fastcgi buffers 4096 bytes by default (2.10+) and answers
+		# 411 Length Required to a body it could not buffer whole (2.9+). Restate's own limit per message is 32 MiB.
+		request_buffers 64MiB
+		# At least the handlers' abort timeout (Restate's default: 600 s).
+		read_timeout ${RESTATE_PHP_FPM_READ_TIMEOUT}s
+	}
+}

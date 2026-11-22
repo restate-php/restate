@@ -1,0 +1,9 @@
+# The Rust toolchain for the crates in extension/. rustup (the Docker images in
+# docker/Dockerfile) installs exactly this; the dev shell builds the same
+# toolchain from this file (devenv.nix `languages.rust.toolchainFile`), and so
+# do the Nix builds (flake.nix, `fromRustupToolchainFile`). Bump the version
+# here, and nowhere else.
+[toolchain]
+channel = "1.95.0"
+profile = "minimal"
+components = ["clippy", "rustfmt"]

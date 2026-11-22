@@ -1,0 +1,204 @@
+{
+  "name": "restate/monorepo",
+  "description": "Development repository of the Restate PHP SDK packages (packages/*); never published.",
+  "type": "project",
+  "license": "MIT",
+  "require": {
+    "php": "~8.4.0 || ~8.5.0 || ~8.6.0",
+    "ext-filter": "*",
+    "ext-json": "*",
+    "psr/container": "^1.1 || ^2.0",
+    "psr/http-client": "^1.0",
+    "psr/http-factory": "^1.1",
+    "psr/http-message": "^2.0",
+    "psr/http-server-handler": "^1.0",
+    "psr/log": "^3.0"
+  },
+  "require-dev": {
+    "ext-curl": "*",
+    "cuyz/valinor": "^2.4",
+    "friendsofphp/php-cs-fixer": "^3.95",
+    "guzzlehttp/guzzle": "^7.9",
+    "guzzlehttp/psr7": "^2.13",
+    "phpbench/phpbench": "^1.7",
+    "phpstan/phpstan": "^2.1",
+    "phpstan/phpstan-phpunit": "^2.0",
+    "phpstan/phpstan-strict-rules": "^2.0",
+    "phpunit/phpunit": "^11.5",
+    "shipmonk/composer-dependency-analyser": "^1.8",
+    "symfony/property-access": "^6.4 || ^7.0",
+    "symfony/property-info": "^6.4 || ^7.0",
+    "symfony/serializer": "^6.4.50 || ^7.4.23"
+  },
+  "replace": {
+    "restate/common": "self.version",
+    "restate/ingress": "self.version",
+    "restate/sdk": "self.version",
+    "restate/testing": "self.version"
+  },
+  "autoload": {
+    "psr-4": {
+      "Restate\\": [
+        "packages/common/src/",
+        "packages/sdk/src/"
+      ],
+      "Restate\\Ingress\\": "packages/ingress/src/",
+      "Restate\\Testing\\": "packages/testing/src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Restate\\Tests\\": "tests/"
+    },
+    "classmap": [
+      "tests/PHPStan/Fixtures/"
+    ]
+  },
+  "scripts": {
+    "test": [
+      "@build:extension @no_additional_args",
+      "phpunit --testsuite unit"
+    ],
+    "test:integration": [
+      "Composer\\Config::disableProcessTimeout",
+      "@build:extension @no_additional_args",
+      "phpunit --testsuite integration"
+    ],
+    "test:scale": [
+      "Composer\\Config::disableProcessTimeout",
+      "@build:extension @no_additional_args",
+      "phpunit --testsuite integration --group scale"
+    ],
+    "test:integration:restate-1.7": [
+      "@putenv RESTATE_PHP_RESTATE_IMAGE=docker.restate.dev/restatedev/restate:1.7.14",
+      "@test:integration"
+    ],
+    "test:integration:process": [
+      "Composer\\Config::disableProcessTimeout",
+      "@putenv RESTATE_PHP_TEST_RESTATE=process",
+      "@build:extension @no_additional_args",
+      "phpunit tests/Integration"
+    ],
+    "test:frankenphp": [
+      "Composer\\Config::disableProcessTimeout",
+      "bash bin/test-frankenphp.sh"
+    ],
+    "test:frankenphp-worker": [
+      "Composer\\Config::disableProcessTimeout",
+      "bash bin/test-frankenphp.sh --worker"
+    ],
+    "test:soak": [
+      "Composer\\Config::disableProcessTimeout",
+      "bash bin/test-soak.sh"
+    ],
+    "test:fpm": [
+      "Composer\\Config::disableProcessTimeout",
+      "@build:extension @no_additional_args",
+      "bash bin/test-fpm.sh"
+    ],
+    "test:large-bodies": [
+      "Composer\\Config::disableProcessTimeout",
+      "@build:extension @no_additional_args",
+      "phpunit --testsuite integration --group large-bodies"
+    ],
+    "test:failure": [
+      "Composer\\Config::disableProcessTimeout",
+      "@build:extension @no_additional_args",
+      "phpunit --testsuite integration --group failure-nightly"
+    ],
+    "test:serving-hazards": [
+      "Composer\\Config::disableProcessTimeout",
+      "@putenv RESTATE_PHP_TEST_SERVER=nginx-fpm",
+      "@putenv RESTATE_PHP_TEST_FPM_TARGET=fpm-extension-apache",
+      "@putenv RESTATE_PHP_TEST_FPM_IMAGE=restate.local/restate-php-fpm:extension-apache",
+      "bash bin/test-fpm.sh --group serving-hazards"
+    ],
+    "check": [
+      "@cs",
+      "@analyse",
+      "@check:scripts",
+      "@test",
+      "@check:packages",
+      "@check:extension"
+    ],
+    "check:scripts": [
+      "actionlint",
+      "shellcheck bin/*.sh docker/*/*.sh"
+    ],
+    "check:packages": [
+      "@build:extension @no_additional_args",
+      "php -d extension=extension/target/debug/restate.so bin/check-packages.php"
+    ],
+    "check:extension": [
+      "Composer\\Config::disableProcessTimeout",
+      "cd extension && cargo fmt --all --check",
+      "cd extension && cargo clippy --workspace --all-targets -- -D warnings",
+      "cd extension && cargo test --workspace"
+    ],
+    "analyse": "phpstan analyse --memory-limit=512M",
+    "cs": "php-cs-fixer fix --dry-run --diff",
+    "cs:fix": "php-cs-fixer fix",
+    "build:extension": "bash bin/build-extension.sh",
+    "build:pie": [
+      "Composer\\Config::disableProcessTimeout",
+      "bash bin/build-pie.sh"
+    ],
+    "serve": [
+      "Composer\\Config::disableProcessTimeout",
+      "@build:extension @no_additional_args",
+      "php -d extension=extension/target/debug/restate.so -S 0.0.0.0:9080 -t test-services test-services/index.php"
+    ],
+    "test:upstream": [
+      "Composer\\Config::disableProcessTimeout",
+      "bash bin/conformance-upstream-local.sh"
+    ],
+    "bench": [
+      "Composer\\Config::disableProcessTimeout",
+      "bash -c 'bash bin/build-extension.sh --release >/dev/null && vendor/bin/phpbench run --report=aggregate \"$@\"' bench"
+    ],
+    "bench:compare": [
+      "Composer\\Config::disableProcessTimeout",
+      "bash bin/bench-compare.sh"
+    ],
+    "bench:extension": [
+      "Composer\\Config::disableProcessTimeout",
+      "bash bin/bench-extension.sh"
+    ],
+    "load": [
+      "Composer\\Config::disableProcessTimeout",
+      "bash bin/load-test.sh"
+    ]
+  },
+  "scripts-descriptions": {
+    "test": "Build the extension, then run the unit suite (its `extension` group runs the extension in child processes).",
+    "test:integration": "Build the extension, then run the suite against a real Restate container.",
+    "test:scale": "Build the extension, then run the scale tests' large cases (PHPUnit group `scale`, excluded from test:integration; nightly): long journals, wide fan-out, wide state, contention. RESTATE_PHP_TEST_SCALE_REPORT=<file> appends the measurements as JSON lines.",
+    "test:integration:restate-1.7": "The integration suite against Restate 1.7.14 (best-effort server version, protocol v6).",
+    "test:integration:process": "The integration suite (tests/Integration) with Restate as a process of the harness (restate-server from the dev shell) instead of a container: no container runtime needed, macOS included. examples/testing shows the default, a container, so it is left out.",
+    "test:frankenphp": "Build the FrankenPHP image with the thread-safe extension, then run the integration suite against it.",
+    "test:soak": "Build the FrankenPHP worker images with the extension's diagnostics feature and run the soak suite (tests/Soak); arguments: [--quick] [nightly|frames|concurrency|bailout|restate|all], see bin/test-soak.sh.",
+    "test:frankenphp-worker": "The same image in FrankenPHP worker mode (endpoints built once per worker): the integration suite, then the worker suite (tests/Worker).",
+    "test:fpm": "Build the PHP-FPM image (nginx, Caddy), then run the integration suite against php-fpm behind each front door (RESTATE_PHP_TEST_SERVER: nginx-fpm, nginx-fpm-h2c, caddy-fpm; default all three).",
+    "test:large-bodies": "The nightly large-bodies group (31 MiB inputs and outputs, values over Restate's message limit) on php -S; for FPM: RESTATE_PHP_TEST_SERVER=<server> bash bin/test-fpm.sh --group large-bodies.",
+    "test:failure": "The nightly failure-nightly group (Restate restarts, graceful shutdowns, network faults, back-pressure, OOM kills, expired request identity, the full truncation sweep) on php -S; for FPM: RESTATE_PHP_TEST_SERVER=<server> bash bin/test-fpm.sh --group failure-nightly.",
+    "test:serving-hazards": "Build the PHP-FPM image with Apache, then run the nightly serving-hazards group: front doors at their defaults, front-door timeouts, clear_env.",
+    "check": "Everything that must pass before a commit: cs, analyse, workflow and shell lint, unit tests, the packages' composer.json files, then fmt/clippy/test for the Cargo workspace.",
+    "analyse": "PHPStan over the packages and the tests (phpstan.neon).",
+    "cs": "Check the coding style with php-cs-fixer (.php-cs-fixer.dist.php) and show the diff; changes nothing.",
+    "cs:fix": "Fix the coding style with php-cs-fixer (.php-cs-fixer.dist.php).",
+    "check:scripts": "actionlint on .github/workflows and shellcheck on the shell scripts (both from the dev shell).",
+    "check:packages": "composer validate --strict for each package in packages/, its code against its requirements (shipmonk/composer-dependency-analyser, with the extension loaded), the root composer.json against the packages, and that no package declares anything in the extension's Restate\\Extension\\ namespace (bin/check-packages.php).",
+    "build:extension": "Build the PHP extension (debug) into extension/target/debug/; pass `--release` or `--php-config <path>` after `--` (see bin/build-extension.sh).",
+    "build:pie": "Cross-compile the 24 prebuilt binaries of a release with Nix (devenv.nix outputs.pie, from extension/flake.nix) and copy the PIE archives, their .sha256 files and SHA256SUMS into dist/, or the directory given after `--` (see bin/build-pie.sh).",
+    "check:extension": "cargo fmt --check, clippy -D warnings and cargo test for every crate in extension/ (needs the dev shell for the extension build).",
+    "serve": "Build the extension, then serve test-services/index.php (every test service) on 0.0.0.0:9080 with it loaded.",
+    "test:upstream": "Build a test-services image and run the upstream Restate SDK test suite against it (Java 25: the dev shell); arguments: [target] [basic|full], see bin/conformance-upstream-local.sh.",
+    "bench": "Build the release extension, then run the PHP micro-benchmarks (tests/Benchmark, phpbench.json: OPcache on, JIT off); arguments go to phpbench, e.g. -- --filter=benchReplay.",
+    "bench:compare": "Compare the PHP benchmarks of this checkout against a base revision (default: the merge base with main) in two reversed pairs plus callgrind instruction counts; see bin/bench-compare.sh.",
+    "bench:extension": "Instruction counts (gungraun, callgrind) of the Rust core's benchmarks plus the replay linearity check; `-- criterion` for wall-clock times, `-- compare [<base>]` against a base commit (see bin/bench-extension.sh).",
+    "load": "Load tests against Restate with k6: bin/load-test.sh <scenario|all|--list> [--quick] [--repetitions N] [--gate] (needs Docker or podman and k6; see TESTING.md, Performance)."
+  },
+  "config": {
+    "sort-packages": true
+  }
+}

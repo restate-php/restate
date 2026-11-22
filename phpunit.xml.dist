@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         defaultTestSuite="unit"
+         cacheDirectory=".phpunit.cache"
+         failOnWarning="true"
+         failOnRisky="true"
+         failOnDeprecation="true"
+         colors="true">
+    <testsuites>
+        <testsuite name="unit">
+            <directory>tests/Unit</directory>
+            <directory>tests/Support</directory>
+        </testsuite>
+        <!-- Needs the extension loaded in-process; the unit suite runs it in a child (tests/Unit/Sdk/Backend/ExtensionSuiteTest.php). -->
+        <testsuite name="extension">
+            <directory>tests/Extension</directory>
+        </testsuite>
+        <!-- Real Restate server + real extension backend; run with `composer test:integration`. examples/testing is the
+             public test harness used as a user would. -->
+        <testsuite name="integration">
+            <directory>tests/Integration</directory>
+            <directory>examples/testing</directory>
+        </testsuite>
+        <!-- Only against the integration endpoint in FrankenPHP's worker mode, after the integration suite:
+             bin/test-frankenphp.sh with the worker option (RESTATE_PHP_TEST_SERVER=frankenphp-worker). -->
+        <testsuite name="worker">
+            <directory>tests/Worker</directory>
+        </testsuite>
+        <!-- Long runs against FrankenPHP worker images (and Restate): bin/test-soak.sh, nightly and weekly. -->
+        <testsuite name="soak">
+            <directory>tests/Soak</directory>
+        </testsuite>
+    </testsuites>
+    <!-- Nightly only (.github/workflows/nightly-serving.yaml, nightly-failure.yaml); phpunit's group option runs one anyway. -->
+    <!-- The large scale parameterisations (tests/Integration/Scale) run on their own: `composer test:scale` (nightly). -->
+    <groups>
+        <exclude>
+            <group>large-bodies</group>
+            <group>serving-hazards</group>
+            <group>failure-nightly</group>
+            <group>scale</group>
+        </exclude>
+    </groups>
+    <!-- ignoreIndirectDeprecations: a deprecation that third-party code triggers in third-party code is not ours to
+         fix (PHP 8.6 deprecates the define() call in phpstan.phar's bundled hoa/consistency, which phpstan's rule test
+         harness runs); deprecations our code triggers, or calls into, still fail the suite. -->
+    <source ignoreIndirectDeprecations="true">
+        <include>
+            <directory>packages</directory>
+        </include>
+    </source>
+</phpunit>

@@ -1,0 +1,11 @@
+.git/
+.claude/
+.devenv/
+.worktrees/
+.phpunit.cache/
+.phpunit.result.cache
+.php-cs-fixer.cache
+dist/
+extension/target/
+var/
+vendor/

@@ -1,0 +1,17 @@
+[workspace]
+resolver = "3"
+members = [
+    "core",
+    # Package `restate`: the PHP module (see its Cargo.toml).
+    "extension",
+]
+
+# `bin/build-extension.sh --release`. Keep `panic = "unwind"`: the extension's panic guard
+# (`restate_php_core::guard`) catches panics with `catch_unwind` and turns them into
+# `ExtensionException`s; with `abort` a panic would kill the PHP process.
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "unwind"
+strip = "debuginfo"

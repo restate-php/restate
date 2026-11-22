@@ -1,0 +1,28 @@
+; php-fpm pool settings of the fpm-extension image, rendered by entrypoint.sh as php-fpm.d/zz-restate.conf
+; (read after the image's docker.conf and zz-docker.conf).
+
+[global]
+; How long a graceful reload (USR2) or stop (QUIT) waits for the workers' requests before it terminates them. 0, the
+; php-fpm default: no wait, the requests in flight are lost (GracefulShutdownTest).
+process_control_timeout = ${RESTATE_PHP_FPM_PROCESS_CONTROL_TIMEOUT}
+
+[www]
+; Workers run as root, like the FrankenPHP endpoint: the harness bind-mounts the test's state directory, which only
+; its owner may write (php-fpm runs with -R).
+user = root
+group = root
+listen = 127.0.0.1:9000
+
+; A fixed pool, as PHP_CLI_SERVER_WORKERS=8 for php -S: a handler that calls another one of the same endpoint waits
+; for it.
+pm = static
+pm.max_children = ${RESTATE_PHP_FPM_MAX_CHILDREN}
+
+; The official images set no; php-fpm's own default is yes (docs/SERVING.md, "PHP-FPM and FastCGI").
+clear_env = ${RESTATE_PHP_FPM_CLEAR_ENV}
+; 0: no limit. A terminated worker is a 502 at the front door.
+request_terminate_timeout = ${RESTATE_PHP_FPM_REQUEST_TERMINATE_TIMEOUT}
+
+access.log = /dev/null
+catch_workers_output = yes
+decorate_workers_output = no

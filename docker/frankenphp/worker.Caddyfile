@@ -1,0 +1,33 @@
+# Integration-suite endpoint in FrankenPHP worker mode (RESTATE_PHP_TEST_SERVER=frankenphp-worker,
+# bin/test-frankenphp.sh --worker; the soak images bake it in): every request goes to the
+# long-lived worker script tests/Integration/Support/worker.php, which builds the endpoints once.
+#
+# RESTATE_PHP_TEST_WORKER_NUM      worker threads (default 4)
+# RESTATE_PHP_TEST_WORKER_FAILURES max_consecutive_failures before FrankenPHP gives up on the
+#                                  worker (default 6, FrankenPHP's own; -1: never)
+# MAX_REQUESTS                     requests per worker script run before it restarts (0: never)
+# RESTATE_PHP_TEST_DISPLAY_ERRORS  display_errors (default 1: the image has no php.ini, so PHP's own
+#                                  default, STDOUT)
+# RESTATE_PHP_TEST_POST_DATA_READING  enable_post_data_reading (default 0, as SERVING.md recommends:
+#                                  a body over post_max_size makes PHP print a warning otherwise)
+{
+	admin off
+	auto_https off
+	frankenphp {
+		php_ini display_errors {$RESTATE_PHP_TEST_DISPLAY_ERRORS:1}
+		php_ini enable_post_data_reading {$RESTATE_PHP_TEST_POST_DATA_READING:0}
+		worker {
+			name integration
+			file /app/tests/Integration/Support/worker.php
+			num {$RESTATE_PHP_TEST_WORKER_NUM:4}
+			max_consecutive_failures {$RESTATE_PHP_TEST_WORKER_FAILURES:6}
+			env MAX_REQUESTS {$MAX_REQUESTS:0}
+		}
+	}
+}
+
+:8080 {
+	root * /app/tests/Integration/Support
+	rewrite * /worker.php
+	php
+}

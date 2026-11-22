@@ -1,0 +1,15 @@
+{
+  admin off
+  auto_https off
+  servers :9080 {
+    protocols h1 h2c
+  }
+}
+
+:9080 {
+  reverse_proxy 127.0.0.1:9081 {
+    transport http {
+      keepalive off
+    }
+  }
+}

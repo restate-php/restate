@@ -1,0 +1,5 @@
+# actionlint configuration (composer check:scripts).
+self-hosted-runner:
+  # The dedicated load-test runner (.github/workflows/load.yaml).
+  labels:
+    - restate-php-load

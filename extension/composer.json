@@ -1,0 +1,36 @@
+{
+  "name": "restate/ext-restate",
+  "description": "The Restate PHP extension (module restate): the Restate core that restate/sdk serves with. Install it with PIE, which downloads a prebuilt binary for your PHP version, thread safety, CPU and libc.",
+  "type": "php-ext",
+  "keywords": [
+    "restate",
+    "durable-execution",
+    "workflows",
+    "extension",
+    "pie"
+  ],
+  "homepage": "https://github.com/restate-php/restate",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Márk Sági-Kazár",
+      "email": "mark.sagikazar@gmail.com"
+    }
+  ],
+  "support": {
+    "issues": "https://github.com/restate-php/restate/issues",
+    "source": "https://github.com/restate-php/restate"
+  },
+  "require": {
+    "php": "~8.4.0 || ~8.5.0 || ~8.6.0"
+  },
+  "php-ext": {
+    "extension-name": "restate",
+    "download-url-method": [
+      "pre-packaged-binary"
+    ],
+    "os-families": [
+      "linux"
+    ]
+  }
+}

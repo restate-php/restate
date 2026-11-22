@@ -1,0 +1,32 @@
+{
+  "name": "restate/common",
+  "description": "Types the Restate PHP SDK packages share: serdes, targets, terminal errors and the JSON value mapping of handler payloads.",
+  "type": "library",
+  "keywords": [
+    "restate",
+    "durable-execution",
+    "sdk",
+    "serialization"
+  ],
+  "homepage": "https://github.com/restate-php/restate",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Márk Sági-Kazár",
+      "email": "mark.sagikazar@gmail.com"
+    }
+  ],
+  "support": {
+    "issues": "https://github.com/restate-php/restate/issues",
+    "source": "https://github.com/restate-php/restate"
+  },
+  "require": {
+    "php": "~8.4.0 || ~8.5.0 || ~8.6.0",
+    "ext-json": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Restate\\": "src/"
+    }
+  }
+}

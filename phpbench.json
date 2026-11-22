@@ -1,0 +1,19 @@
+{
+    "$schema": "./vendor/phpbench/phpbench/phpbench.schema.json",
+    "runner.bootstrap": "vendor/autoload.php",
+    "runner.path": "tests/Benchmark",
+    "runner.file_pattern": "*Bench.php",
+    "runner.attributes": true,
+    "runner.annotations": false,
+    "runner.php_config": {
+        "extension": "extension/target/release/restate.so",
+        "opcache.enable_cli": 1,
+        "opcache.jit": "disable",
+        "opcache.jit_buffer_size": 0,
+        "zend.assertions": -1,
+        "memory_limit": "512M",
+        "display_errors": "stderr"
+    },
+    "runner.time_unit": "microseconds",
+    "runner.progress": "plain"
+}

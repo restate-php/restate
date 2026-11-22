@@ -1,0 +1,323 @@
+# Releases every package and the extension at one version (docs/decisions/0031-release.md).
+#
+# Run it by hand on main. It releases the version in the tree, the extension's crate version
+# (extension/extension/Cargo.toml): bump that first, in a commit with
+# extension/Cargo.lock and, for a new minor, restate/sdk's ext-restate constraint. Then:
+#
+#   1. version   checks the version (new, newer than the last release) and the tree;
+#   2. ci, upstream
+#                run CI and the upstream SDK suite on the release commit (skip-tests skips them);
+#   3. extension, attest
+#                build and check the 24 extension archives, then checksum and attest them;
+#   4. publish   pushes, in this order: the extension repository (split, tag X.Y.Z, a release
+#                with the archives), each package repository (split, tag vX.Y.Z), and this
+#                repository's release vX.Y.Z.
+#
+# Publishing skips what is already there and refuses what differs, so a failed run can be
+# re-run. Nothing is ever force-pushed.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip-tests:
+        description: Skip CI and the upstream suite on the release commit (escape hatch; the extension archives are still built and checked)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  # The read-only repositories a release publishes to, all owned by the RELEASE_OWNER variable
+  # (restate-php, the owner of this repository, restate-php/restate):
+  # "<directory> <repository>". Each gets the directory's history (git subtree split) on main
+  # and the release tag: X.Y.Z for the extension (PIE puts the tag in the asset names it looks
+  # for), vX.Y.Z for the packages. The extension's line comes first.
+  SPLITS: |
+    extension ext-restate
+    packages/common common
+    packages/ingress ingress
+    packages/sdk sdk
+    packages/testing testing
+
+jobs:
+  version:
+    name: Version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.pick.outputs.version }}
+      tag: ${{ steps.pick.outputs.tag }}
+      previous: ${{ steps.pick.outputs.previous }}
+      make-latest: ${{ steps.pick.outputs.make-latest }}
+      repositories: ${{ steps.repositories.outputs.repositories }}
+
+    steps:
+      - name: Check the branch
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Release from main, not $GITHUB_REF"
+          exit 1
+
+      # The whole history: the previous release's tag, for the contract version check.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Read the version
+        id: crate
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' extension/extension/Cargo.toml | head -n 1)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # Fails when the version is already a tag or not newer than the latest vX.Y.Z.
+      - name: Check the version
+        id: pick
+        uses: sagikazarmark/next-version@e291b39a83bf84c948c419871f910173bf8343dc # v0.2.0
+        with:
+          version: ${{ steps.crate.outputs.version }}
+
+      - name: Check the tree
+        env:
+          VERSION: ${{ steps.pick.outputs.version }}
+          PREVIOUS: ${{ steps.pick.outputs.previous }}
+        run: |
+          failed=0
+          IFS=. read -r major minor _ <<< "$VERSION"
+
+          # restate/sdk requires the extension of its own minor version (composer check:packages
+          # checks the same against the crate version).
+          constraint=$(jq -r '.require["ext-restate"]' packages/sdk/composer.json)
+          if [ "$constraint" != "~$major.$minor.0" ]; then
+            echo "::error file=packages/sdk/composer.json::restate/sdk must require ext-restate ~$major.$minor.0 to release $VERSION, not $constraint"
+            failed=1
+          fi
+
+          # A new contract version needs a new minor version: restate/sdk accepts every extension
+          # of its minor version, which would otherwise include the previous release's.
+          contract() { sed -n 's/^pub const CONTRACT_VERSION: i64 = \([0-9]*\);$/\1/p'; }
+          now=$(contract < extension/extension/src/lib.rs)
+          if [ -n "$PREVIOUS" ]; then
+            before=$(git show "$PREVIOUS:extension/extension/src/lib.rs" 2> /dev/null | contract || true)
+            IFS=. read -r previous_major previous_minor _ <<< "${PREVIOUS#v}"
+            if [ -n "$before" ] && [ "$before" != "$now" ] && [ "$previous_major.$previous_minor" = "$major.$minor" ]; then
+              echo "::error::The contract version changed since $PREVIOUS ($before -> $now): release a new minor version, not $VERSION"
+              failed=1
+            fi
+          fi
+
+          # Every repository gets the directory as it is: its README and LICENSE too.
+          while read -r directory repository; do
+            [ -n "$directory" ] || continue
+            for file in README.md LICENSE; do
+              if [ ! -f "$directory/$file" ]; then
+                echo "::error::$directory/$file is missing ($repository would have none)"
+                failed=1
+              fi
+            done
+          done <<< "$SPLITS"
+
+          exit "$failed"
+
+      - name: List the repositories
+        id: repositories
+        run: echo "repositories=$(awk 'NF { print $2 }' <<< "$SPLITS" | paste -sd, -)" >> "$GITHUB_OUTPUT"
+
+  ci:
+    name: CI
+    needs: version
+    if: ${{ !inputs.skip-tests }}
+    uses: ./.github/workflows/ci.yaml
+
+  upstream:
+    name: Upstream SDK tests
+    needs: version
+    if: ${{ !inputs.skip-tests }}
+    uses: ./.github/workflows/upstream.yaml
+    # What the upstream workflow needs to publish its test results.
+    permissions:
+      contents: read
+      issues: read
+      checks: write
+      pull-requests: write
+
+  extension:
+    name: Extension binaries
+    needs: version
+    uses: ./.github/workflows/extension.yaml
+
+  attest:
+    name: Attest
+    needs: [version, extension]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+
+    steps:
+      - name: Download the archives
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: php_restate-*
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        env:
+          ARCHIVE_VERSION: ${{ needs.extension.outputs.version }}
+        run: |
+          if [ "$ARCHIVE_VERSION" != "$VERSION" ]; then
+            echo "::error::The archives are of $ARCHIVE_VERSION, not $VERSION"
+            exit 1
+          fi
+          cd dist
+          sha256sum -c ./*.sha256
+          rm ./*.sha256
+          sha256sum ./*.tgz | sed 's| \./| |' > SHA256SUMS
+          cat SHA256SUMS
+          test "$(grep -c . SHA256SUMS)" = 16
+
+      # Provenance of every archive, recorded in this repository: `gh attestation verify
+      # <archive> --repo <this repository>`, or with the bundle the release carries. PIE checks
+      # nothing but HTTPS; users can.
+      - name: Attest build provenance
+        id: attest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*.tgz
+
+      - name: Name the attestation after the release
+        run: cp "${{ steps.attest.outputs.bundle-path }}" "dist/php_restate-$VERSION.sigstore.json"
+
+      - name: Upload the release assets
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-assets
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+
+  publish:
+    name: Publish
+    needs: [version, ci, upstream, attest]
+    # ci and upstream are skipped with skip-tests; anything failed or cancelled stops the release.
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: ubuntu-24.04
+    # Holds the GitHub App's key; give it required reviewers to approve each release.
+    environment: release
+    permissions:
+      # This repository's release and its tag.
+      contents: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      TAG: ${{ needs.version.outputs.tag }}
+      PREVIOUS: ${{ needs.version.outputs.previous }}
+      MAKE_LATEST: ${{ needs.version.outputs.make-latest }}
+      OWNER: ${{ vars.RELEASE_OWNER }}
+
+    steps:
+      # The whole history: git subtree split rewrites it per directory.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download the release assets
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-assets
+          path: dist
+
+      # A token for the split repositories only, with contents: write: push, tag, release.
+      - name: Create a token for the repositories
+        id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: ${{ vars.RELEASE_OWNER }}
+          repositories: ${{ needs.version.outputs.repositories }}
+          permission-contents: write
+
+      - name: Publish the extension and the packages
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          set -euo pipefail
+
+          # The directory's history on the repository's main (fast-forward only: the split of a
+          # later commit extends the earlier one) and the tag on it.
+          split() {
+            local directory=$1 repository=$2 tag=$3 url commit existing
+            url="https://x-access-token:$GH_TOKEN@github.com/$OWNER/$repository.git"
+            echo "::group::$directory -> $OWNER/$repository $tag"
+            commit=$(git subtree split --prefix="$directory" HEAD)
+            echo "Split commit: $commit"
+            git push "$url" "$commit:refs/heads/main"
+            existing=$(git ls-remote "$url" "refs/tags/$tag" | cut -f1)
+            if [ -z "$existing" ]; then
+              git push "$url" "$commit:refs/tags/$tag"
+            elif [ "$existing" != "$commit" ]; then
+              echo "::error::$OWNER/$repository has $tag on $existing, not on $commit"
+              exit 1
+            fi
+            echo "::endgroup::"
+          }
+
+          {
+            read -r directory repository
+            if [ "$directory" != extension ]; then
+              echo "::error::The first line of SPLITS must be the extension"
+              exit 1
+            fi
+            split "$directory" "$repository" "$VERSION"
+
+            # The archives go to a draft first (assets can be added to a draft even with
+            # immutable releases), which is published once it has them all. PIE sees published
+            # releases only.
+            extension="$OWNER/$repository"
+            draft=$(gh release view "$VERSION" --repo "$extension" --json isDraft --jq .isDraft 2> /dev/null || echo missing)
+            assets=(dist/*.tgz dist/SHA256SUMS dist/*.sigstore.json)
+            case "$draft" in
+              missing)
+                gh release create "$VERSION" --repo "$extension" --draft --verify-tag --title "$VERSION" \
+                  --notes "Restate PHP extension $VERSION, released with the Restate PHP SDK $TAG ($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG). Install it with \`pie install restate/ext-restate:$VERSION\`. SHA256SUMS lists the archives' checksums; \`gh attestation verify <archive> --repo $GITHUB_REPOSITORY\` checks their provenance." \
+                  "${assets[@]}"
+                ;;
+              true)
+                gh release upload "$VERSION" --repo "$extension" --clobber "${assets[@]}"
+                ;;
+            esac
+            if [ "$draft" != false ]; then
+              gh release edit "$VERSION" --repo "$extension" --draft=false --latest="$MAKE_LATEST"
+            fi
+
+            while read -r directory repository; do
+              if [ -n "$directory" ]; then
+                split "$directory" "$repository" "$TAG"
+              fi
+            done
+          } <<< "$SPLITS"
+
+      - name: Release this repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "$TAG is already released"
+            exit 0
+          fi
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$TAG" \
+            --latest="$MAKE_LATEST" --generate-notes ${PREVIOUS:+--notes-start-tag "$PREVIOUS"} \
+            --notes "Install the packages with Composer (\`composer require restate/sdk:$VERSION\`) and the extension with PIE (\`pie install restate/ext-restate:$VERSION\`)."
