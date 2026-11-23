@@ -1,9 +1,10 @@
 # Restate PHP SDK
 
-[![CI](https://github.com/restate-php/restate/actions/workflows/ci.yaml/badge.svg)](https://github.com/restate-php/restate/actions/workflows/ci.yaml)
-[![Quickstart](https://github.com/restate-php/restate/actions/workflows/quickstart.yaml/badge.svg)](https://github.com/restate-php/restate/actions/workflows/quickstart.yaml)
-[![PHP](https://img.shields.io/badge/php-8.4%20%7C%208.5%20%7C%208.6-777bb4)](docs/compatibility.md)
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/restate-php/restate/ci.yaml?style=flat-square)](https://github.com/restate-php/restate/actions/workflows/ci.yaml)
+[![Quickstart](https://img.shields.io/github/actions/workflow/status/restate-php/restate/quickstart.yaml?style=flat-square&label=quickstart)](https://github.com/restate-php/restate/actions/workflows/quickstart.yaml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/restate-php/restate/badge?style=flat-square)](https://securityscorecards.dev/viewer/?uri=github.com/restate-php/restate)
+[![Packagist](https://img.shields.io/packagist/v/restate/sdk?style=flat-square)](https://packagist.org/packages/restate/sdk)
+[![PHP](https://img.shields.io/badge/php-8.4%20%7C%208.5%20%7C%208.6-777bb4?style=flat-square)](docs/compatibility.md)
 
 [Restate](https://restate.dev) is a system for building resilient applications with durable execution. This
 repository is an SDK for writing Restate services in **PHP**: handlers whose steps, calls, timers and state Restate
@@ -15,27 +16,23 @@ records, so they run to completion across crashes, restarts and deploys.
 
 ## Highlights
 
-- **All of Restate's service types**: [Basic Services, Virtual Objects and Workflows](docs/develop/services.md), as
-  attributed PHP classes or with builders.
-- **Durable building blocks**: [durable steps](docs/develop/durable-steps.md) with retry policies,
-  [state](docs/develop/state.md), [timers](docs/develop/timers.md),
-  [calls and messages](docs/develop/communication.md) with idempotency keys,
-  [awakeables, signals and durable promises](docs/develop/external-events.md), and
-  [durable futures](docs/develop/concurrency.md) to wait on several things at once.
-- **Runs where PHP runs**: [`php -S`, PHP-FPM, FrankenPHP (including worker mode) and any PSR-15
-  framework](docs/serving.md). There is no long-running worker process to manage: Restate calls your endpoint over
-  HTTP.
-- **Typed payloads**: JSON by default, mapped to [DTOs and enums](docs/develop/serialization.md) with inferred JSON
-  Schemas, plus Symfony Serializer and Valinor adapters and custom serializers.
-- **Production concerns**: [error handling](docs/develop/errors.md) with terminal errors, retry delays and pausing,
-  [PSR-3 logging and interceptors](docs/develop/logging-and-hooks.md), PSR-11 containers, and
-  [request identity validation](docs/serving.md#request-identity-validation).
-- **Beyond handlers**: an [ingress client](docs/ingress-client.md) to call services from your application, and a
-  [test harness](docs/develop/testing.md) that runs your endpoint against a real Restate server in PHPUnit.
-- **Built on Restate's own core**: protocol handling is done by
-  [`restate-sdk-shared-core`](https://crates.io/crates/restate-sdk-shared-core), the Rust library inside the
-  official TypeScript, Python and Rust SDKs, compiled into a PHP extension. The PHP SDK passes the
-  [test suite the official SDKs run](docs/internals/conformance.md).
+- **Every service type**: [Basic Services, Virtual Objects and Workflows](docs/develop/services.md), via attributes
+  or builders.
+- **Steps, state, timers**: [`run()` with retry policies](docs/develop/durable-steps.md),
+  [key-value state](docs/develop/state.md), [durable sleeps and timeouts](docs/develop/timers.md).
+- **Service calls**: [request-response, one-way and delayed](docs/develop/communication.md), with idempotency keys.
+- **External events**: [awakeables, signals and durable promises](docs/develop/external-events.md);
+  [futures](docs/develop/concurrency.md) to wait on several at once.
+- **No worker process**: Restate calls you over HTTP. [`php -S`, PHP-FPM, FrankenPHP or PSR-15](docs/serving.md).
+- **Typed payloads**: [DTOs and enums](docs/develop/serialization.md) with inferred JSON Schemas; Symfony and
+  Valinor adapters.
+- **Production-ready**: [terminal errors and pausing](docs/develop/errors.md),
+  [PSR-3 logging and interceptors](docs/develop/logging-and-hooks.md), PSR-11 containers,
+  [request signing](docs/serving.md#request-identity-validation).
+- **Ingress client and test harness**: [call services from your app](docs/ingress-client.md);
+  [test in PHPUnit](docs/develop/testing.md) against a real Restate server.
+- **Restate's own core**: the [Rust core](https://crates.io/crates/restate-sdk-shared-core) of the official SDKs, as
+  a PHP extension. Passes their full [conformance suite](docs/internals/conformance.md).
 
 ## Example
 
@@ -173,9 +170,8 @@ and register `http://host.docker.internal:9080`: inside the container, `localhos
 | `restate/ingress` | `composer require restate/ingress` | Calling services from your application, without the extension |
 | `restate/testing` | `composer require --dev restate/testing` | Integration tests against a real Restate server |
 
-[PIE](https://github.com/php/pie) installs a prebuilt extension for PHP 8.4, 8.5 and 8.6 (NTS and ZTS) on Linux
-x86_64 and arm64 (glibc and musl). [Installation](docs/installation.md) covers Docker images, building from source
-(macOS and other platforms), Nix, and verifying release archives.
+[PIE](https://github.com/php/pie) installs a prebuilt extension on [supported platforms](#compatibility).
+[Installation](docs/installation.md) covers Docker images, building from source, Nix, and verifying releases.
 
 ## Documentation
 
@@ -213,14 +209,6 @@ For Restate itself (the server, its UI and CLI, deployment, operations), see the
 
 Endpoints use Restate's request/response protocol, not bidirectional streaming. [Compatibility](docs/compatibility.md)
 has the details.
-
-## Support and contributing
-
-Report bugs and ask questions about this SDK in [GitHub issues](https://github.com/restate-php/restate/issues)
-([what to include](docs/troubleshooting.md#reporting-a-bug)). For Restate itself, see the
-[Restate documentation](https://docs.restate.dev) and its community.
-
-To work on the SDK, start with [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
