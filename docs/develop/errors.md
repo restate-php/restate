@@ -103,7 +103,7 @@ Two separate retry policies apply, at different levels:
 | `InvocationRetryPolicy` | Failed handler attempts. Restate retries the whole invocation, replaying its journal. | Per service or handler, at discovery ([Service configuration](services.md#invocationretrypolicy)) | Killing or pausing the invocation (`onMaxAttempts`) |
 | `RunRetryPolicy` | A failing `$ctx->run()` callback. Only that step runs again. | Per `$ctx->run()` call ([Retry policies](durable-steps.md#retry-policies)) | Failing the run with a `TerminalError`, or pausing the invocation (`OnMaxAttempts::Pause`) |
 
-Without an `InvocationRetryPolicy`, Restate's server defaults apply. Without a `RunRetryPolicy`, a run is retried indefinitely.
+Without an `InvocationRetryPolicy`, Restate's server defaults apply. Without a `RunRetryPolicy` (or with `RunRetryPolicy::infinite()`), a failing run fails the attempt like any other exception: the invocation retry policy decides the delay and whether there is another attempt.
 
 ## Pausing invocations
 

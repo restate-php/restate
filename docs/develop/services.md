@@ -54,7 +54,8 @@ final class Counter
     #[Restate\Handler]
     public function add(ObjectContext $ctx, int $amount): int
     {
-        $value = (int) ($ctx->get('value') ?? 0) + $amount;
+        $value = $ctx->get('value'); // decoded JSON, or null for a key without a value
+        $value = (is_int($value) ? $value : 0) + $amount;
         $ctx->set('value', $value);
 
         return $value;
@@ -64,7 +65,9 @@ final class Counter
     #[Restate\Shared]
     public function get(ObjectSharedContext $ctx): int
     {
-        return (int) ($ctx->get('value') ?? 0);
+        $value = $ctx->get('value');
+
+        return is_int($value) ? $value : 0;
     }
 }
 ```
@@ -132,12 +135,17 @@ $greeter = Service::new('Greeter')
 
 $counter = VirtualObject::new('Counter')
     ->handler('add', static function (ObjectContext $ctx, int $amount): int {
-        $value = (int) ($ctx->get('value') ?? 0) + $amount;
+        $value = $ctx->get('value'); // decoded JSON, or null for a key without a value
+        $value = (is_int($value) ? $value : 0) + $amount;
         $ctx->set('value', $value);
 
         return $value;
     })
-    ->sharedHandler('get', static fn (ObjectSharedContext $ctx): int => (int) ($ctx->get('value') ?? 0));
+    ->sharedHandler('get', static function (ObjectSharedContext $ctx): int {
+        $value = $ctx->get('value');
+
+        return is_int($value) ? $value : 0;
+    });
 
 $signup = Workflow::new('Signup')
     ->run(static function (WorkflowContext $ctx, string $email): bool {

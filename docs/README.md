@@ -30,7 +30,7 @@ it), see the [Restate documentation](https://docs.restate.dev).
 
 ## Running services
 
-- [Serving](serving.md): `php -S`, PHP-FPM, FrankenPHP, PSR-15; registering deployments; PHP settings; request
+- [Serving](serving.md): `php -S`, PHP-FPM, FrankenPHP, PSR-15; registering and deploying; PHP settings; request
   identity; the costs of request/response mode.
 - [Ingress client](ingress-client.md): calling services from your application.
 - [Troubleshooting](troubleshooting.md): common errors and how to report a bug.

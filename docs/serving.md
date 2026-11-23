@@ -1,6 +1,6 @@
 # Serving
 
-How to serve a PHP endpoint and register it with Restate: which entrypoint to use, running it under `php -S`, PHP-FPM or FrankenPHP, the extension it needs, request identity, the PHP settings every server needs, and what Restate's request/response mode costs.
+How to serve a PHP endpoint and register it with Restate: which entrypoint to use, running it under `php -S`, PHP-FPM or FrankenPHP, deploying it, the extension it needs, request identity, the PHP settings every server needs, and what Restate's request/response mode costs.
 
 Every endpoint needs the Restate PHP extension: there is no other backend and no pure-PHP fallback ([Installing the extension](installation.md#installing-the-extension)). [How Restate runs PHP handlers](concepts.md) explains what Restate sends the endpoint and why a handler runs several times.
 
@@ -37,7 +37,7 @@ On **PHP 8.6**, the built-in server checks `post_max_size` itself and answers `4
 
 The built-in server speaks **HTTP/1.1 only**, so register it with `use_http_11` ([Registering the deployment](#registering-the-deployment)). Its `max_execution_time` is 30 s, which also bounds each attempt ([Long Journals](#long-journals-cost-quadratic-replay)).
 
-`php -S` is for development. For production, serve with PHP-FPM behind a front door ([PHP-FPM and FastCGI](#php-fpm-and-fastcgi)) or with FrankenPHP ([FrankenPHP Worker Mode](#frankenphp-worker-mode)).
+`php -S` is for development. For production, serve with PHP-FPM behind a front door ([PHP-FPM and FastCGI](#php-fpm-and-fastcgi)) or with FrankenPHP ([FrankenPHP Worker Mode](#frankenphp-worker-mode), [Deploying](#deploying)).
 
 ## Registering the deployment
 
@@ -87,15 +87,68 @@ Registering a URL that is already registered changes nothing: Restate keeps the 
 
 An endpoint with identity keys refuses unsigned discovery, so registration fails with `META0003 got status code '401 Unauthorized'` until Restate signs its requests ([Request Identity Validation](#request-identity-validation)).
 
+## Deploying
+
+A production deployment combines the sections of this page. For example, an image that serves `index.php` (which calls `Endpoint::serve()`) with FrankenPHP in classic mode; the [Docker quickstart's `Dockerfile`](../examples/quickstart/Dockerfile) is the same for `php -S`:
+
+```dockerfile
+FROM dunglas/frankenphp:1.13.5-php8.4-bookworm
+
+# The extension: PIE installs the prebuilt ZTS build for this PHP.
+RUN --mount=type=bind,from=ghcr.io/php/pie:bin,source=/pie,target=/usr/local/bin/pie \
+    pie install restate/ext-restate:~0.1.0
+
+# Composer, and unzip for the package archives it downloads.
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+RUN apt-get update && apt-get install -y --no-install-recommends unzip && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --no-progress --no-autoloader
+COPY . .
+RUN composer dump-autoload --optimize --no-dev
+
+COPY Caddyfile /etc/frankenphp/Caddyfile
+CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]
+```
+
+```caddyfile
+{
+	admin off
+	auto_https off
+	frankenphp {
+		php_ini display_errors 0
+		php_ini log_errors 1
+		php_ini enable_post_data_reading 0
+	}
+}
+
+:9080 {
+	root * /app
+	rewrite * /index.php
+	php
+}
+```
+
+Then:
+
+1. **PHP settings.** The Caddyfile sets the ones every endpoint needs; size `memory_limit` and `max_execution_time` for your largest journal and slowest attempt ([PHP Settings](#php-settings)). Set FrankenPHP's `num_threads` above the attempts you expect in flight (see the thread count under [FrankenPHP Worker Mode](#frankenphp-worker-mode)). For many requests per second, build the endpoint once in worker mode. With PHP-FPM instead, configure the front door as in [PHP-FPM and FastCGI](#php-fpm-and-fastcgi).
+2. **Request identity.** Pass the endpoint its identity key (`identityKeys`, for example from `RESTATE_IDENTITY_KEY`) and give Restate the private key, so that only Restate can call it ([Request Identity Validation](#request-identity-validation)).
+3. **Registration.** Register each version of the code at a URL of its own, as Restate reaches it, and keep the previous version running until its invocations finish; never `--force` in production ([Deployments and versioning](concepts.md#deployments-and-versioning)). This setup serves HTTP/1.1:
+
+   ```bash
+   restate deployments register http://greeter-v2:9080 --use-http1.1
+   ```
+
 ## PHP Extension
 
 The module is named `restate` and its file is `restate.so`. [Installing the extension](installation.md#installing-the-extension) covers PIE, Docker images and building from source. To load a module file by hand for one command, pass `-d extension=<path to restate.so>` to `php`.
 
-Check that it loads in the PHP that serves: `php -m` (with the same `-d` options) lists the module as `restate`, and `php --ri restate` and `Restate\Extension\version()` report its version. php-fpm and the CLI can read different php.ini files.
+Check that it loads in the PHP that serves: `php -m` (with the same `-d` options) lists the module as `restate`, and `php --ri restate` and `phpversion('restate')` report its version. php-fpm and the CLI can read different php.ini files.
 
 A module loads only into the PHP minor version and thread-safety mode (NTS or ZTS) it was built for, so a threaded runtime such as FrankenPHP needs a ZTS build; PIE picks the right one for the PHP it installs into. Serve with a release build (about 3 MB, as PIE installs it). A debug build (about 42 MB, with debug assertions) is for developing the extension.
 
-The extension and the SDK are installed separately, so the SDK checks that they match before it uses the extension. The extension reports a contract version (`Restate\Extension\contract_version()`), and building the endpoint fails unless it equals the version the installed `restate/sdk` requires.
+The extension and the SDK are installed separately, so the SDK checks that they match before it uses the extension. The extension reports a contract version, and building the endpoint fails unless it equals the version the installed `restate/sdk` requires.
 
 When the extension is not loaded, or its contract version differs, `Endpoint::serve()`, `Endpoint::psr()` and `Endpoint::builder()->build()` throw `BackendUnavailableException`. The message names the module, the extension version, both contract versions and the package version, and says which side to upgrade and how to install the extension ([Troubleshooting](troubleshooting.md)). [Compatibility](compatibility.md) lists each extension version with its contract version.
 
@@ -140,6 +193,17 @@ $handler = Endpoint::psr([$greeter], $responseFactory, identityKeys: $identityKe
 **Configured keys fail closed.** Building the endpoint throws `InvalidArgumentException` when the configured list is empty, or a key is an empty string or `false`, which is what `getenv()` returns for a variable that is not set. A missing key therefore stops the endpoint instead of turning verification off. A malformed key throws `InvalidArgumentException` too. Under PHP-FPM, check `clear_env` ([PHP-FPM and FastCGI](#php-fpm-and-fastcgi)).
 
 **Giving Restate its key.** Restate signs its requests once it has an Ed25519 private key: a PKCS#8 PEM file named by `worker.invoker.request-identity-private-key-pem-file` (environment variable `RESTATE_WORKER__INVOKER__REQUEST_IDENTITY_PRIVATE_KEY_PEM_FILE`). Restate 1.7.14 and 1.8.1 still read the top-level `request-identity-private-key-pem-file`, with a deprecation warning. The endpoint's identity key is the matching public key as `publickeyv1_<base58 of the 32 key bytes>`.
+
+**Creating a key pair.** Generate the private key with OpenSSL and start Restate with it; Restate logs the matching identity key when it loads the file:
+
+```bash
+openssl genpkey -algorithm ed25519 -out restate-identity.pem
+RESTATE_WORKER__INVOKER__REQUEST_IDENTITY_PRIVATE_KEY_PEM_FILE=restate-identity.pem restate-server
+# INFO … Loaded request identity key
+#     kid: "publickeyv1_Fnm7xqS7gRFmHkMQeTp3q4ro1sVJ6uZ4LDtbYxWoVWe2"
+```
+
+Give that `kid` to the endpoint (`RESTATE_IDENTITY_KEY` above), and keep the PEM file where only Restate reads it. The [Restate documentation](https://docs.restate.dev) covers the server's side.
 
 An endpoint that does not trust the key refuses discovery, so Restate cannot register it: on 1.8.1 `POST /deployments` fails with `500` and `META0003 got status code '401 Unauthorized'`, carrying the endpoint's body.
 
@@ -218,12 +282,14 @@ for ($served = 0; $maxRequests === 0 || $served < $maxRequests; ++$served) {
 What to expect in worker mode, as tested with FrankenPHP 1.13.5 on PHP 8.4 ZTS ([TESTING.md](../TESTING.md#frankenphp-worker-mode)):
 
 - **Service instances.** A service registered as an object is shared by every invocation the worker serves; one bound with a factory or a container gets a new instance per attempt ([Service instances and dependencies](develop/services.md#service-instances-and-dependencies)).
-- **A context kept past its invocation** fails loudly: any operation on it throws a `BackendException` ("Extension VM has already been freed"). Log records stay with their own invocation.
+- **A context kept past its invocation** fails loudly: any operation on it throws a `Restate\Exception` ("Extension VM has already been freed"). Log records stay with their own invocation.
 - **Per-request state.** FrankenPHP resets superglobals, headers and output between requests, `headers_sent()` included, so the endpoint's handling of stray output works per request.
 - **`exit()` and fatal errors** end the worker script. FrankenPHP starts it again (`unexpected termination, restarting`), which builds the endpoint again, and Restate retries the attempt that died; requests that arrive meanwhile are queued and served. FrankenPHP's `max_consecutive_failures` (6 by default) counts only scripts that fail before they first reach `frankenphp_handle_request()`, so fatal errors in handlers, even many in a row, do not stop the worker.
 - **PHP settings.** The `dunglas/frankenphp` images ship no php.ini, so `display_errors` is on (`STDOUT`), and `max_execution_time` is 30, applied per request (the worker script itself is never timed out). A request body over `post_max_size` makes `frankenphp_handle_request()` print a warning before the endpoint runs, which breaks the response as described under [PHP Settings](#php-settings); `display_errors=0` or `enable_post_data_reading=0` avoids it, as for any SAPI.
-- **Memory.** The extension's Rust heap is not in `memory_get_usage()` or `memory_limit`. Neither it nor PHP's heap grows per request once the worker is warm, and a VM never outlives its request (measured by the [soak suite](../TESTING.md#soak-suite)). A fatal error in the middle of a conversion in the extension leaks the Rust values being converted (at most the payload), because PHP unwinds past their destructors.
-- **Threads.** Requests on different threads of one process share no VM, lock or log capture: the extension captures its log events per thread.
+- **Memory.** The extension's Rust heap is not in `memory_get_usage()` or `memory_limit`. Neither it nor PHP's heap grows per request once the worker is warm, and the extension's state for an invocation never outlives its request (measured by the [soak suite](../TESTING.md#soak-suite)). A fatal error in the middle of a conversion in the extension leaks the Rust values being converted (at most the payload), because PHP unwinds past their destructors.
+- **Threads.** Requests on different threads of one process share no invocation state, lock or log capture: the extension captures its log events per thread.
+
+**Thread count, in classic and worker mode.** FrankenPHP 1.13 does not buffer request bodies: the PHP thread reads the body itself, so a body that stalls holds its thread until it completes or Caddy's `request_body_timeout` (60 s by default) cuts it off. By default `num_threads` is twice the CPU count and `max_threads` equals it, without autoscaling: on a 4-vCPU host, 8 stalled requests block every other request, `/health` included. Restate sends each body at once, so this only happens when the network between Restate and the endpoint stalls. Set `num_threads` and `max_threads` (or `max_threads auto`) above the number of attempts you expect in flight; in worker mode the worker `num` is the same limit.
 
 ## PHP-FPM and FastCGI
 
@@ -236,7 +302,7 @@ With the defaults, each common front door fails above some size. Each failure is
 | Front door | At its defaults | Set |
 | --- | --- | --- |
 | Caddy `php_fastcgi` | Since 2.9.0 it answers `411 Length Required` to a body without a length, and since 2.10.0 it buffers only 4096 bytes before doing so. Any journal over 4 KiB fails every attempt. Measured on 2.11.9: 3.5 KiB passes, 5 KiB fails with the `411` in the invocation's failure. | `request_buffers` in the `php_fastcgi` block, above the largest journal (for example `request_buffers 64MiB`) |
-| Apache `mod_proxy_fcgi` (2.4.47 or newer) | It prefetches up to 16 KiB and sends a length only if the whole body fit. Above that it streams without a length, and php-fpm reads an empty body. Measured on 2.4.71: 8 KiB passes; 64 KiB reaches PHP empty, and the attempt fails with the VM's `571 Protocol violation: The input was closed while still waiting to receive all journal to replay`. | `SetEnv proxy-sendcl 1`, which makes it spool the body and send its length (measured: 9 MiB passes) |
+| Apache `mod_proxy_fcgi` (2.4.47 or newer) | It prefetches up to 16 KiB and sends a length only if the whole body fit. Above that it streams without a length, and php-fpm reads an empty body. Measured on 2.4.71: 8 KiB passes; 64 KiB reaches PHP empty, and the attempt fails with `571 Protocol violation: The input was closed while still waiting to receive all journal to replay`. | `SetEnv proxy-sendcl 1`, which makes it spool the body and send its length (measured: 9 MiB passes) |
 | nginx | It buffers the whole body and sends its length, but answers `413` above `client_max_body_size`, 1m by default (`client intended to send too large chunked body` in its log). Measured on 1.26.3: 512 KiB passes, 2 MiB fails with `service replied with content too large`. Do not turn off `fastcgi_request_buffering`: then nginx sends no length and php-fpm reads 0 bytes. | `client_max_body_size` above the largest journal |
 
 **How large to set them.** Restate's own per-message limit is 32 MiB (`networking.message-size-limit`), and its ingress rejects a 40 MiB input with `413 length limit exceeded`, so a limit just above 32 MiB covers anything Restate sends. A 31 MiB input or output passes every front door with the settings above, and a 31 MiB response passes all three at their defaults too.
@@ -246,7 +312,7 @@ A value over 32 MiB that a handler produces (its output, a state value, a run re
 **Timeouts.** In request/response mode Restate guards an attempt only with its abort timeout, 600 s by default (see [Long Journals](#long-journals-cost-quadratic-replay); the inactivity timeout does not apply). Every timeout between Restate and the handler must be at least the handler's abort timeout, or a long attempt fails at the front door on every retry and the invocation never completes:
 
 - nginx: `fastcgi_read_timeout` (60 s by default: an attempt over 60 s gets `504`).
-- Caddy: the `php_fastcgi` transport's `read_timeout`.
+- Caddy: the `php_fastcgi` transport's `read_timeout`. Separately, Caddy 2.11's `read_idle_timeout` (60 s by default, reset on every read of the body) drops a request body that stalls longer than that, and Restate sees a `499`; that happens only on network faults.
 - Apache: `ProxyTimeout` or the `timeout=` of the `ProxyPass`/`SetHandler` worker.
 - php-fpm: `request_terminate_timeout` (a terminated worker is a `502`), and PHP's `max_execution_time`.
 
@@ -266,7 +332,7 @@ With identity keys configured as in [Request Identity Validation](#request-ident
 
 **PHP settings** as in [PHP Settings](#php-settings): `display_errors=Off` with `log_errors=On`, `enable_post_data_reading=0`, and OPcache on.
 
-**Other differences from `php -S`.** FastCGI front doors pass `CONTENT_TYPE` and `CONTENT_LENGTH` even when the request had neither (empty); the endpoint treats an empty one as missing. Caddy gives a `POST` without a content type a form content type, so such a request (never one from Restate) gets the VM's `500` instead of the endpoint's `415`.
+**Other differences from `php -S`.** FastCGI front doors pass `CONTENT_TYPE` and `CONTENT_LENGTH` even when the request had neither (empty); the endpoint treats an empty one as missing. Caddy gives a `POST` without a content type a form content type, so such a request (never one from Restate) gets a `500` instead of the `415` for a missing content type ([Error Responses](#error-responses)).
 
 **HTTP/2.** Restate talks h2c to a deployment registered with `use_http_11: false` (the default; see [Registering the deployment](#registering-the-deployment)). nginx (1.25.1 or newer, `http2 on`) and Caddy (`servers { protocols h1 h2c }`) then serve h2c with prior knowledge and HTTP/1.1 on the same port.
 
@@ -346,10 +412,10 @@ What to do: keep the futures one invocation combines to a few hundred, and fan o
 
 | Situation | Response |
 | --- | --- |
-| An invocation without a `content-type` header | `415`, before the VM is created |
+| An invocation without a `content-type` header | `415`, before the invocation starts |
 | A discovery request whose `Accept` header names no manifest version the SDK serves | `415` |
-| A failure once the VM exists: the VM not becoming ready, invalid input from the backend, a backend call throwing while writing the output | Reported to the VM as a retryable error; the response is the VM's head plus whatever output it produced |
-| Anything else, including a failure to create the VM or to report to it, and a failure while building the discovery manifest | `500` |
+| A failure once the invocation has started, outside the handler: an incomplete or invalid request body, a failure while writing the output | A regular invocation response that reports a retryable error for the attempt, with whatever the attempt journaled before it; Restate retries the attempt |
+| Anything else, including a request the extension cannot start an invocation from, and a failure while building the discovery manifest | `500` |
 
 Error responses are `application/json` `{"error": "<message>"}`, like the `401` for a request without a valid identity.
 

@@ -52,7 +52,7 @@ use restate_php_core::{validation, Error, IdentityVerifier, Vm};
 /// release. After that, the first incompatible change to any of them since
 /// the last release bumps it, together with `Backend::CONTRACT_VERSION` in
 /// `packages/sdk/src/Internal/Backend/Extension/Backend.php` and the extension
-/// version (docs/compatibility.md).
+/// version (RELEASING.md, "Bumping versions").
 pub const CONTRACT_VERSION: i64 = 1;
 
 /// The extension's own version (its crate version, also

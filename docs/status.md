@@ -2,6 +2,8 @@
 
 What the PHP SDK does, the tests that show it, where it differs from the official SDKs, what is missing, and what it runs on.
 
+This is the evidence-oriented reference: it names suites and test classes. To learn what a feature does and how to use it, read its guide instead ([Documentation](README.md)).
+
 Passing the upstream suite is not an official Restate SDK conformance claim ([Official Conformance](internals/conformance.md#official-conformance)).
 
 ## Evidence
@@ -17,7 +19,7 @@ All Restate traffic goes through [`restate-sdk-shared-core`](https://crates.io/c
 | Upstream SDK suite | `composer test:upstream` (`bin/conformance-upstream-local.sh`; [TESTING.md](../TESTING.md#upstream-sdk-test-suite)) | `restatedev/e2e` v2.3 `sdk-tests.jar`, the suite the official SDKs run: 322 test cases across its eight suite configurations (`default`, `alwaysSuspending`, `threeNodes`, `threeNodesAlwaysSuspending`, `singleThreadSinglePartition`, `lazyState`, `lazyStateAlwaysSuspending`, `persistedTimers`), on Restate 1.8.1, with no exclusions (`test-services/exclusions.yaml` is empty). Also run against php-fpm behind nginx (`composer test:upstream -- upstream-fpm-nginx`). |
 | Nightly groups | `composer test:failure`, `test:scale`, `test:large-bodies`, `test:serving-hazards`, `test:soak` | Failure injection, scale, large bodies, front-door hazards and worker soak ([TESTING.md](../TESTING.md)). |
 
-Every suite passes locally. GitHub Actions runs the same commands (`.github/workflows/ci.yaml`, `upstream.yaml` and the nightly workflows; [TESTING.md](../TESTING.md#ci)), but the workflows have not passed on GitHub yet ([RELEASING.md](../RELEASING.md#github)).
+Every suite passes locally. GitHub Actions runs the same commands (`.github/workflows/ci.yaml`, `upstream.yaml` and the nightly workflows; [TESTING.md](../TESTING.md#ci)).
 
 The tables below name integration test classes (`tests/Integration/`) and upstream test classes (`restatedev/e2e` `sdk-tests`, run across its eight suite configurations). Unit tests are named where they are the main evidence.
 

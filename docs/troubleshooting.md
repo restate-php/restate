@@ -32,14 +32,14 @@ First failures when installing the Restate PHP extension, starting an endpoint, 
 | Under PHP 8.6's `php -S`, attempts fail with `413` once the journal passes 8 MiB | The 8.6 built-in server checks `post_max_size` itself, even with `enable_post_data_reading=0`. | Add `-d post_max_size=0`. | [PHP Settings](serving.md#php-settings) |
 | Behind PHP-FPM, attempts fail above some journal size (`411`, `413`, or `571 Protocol violation: The input was closed …`) | Restate sends request bodies without a length, and the front door's defaults do not buffer them (Caddy above 4 KiB, Apache above 16 KiB, nginx above 1 MiB). | Apply the front-door settings for your server. | [PHP-FPM and FastCGI](serving.md#php-fpm-and-fastcgi) |
 | An attempt fails with code 573 and "… needs service protocol v7 (Restate 1.8 or newer) …" or "Feature … is not supported …" | A feature of Restate 1.8 (pausing, scopes and limit keys) used against Restate 1.7. | Upgrade Restate to 1.8 or newer. | [Restate 1.7](compatibility.md#restate-17) |
-| Handler throws an exception and the invocation keeps retrying | Any exception other than `TerminalError` is reported as retryable, including a `\JsonException` from handler code or from encoding the output. Only undecodable handler input is a terminal `400`. | Throw `TerminalError` for expected business failures, or map exceptions with an error mapper. | [Error handling](develop/errors.md#terminal-and-retryable-errors) |
+| Handler throws an exception and the invocation keeps retrying | Any exception other than `TerminalError` is reported as retryable, including a `\JsonException` from handler code or from encoding the output. The SDK fails an invocation terminally on its own only for its payloads: handler input that does not decode or fit its type is a `400`; a return value that does not fit the declared output type, and a payload type the built-in DTO mapping does not support, are a `500`. | Throw `TerminalError` for expected business failures, or map exceptions with an error mapper. | [Error handling](develop/errors.md#terminal-and-retryable-errors), [Invalid input](develop/errors.md#invalid-input), [DTOs and enums](develop/serialization.md#dtos-and-enums) |
 
 ## Reporting a Bug
 
 If the failure is not listed here, open an issue with:
 
 - The PHP version, SAPI and thread safety: `php -v` (ZTS builds say so) and how you serve (`php -S`, PHP-FPM behind which front door, FrankenPHP classic or worker mode, a PSR-15 framework).
-- The extension version: `php --ri restate`, or `Restate\Extension\version()` from the serving PHP, and the `restate/sdk` version (`composer show restate/sdk`).
+- The extension version: `php --ri restate`, or `phpversion('restate')` from the serving PHP, and the `restate/sdk` version (`composer show restate/sdk`).
 - The Restate server version (`restate-server --version`, or the image tag).
 - The operating system, CPU architecture and libc (glibc or musl).
 - What you did and what happened: the command or the invocation, the full error, the endpoint's log (give the endpoint a [PSR-3 logger](develop/logging-and-hooks.md#logging)), and Restate's log around the failure.
