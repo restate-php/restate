@@ -27,9 +27,14 @@ in
     checks = extension.checks.${system};
   };
 
-  # What ext-php-rs.nix's CI builds for this nixpkgs: the PHP headers of each target and
-  # cargo-zigbuild, which the PIE archives would otherwise build first.
-  cachix.pull = [ "ext-php-rs" ];
+  # ext-php-rs: what ext-php-rs.nix's CI builds for this nixpkgs, the PHP headers of each target
+  # and cargo-zigbuild, which the PIE archives would otherwise build first.
+  # restate-php: what this repository's CI builds (the Rust toolchain, the extension's Nix
+  # builds), pushed from every job with CACHIX_AUTH_TOKEN.
+  cachix.pull = [
+    "ext-php-rs"
+    "restate-php"
+  ];
 
   env = {
     LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";

@@ -19,4 +19,4 @@ Working on the SDK needs PHP with its development headers, Composer, a pinned Ru
 
 - A contributor needs Nix, devenv and a container runtime; everything else comes from the shell. [TESTING.md](../../TESTING.md) has the commands.
 - Bumping a tool is a change to `devenv.nix` (or `extension/rust-toolchain.toml` for Rust), reviewed like code, and CI picks it up.
-- The Nix store is not cached in CI, so each job downloads the toolchain. The dev shell pulls the PHP headers and cargo-zigbuild of the prebuilt binaries from ext-php-rs.cachix.org ([Extension Flake](0037-extension-flake.md)); the extension workflow still builds the 24 modules from scratch. A cache of this project's own (Cachix) would make that a download.
+- CI pushes what it builds with Nix to this project's own Cachix cache, restate-php.cachix.org, and every job and local shell pulls from it (`cachix.pull` in `devenv.nix`), so the toolchain and the extension workflow's 24 modules are downloads once built. The PHP headers and cargo-zigbuild of the prebuilt binaries come from ext-php-rs.cachix.org ([Extension Flake](0037-extension-flake.md)).

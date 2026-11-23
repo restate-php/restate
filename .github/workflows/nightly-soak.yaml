@@ -51,6 +51,9 @@ jobs:
 
       - name: Set up devenv
         uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+        with:
+          cachix-cache: restate-php
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Set up Composer cache
         uses: ./.github/actions/composer-cache
