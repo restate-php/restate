@@ -10,9 +10,9 @@ use ReflectionClass;
 use ReflectionMethod;
 use ReflectionType;
 use Restate\JsonSchema\Attributes\JsonName;
-use Restate\Reflection\DtoField;
-use Restate\Reflection\DtoShape;
-use Restate\Reflection\DtoShapeFactory;
+use Restate\Reflection\Internal\DtoField;
+use Restate\Reflection\Internal\DtoShape;
+use Restate\Reflection\Internal\DtoShapeFactory;
 
 enum DtoShapeFactoryRole: string
 {

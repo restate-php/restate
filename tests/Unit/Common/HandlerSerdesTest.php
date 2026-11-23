@@ -15,6 +15,7 @@ use Restate\Tests\Unit\Common\Fixtures\Order;
 use Restate\Tests\Unit\Common\Fixtures\Priority;
 use Restate\Tests\Unit\Common\Fixtures\Receipt;
 use Restate\Tests\Unit\Common\Fixtures\TaggedTextSerde;
+use Restate\PayloadRole;
 
 /** The caller's side of a handler's payloads, built from its declared types. */
 final class HandlerSerdesTest extends TestCase
@@ -104,9 +105,9 @@ final class HandlerSerdesTest extends TestCase
     {
         $type = new \ReflectionFunction(static fn (Order $order): Receipt => throw new \LogicException())->getParameters()[0]->getType();
         $mapper = new BuiltinJsonValueMapper();
-        $input = new JsonValueMappingContext($type, JsonValueMappingContext::ROLE_INPUT, 'Checkout', 'run');
+        $input = new JsonValueMappingContext($type, PayloadRole::Input, 'Checkout', 'run');
 
         self::assertSame(['id' => 'o-1', 'quantity' => 1, 'priority' => 'normal'], $mapper->normalize(new Order('o-1', 1), $input));
-        self::assertEquals(new Order('o-1', 1), $mapper->hydrate(['id' => 'o-1', 'quantity' => 1], new JsonValueMappingContext($type, JsonValueMappingContext::ROLE_OUTPUT, 'Checkout', 'run')));
+        self::assertEquals(new Order('o-1', 1), $mapper->hydrate(['id' => 'o-1', 'quantity' => 1], new JsonValueMappingContext($type, PayloadRole::Output, 'Checkout', 'run')));
     }
 }

@@ -21,6 +21,7 @@ use Restate\Service;
 use Restate\Internal\ServiceRegistry;
 use Restate\Tests\Support\FakeProtocolVersions;
 use Restate\Tests\Support\ScriptedInvocation;
+use Restate\PayloadRole;
 
 final class EffectiveHandlerPayloadTest extends TestCase
 {
@@ -187,7 +188,7 @@ final class EffectiveHandlerPayloadUppercaseInputMapper implements JsonValueMapp
     #[\Override]
     public function supports(JsonValueMappingContext $context): bool
     {
-        return $context->role === JsonValueMappingContext::ROLE_INPUT;
+        return $context->role === PayloadRole::Input;
     }
 
     #[\Override]
@@ -214,6 +215,6 @@ final class EffectiveHandlerPayloadSchemaProvider implements JsonSchemaProvider
     {
         ++$this->calls;
 
-        return JsonSchemaMetadata::fromArray(['type' => 'string', 'description' => "{$context->role} schema"]);
+        return JsonSchemaMetadata::fromArray(['type' => 'string', 'description' => "{$context->role->value} schema"]);
     }
 }

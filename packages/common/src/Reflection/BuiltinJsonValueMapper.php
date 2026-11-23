@@ -14,6 +14,8 @@ use ReflectionUnionType;
 use Restate\JsonMappingException;
 use Restate\JsonValueMapper;
 use Restate\JsonValueMappingContext;
+use Restate\Reflection\Internal\DtoShape;
+use Restate\Reflection\Internal\DtoShapeFactory;
 
 final class BuiltinJsonValueMapper implements JsonValueMapper
 {

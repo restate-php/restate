@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Restate\Reflection;
+namespace Restate\Reflection\Internal;
 
 use ReflectionClass;
 use ReflectionEnum;
@@ -13,6 +13,11 @@ use ReflectionType;
 use ReflectionUnionType;
 use Restate\JsonSchema\Attributes\JsonName;
 
+/**
+ * Builds the {@see DtoShape} of a Mapping-Safe DTO class, or null when built-in DTO Mapping cannot handle the class.
+ *
+ * @internal
+ */
 final class DtoShapeFactory
 {
     /**

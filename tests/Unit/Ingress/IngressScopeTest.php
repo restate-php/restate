@@ -8,6 +8,9 @@ use GuzzleHttp\Psr7\HttpFactory;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use Restate\Ingress\IngressClient;
+use Restate\Ingress\ObjectClient;
+use Restate\Ingress\ServiceClient;
+use Restate\Ingress\WorkflowClient;
 use Restate\Target;
 
 /**
@@ -160,6 +163,24 @@ final class IngressScopeTest extends TestCase
             }
         }
         self::assertSame([], $this->http->requests);
+    }
+
+    public function testEveryClientValidatesItsScope(): void
+    {
+        $client = $this->client();
+
+        foreach ([
+            static fn () => new ServiceClient($client, 'Greeter', 'tenant/1'),
+            static fn () => new ObjectClient($client, 'Counter', 'alice', 'tenant/1'),
+            static fn () => new WorkflowClient($client, 'Checkout', 'order-1', 'tenant/1'),
+        ] as $construct) {
+            try {
+                $construct();
+                self::fail('Accepted an invalid scope.');
+            } catch (InvalidArgumentException $e) {
+                self::assertStringContainsString('a scope is 1 to 36 characters', $e->getMessage());
+            }
+        }
     }
 
     private function client(): IngressClient

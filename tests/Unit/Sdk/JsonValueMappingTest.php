@@ -23,6 +23,7 @@ use Restate\Internal\ServiceRegistry;
 use Restate\TerminalError;
 use Restate\Tests\Support\FakeProtocolVersions;
 use Restate\Tests\Support\ScriptedInvocation;
+use Restate\PayloadRole;
 
 final class JsonValueMappingScalarFixture
 {
@@ -106,7 +107,7 @@ final readonly class JsonValueMappingUppercaseMapper implements \Restate\JsonVal
     #[\Override]
     public function supports(JsonValueMappingContext $context): bool
     {
-        return $context->role === JsonValueMappingContext::ROLE_INPUT && $context->handlerName === 'greet';
+        return $context->role === PayloadRole::Input && $context->handlerName === 'greet';
     }
 
     #[\Override]
@@ -127,7 +128,7 @@ final readonly class JsonValueMappingFailingOutputMapper implements \Restate\Jso
     #[\Override]
     public function supports(JsonValueMappingContext $context): bool
     {
-        return $context->role === JsonValueMappingContext::ROLE_OUTPUT;
+        return $context->role === PayloadRole::Output;
     }
 
     #[\Override]
@@ -370,7 +371,7 @@ final class JsonValueMappingTest extends TestCase
         $reflection = new ReflectionMethod(JsonValueMappingScalarFixture::class, $method);
         $type = $reflection->getParameters()[1]->getType();
 
-        return new JsonValueMappingContext($type, JsonValueMappingContext::ROLE_INPUT, 'Scalar', $method);
+        return new JsonValueMappingContext($type, PayloadRole::Input, 'Scalar', $method);
     }
 
     private function outputContext(string $method): JsonValueMappingContext
@@ -379,7 +380,7 @@ final class JsonValueMappingTest extends TestCase
         $type = $reflection->getReturnType();
         self::assertInstanceOf(ReflectionNamedType::class, $type);
 
-        return new JsonValueMappingContext($type, JsonValueMappingContext::ROLE_OUTPUT, 'Scalar', $method);
+        return new JsonValueMappingContext($type, PayloadRole::Output, 'Scalar', $method);
     }
 
     private function context(): InvocationAttempt

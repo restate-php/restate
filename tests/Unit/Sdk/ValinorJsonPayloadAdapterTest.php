@@ -27,6 +27,7 @@ use Restate\Internal\ServiceRegistry;
 use Restate\Tests\Support\FakeProtocolVersions;
 use Restate\Tests\Support\ScriptedInvocation;
 use Restate\UnsupportedJsonSchemaException;
+use Restate\PayloadRole;
 
 final readonly class ValinorJsonPayloadCreateUser
 {
@@ -94,10 +95,10 @@ final class ValinorJsonPayloadAdapterTest extends TestCase
     {
         $adapter = new ValinorJsonPayloadAdapter($this->mapper(), $this->normalizer());
 
-        self::assertTrue($adapter->schemaFor($this->schemaContext('create', JsonSchemaContext::ROLE_INPUT))->isUnknown());
+        self::assertTrue($adapter->schemaFor($this->schemaContext('create', PayloadRole::Input))->isUnknown());
 
         $this->expectException(UnsupportedJsonSchemaException::class);
-        $adapter->schemaFor($this->schemaContext('scalar', JsonSchemaContext::ROLE_INPUT));
+        $adapter->schemaFor($this->schemaContext('scalar', PayloadRole::Input));
     }
 
     public function testWrapsValinorMappingFailuresAsJsonMappingExceptions(): void
@@ -183,7 +184,7 @@ final class ValinorJsonPayloadAdapterTest extends TestCase
 
         return new JsonValueMappingContext(
             $reflection->getParameters()[1]->getType(),
-            JsonValueMappingContext::ROLE_INPUT,
+            PayloadRole::Input,
             'Users',
             $method,
         );
@@ -195,16 +196,16 @@ final class ValinorJsonPayloadAdapterTest extends TestCase
 
         return new JsonValueMappingContext(
             $reflection->getReturnType(),
-            JsonValueMappingContext::ROLE_OUTPUT,
+            PayloadRole::Output,
             'Users',
             $method,
         );
     }
 
-    private function schemaContext(string $method, string $role): JsonSchemaContext
+    private function schemaContext(string $method, PayloadRole $role): JsonSchemaContext
     {
         $reflection = new ReflectionMethod(ValinorJsonPayloadFixture::class, $method);
-        $type = $role === JsonSchemaContext::ROLE_INPUT
+        $type = $role === PayloadRole::Input
             ? $reflection->getParameters()[1]->getType()
             : $reflection->getReturnType();
 

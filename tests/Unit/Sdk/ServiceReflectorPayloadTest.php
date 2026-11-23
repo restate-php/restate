@@ -22,6 +22,7 @@ use Restate\Reflection\ServiceReflector;
 use Restate\Serde;
 use Restate\WorkflowContext;
 use Restate\WorkflowSharedContext;
+use Restate\HandlerType;
 
 #[Service('ReflectedGreeter')]
 final class ReflectorPayloadServiceFixture
@@ -199,14 +200,14 @@ final class ServiceReflectorPayloadTest extends TestCase
     {
         $definition = ServiceReflector::fromObject(new ReflectorPayloadObjectFixture());
 
-        self::assertSame(HandlerDefinition::TYPE_EXCLUSIVE, $definition->handlers[0]->type);
+        self::assertSame(HandlerType::Exclusive, $definition->handlers[0]->type);
         self::assertSame([
             'required' => false,
             'contentType' => 'application/json',
             'jsonSchema' => ['type' => 'integer'],
         ], $definition->handlers[0]->inputPayload->inputManifest());
 
-        self::assertSame(HandlerDefinition::TYPE_SHARED, $definition->handlers[1]->type);
+        self::assertSame(HandlerType::Shared, $definition->handlers[1]->type);
         self::assertSame([
             'setContentTypeIfEmpty' => false,
             'contentType' => 'application/json',
@@ -245,9 +246,9 @@ final class ServiceReflectorPayloadTest extends TestCase
     {
         $definition = ServiceReflector::fromObject(new ReflectorPayloadSerdeObjectFixture());
 
-        self::assertSame(HandlerDefinition::TYPE_EXCLUSIVE, $definition->handlers[0]->type);
+        self::assertSame(HandlerType::Exclusive, $definition->handlers[0]->type);
         self::assertSame(['required' => true, 'contentType' => 'application/x-reflector-serde'], $definition->handlers[0]->inputPayload->inputManifest());
-        self::assertSame(HandlerDefinition::TYPE_SHARED, $definition->handlers[1]->type);
+        self::assertSame(HandlerType::Shared, $definition->handlers[1]->type);
         self::assertSame(['setContentTypeIfEmpty' => false, 'contentType' => 'application/x-reflector-serde'], $definition->handlers[1]->outputPayload->outputManifest());
     }
 
@@ -255,9 +256,9 @@ final class ServiceReflectorPayloadTest extends TestCase
     {
         $definition = ServiceReflector::fromObject(new ReflectorPayloadSerdeWorkflowFixture());
 
-        self::assertSame(HandlerDefinition::TYPE_WORKFLOW, $definition->handlers[0]->type);
+        self::assertSame(HandlerType::Workflow, $definition->handlers[0]->type);
         self::assertSame(['required' => true, 'contentType' => 'application/x-reflector-serde'], $definition->handlers[0]->inputPayload->inputManifest());
-        self::assertSame(HandlerDefinition::TYPE_SHARED, $definition->handlers[1]->type);
+        self::assertSame(HandlerType::Shared, $definition->handlers[1]->type);
         self::assertSame(['setContentTypeIfEmpty' => false, 'contentType' => 'application/x-reflector-serde'], $definition->handlers[1]->outputPayload->outputManifest());
     }
 

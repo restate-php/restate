@@ -7,6 +7,7 @@ namespace Restate\Internal\Client;
 use Restate\JsonSerde;
 use Restate\JsonValueMapper;
 use Restate\JsonValueMappingContext;
+use Restate\PayloadRole;
 use Restate\Reflection\BuiltinJsonValueMapper;
 use Restate\Serde;
 
@@ -22,12 +23,12 @@ use Restate\Serde;
  */
 final readonly class MappedJsonSerde implements Serde
 {
-    /** @param JsonValueMappingContext::ROLE_* $role whether this is the handler's input or its output */
+    /** @param PayloadRole $role whether this is the handler's input or its output */
     public function __construct(
         private string $serviceName,
         private string $handlerName,
         private ?\ReflectionType $type,
-        private string $role,
+        private PayloadRole $role,
         private ?JsonValueMapper $valueMapper = null,
     ) {
     }
@@ -43,7 +44,7 @@ final readonly class MappedJsonSerde implements Serde
             if ($builtIn->supports($context)) {
                 $value = $builtIn->normalize($value, $context);
             } elseif (BuiltinJsonValueMapper::requiresMapping($context->type)) {
-                throw new \LogicException("DTO mapping is not available for {$this->serviceName}/{$this->handlerName} {$this->role}.");
+                throw new \LogicException("DTO mapping is not available for {$this->serviceName}/{$this->handlerName} {$this->role->value}.");
             }
         }
 
@@ -69,7 +70,7 @@ final readonly class MappedJsonSerde implements Serde
         }
 
         if (BuiltinJsonValueMapper::requiresMapping($context->type)) {
-            throw new \LogicException("DTO mapping is not available for {$this->serviceName}/{$this->handlerName} {$this->role}.");
+            throw new \LogicException("DTO mapping is not available for {$this->serviceName}/{$this->handlerName} {$this->role->value}.");
         }
 
         return json_decode($bytes, true, flags: JSON_THROW_ON_ERROR);

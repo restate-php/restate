@@ -24,6 +24,7 @@ use Restate\Payload;
 use Restate\Service;
 use Restate\Tests\Support\FakeBackend;
 use Restate\UnsupportedJsonSchemaException;
+use Restate\PayloadRole;
 
 final class EndpointJsonPayloadConfigurationTest extends TestCase
 {
@@ -180,9 +181,8 @@ final class EndpointJsonPayloadConfigurationAdapter implements JsonValueMapper, 
     public function supports(JsonValueMappingContext $context): bool
     {
         return match ($context->role) {
-            JsonValueMappingContext::ROLE_INPUT => $this->typeName($context) === EndpointJsonPayloadConfigurationCreateUser::class,
-            JsonValueMappingContext::ROLE_OUTPUT => $this->typeName($context) === EndpointJsonPayloadConfigurationCreatedUser::class,
-            default => false,
+            PayloadRole::Input => $this->typeName($context) === EndpointJsonPayloadConfigurationCreateUser::class,
+            PayloadRole::Output => $this->typeName($context) === EndpointJsonPayloadConfigurationCreatedUser::class,
         };
     }
 
@@ -218,13 +218,13 @@ final class EndpointJsonPayloadConfigurationAdapter implements JsonValueMapper, 
         $this->schemaCalls[] = $this->schemaCallKey($context);
 
         return match ($context->role) {
-            JsonSchemaContext::ROLE_INPUT => JsonSchemaMetadata::fromArray([
+            PayloadRole::Input => JsonSchemaMetadata::fromArray([
                 'type' => 'object',
                 'description' => 'adapter input schema',
                 'properties' => ['name' => ['type' => 'string']],
                 'x-source' => 'adapter',
             ]),
-            JsonSchemaContext::ROLE_OUTPUT => JsonSchemaMetadata::fromArray([
+            PayloadRole::Output => JsonSchemaMetadata::fromArray([
                 'type' => 'object',
                 'description' => 'adapter output schema',
                 'properties' => [
@@ -234,7 +234,6 @@ final class EndpointJsonPayloadConfigurationAdapter implements JsonValueMapper, 
                 ],
                 'x-source' => 'adapter',
             ]),
-            default => throw UnsupportedJsonSchemaException::forContext($context),
         };
     }
 
@@ -245,12 +244,12 @@ final class EndpointJsonPayloadConfigurationAdapter implements JsonValueMapper, 
 
     private function callKey(JsonValueMappingContext $context): string
     {
-        return "{$context->role}:{$context->serviceName}/{$context->handlerName}";
+        return "{$context->role->value}:{$context->serviceName}/{$context->handlerName}";
     }
 
     private function schemaCallKey(JsonSchemaContext $context): string
     {
-        return "{$context->role}:{$context->serviceName}/{$context->handlerName}";
+        return "{$context->role->value}:{$context->serviceName}/{$context->handlerName}";
     }
 }
 
@@ -262,23 +261,22 @@ final class EndpointJsonPayloadConfigurationRichSchemaProvider implements JsonSc
     #[\Override]
     public function schemaFor(JsonSchemaContext $context): JsonSchemaMetadata
     {
-        $this->schemaCalls[] = "{$context->role}:{$context->serviceName}/{$context->handlerName}";
+        $this->schemaCalls[] = "{$context->role->value}:{$context->serviceName}/{$context->handlerName}";
         if ($context->serviceName !== 'Users' || $context->handlerName !== 'create') {
             throw UnsupportedJsonSchemaException::forContext($context);
         }
 
         return match ($context->role) {
-            JsonSchemaContext::ROLE_INPUT => JsonSchemaMetadata::fromArray([
+            PayloadRole::Input => JsonSchemaMetadata::fromArray([
                 'type' => 'object',
                 'description' => 'rich input schema',
                 'x-source' => 'rich-provider',
             ]),
-            JsonSchemaContext::ROLE_OUTPUT => JsonSchemaMetadata::fromArray([
+            PayloadRole::Output => JsonSchemaMetadata::fromArray([
                 'type' => 'object',
                 'description' => 'rich output schema',
                 'x-source' => 'rich-provider',
             ]),
-            default => throw UnsupportedJsonSchemaException::forContext($context),
         };
     }
 }

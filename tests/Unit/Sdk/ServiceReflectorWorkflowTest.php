@@ -18,6 +18,8 @@ use Restate\Reflection\ServiceReflector;
 use Restate\ServiceDefinition;
 use Restate\WorkflowContext;
 use Restate\WorkflowSharedContext;
+use Restate\ServiceType;
+use Restate\HandlerType;
 
 #[WorkflowAttribute('ReflectedCheckout')]
 final class ReflectorWorkflowFixture
@@ -124,11 +126,11 @@ final class ServiceReflectorWorkflowTest extends TestCase
         $definition = ServiceReflector::fromObject(new ReflectorWorkflowFixture());
 
         self::assertSame('ReflectedCheckout', $definition->name);
-        self::assertSame(ServiceDefinition::TYPE_WORKFLOW, $definition->type);
+        self::assertSame(ServiceType::Workflow, $definition->type);
         self::assertCount(2, $definition->handlers);
 
         self::assertSame('run', $definition->handlers[0]->name);
-        self::assertSame(HandlerDefinition::TYPE_WORKFLOW, $definition->handlers[0]->type);
+        self::assertSame(HandlerType::Workflow, $definition->handlers[0]->type);
         self::assertSame([
             'required' => true,
             'contentType' => 'application/json',
@@ -136,7 +138,7 @@ final class ServiceReflectorWorkflowTest extends TestCase
         ], $definition->handlers[0]->inputPayload->inputManifest());
 
         self::assertSame('approve', $definition->handlers[1]->name);
-        self::assertSame(HandlerDefinition::TYPE_SHARED, $definition->handlers[1]->type);
+        self::assertSame(HandlerType::Shared, $definition->handlers[1]->type);
         self::assertSame(['setContentTypeIfEmpty' => false], $definition->handlers[1]->outputPayload->outputManifest());
     }
 
@@ -145,7 +147,7 @@ final class ServiceReflectorWorkflowTest extends TestCase
         $definition = ServiceReflector::fromObject(new ReflectorWorkflowRenamedRunFixture());
 
         self::assertSame('run', $definition->handlers[0]->name);
-        self::assertSame(HandlerDefinition::TYPE_WORKFLOW, $definition->handlers[0]->type);
+        self::assertSame(HandlerType::Workflow, $definition->handlers[0]->type);
     }
 
     public function testMissingRunHandlerIsRejected(): void

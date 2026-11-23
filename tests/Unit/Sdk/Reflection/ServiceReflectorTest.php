@@ -14,6 +14,8 @@ use Restate\Context;
 use Restate\HandlerDefinition;
 use Restate\Reflection\ServiceReflector;
 use Restate\ServiceDefinition;
+use Restate\ServiceType;
+use Restate\HandlerType;
 
 #[ServiceAttribute('Greeter')]
 final class ReflectedGreeter
@@ -95,7 +97,7 @@ final class ServiceReflectorTest extends TestCase
         $definition = ServiceReflector::fromObject(new ReflectedGreeter());
 
         self::assertSame('Greeter', $definition->name);
-        self::assertSame(ServiceDefinition::TYPE_SERVICE, $definition->type);
+        self::assertSame(ServiceType::Service, $definition->type);
         self::assertCount(2, $definition->handlers);
         self::assertSame('greet', $definition->handlers[0]->name);
         self::assertNull($definition->handlers[0]->type);
@@ -108,12 +110,12 @@ final class ServiceReflectorTest extends TestCase
         $definition = ServiceReflector::fromObject(new ReflectedCounter());
 
         self::assertSame('Counter', $definition->name);
-        self::assertSame(ServiceDefinition::TYPE_VIRTUAL_OBJECT, $definition->type);
+        self::assertSame(ServiceType::VirtualObject, $definition->type);
         self::assertCount(2, $definition->handlers);
         self::assertSame('add', $definition->handlers[0]->name);
-        self::assertSame(HandlerDefinition::TYPE_EXCLUSIVE, $definition->handlers[0]->type);
+        self::assertSame(HandlerType::Exclusive, $definition->handlers[0]->type);
         self::assertSame('get', $definition->handlers[1]->name);
-        self::assertSame(HandlerDefinition::TYPE_SHARED, $definition->handlers[1]->type);
+        self::assertSame(HandlerType::Shared, $definition->handlers[1]->type);
     }
 
     public function testReflectedHandlerCallableInvokesObjectMethod(): void

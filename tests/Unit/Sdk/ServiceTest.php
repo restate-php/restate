@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Restate\Context;
 use Restate\Service;
 use Restate\ServiceDefinition;
+use Restate\ServiceType;
 
 final class ServiceTest extends TestCase
 {
@@ -20,7 +21,7 @@ final class ServiceTest extends TestCase
         $definition = $service->definition();
 
         self::assertSame('Greeter', $definition->name);
-        self::assertSame(ServiceDefinition::TYPE_SERVICE, $definition->type);
+        self::assertSame(ServiceType::Service, $definition->type);
         self::assertCount(1, $definition->handlers);
         self::assertSame('greet', $definition->handlers[0]->name);
     }

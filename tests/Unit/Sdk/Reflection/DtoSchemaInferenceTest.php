@@ -12,7 +12,7 @@ use Restate\JsonSchema\Attributes\RawSchema;
 use Restate\JsonSchema\Schema;
 use Restate\JsonSchema\Generation\ProvidesSchema;
 use Restate\JsonSchema\Generation\SchemaGenerator;
-use Restate\Reflection\JsonSchemaInferer;
+use Restate\Reflection\Internal\JsonSchemaInferer;
 
 enum DtoSchemaRole: string
 {

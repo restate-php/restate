@@ -8,7 +8,7 @@ use Restate\Internal\Client\BytesSerde;
 use Restate\Internal\Client\MappedJsonSerde;
 use Restate\JsonSerde;
 use Restate\JsonValueMapper;
-use Restate\JsonValueMappingContext;
+use Restate\PayloadRole;
 use Restate\Serde;
 
 /**
@@ -72,8 +72,8 @@ final readonly class HandlerSerdes
 
         $input ??= $parameters === []
             ? JsonSerde::default()
-            : new MappedJsonSerde($service, $handler, $parameters[0]->getType(), JsonValueMappingContext::ROLE_INPUT, $valueMapper);
-        $output ??= new MappedJsonSerde($service, $handler, $reflection->getReturnType(), JsonValueMappingContext::ROLE_OUTPUT, $valueMapper);
+            : new MappedJsonSerde($service, $handler, $parameters[0]->getType(), PayloadRole::Input, $valueMapper);
+        $output ??= new MappedJsonSerde($service, $handler, $reflection->getReturnType(), PayloadRole::Output, $valueMapper);
 
         return new self($input, $output);
     }

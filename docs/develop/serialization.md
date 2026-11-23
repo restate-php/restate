@@ -269,7 +269,7 @@ $endpoint = Endpoint::builder()
 Symfony attributes such as `#[SerializedName]`, `#[Groups]`, `#[Ignore]` and `#[Context]` work through your normalizer.
 The constructor also takes `normalizationContext`, `denormalizationContext` and a `contextResolver` callable that
 receives a `JsonValueMappingContext` and returns extra context, for example serialization groups by role
-(`JsonValueMappingContext::ROLE_INPUT` or `ROLE_OUTPUT`). See `examples/symfony-json-payloads.php`.
+(`$context->role`, `Restate\PayloadRole::Input` or `PayloadRole::Output`). See `examples/symfony-json-payloads.php`.
 
 ### Valinor
 
