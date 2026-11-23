@@ -47,7 +47,10 @@ in
       git
       # The upstream SDK test suite (restatedev/e2e sdk-tests.jar) is built for Java 25.
       jdk25_headless
-      libclang
+      # Only the library bindgen loads (LIBCLANG_PATH): the `libclang` package's bin/ would put an
+      # unwrapped clang ahead of the Nix cc wrapper, and the cc crate (CC=clang) would compile
+      # ext-php-rs's C shim with it, failing on `stdlib.h`.
+      libclang.lib
       config.languages.php.package.unwrapped.dev
       # composer check:scripts
       actionlint
