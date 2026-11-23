@@ -145,6 +145,8 @@ jobs:
     name: Extension binaries
     needs: version
     uses: ./.github/workflows/extension.yaml
+    secrets:
+      CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
   attest:
     name: Attest
