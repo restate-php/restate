@@ -43,6 +43,7 @@ Done once.
   - [ ] The changelog, if one is kept.
 - [ ] `composer check` passes locally; for a release that touches the extension or the protocol, also `composer test:integration`, `composer test:frankenphp` and `bin/conformance-upstream-local.sh`.
 - [ ] Merge to `main` and push. `CI`, `Upstream SDK tests` and `Extension binaries` pass on that commit.
+- [ ] Rehearse the split on that commit: `composer release:split -- publish --dry-run --version X.Y.Z --remote https://github.com/restate-php/{repository}.git`. For every repository it reports `main` as created, fast-forwarded or up to date, and the tag (`X.Y.Z` for the extension, `vX.Y.Z` for the packages) as created; it pushes nothing, and fails on what would stop the release ([Release](docs/decisions/0031-release.md), decision 5).
 
 ### 2. Release
 
@@ -55,7 +56,7 @@ Done once.
 ### 3. Verify
 
 - [ ] Each split repository has the commit and the tag: `X.Y.Z` on the extension's, `vX.Y.Z` on the packages'.
-- [ ] The extension repository's release `X.Y.Z` is published (not a draft), marked latest when it should be, with 16 `php_restate-X.Y.Z_*.tgz` archives, `SHA256SUMS` and `php_restate-X.Y.Z.sigstore.json`.
+- [ ] The extension repository's release `X.Y.Z` is published (not a draft), marked latest when it should be, with 24 `php_restate-X.Y.Z_*.tgz` archives, `SHA256SUMS` and `php_restate-X.Y.Z.sigstore.json`.
 - [ ] This repository's release `vX.Y.Z` exists with its notes.
 - [ ] Packagist shows `X.Y.Z` for all four packages and `restate/ext-restate`.
 - [ ] `gh attestation verify php_restate-X.Y.Z_<one archive>.tgz --repo restate-php/restate` (this repository, whose release run attests the archives) passes.
