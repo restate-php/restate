@@ -3,7 +3,6 @@
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/restate-php/restate/ci.yaml?style=flat-square)](https://github.com/restate-php/restate/actions/workflows/ci.yaml)
 [![Quickstart](https://img.shields.io/github/actions/workflow/status/restate-php/restate/quickstart.yaml?style=flat-square&label=quickstart)](https://github.com/restate-php/restate/actions/workflows/quickstart.yaml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/restate-php/restate/badge?style=flat-square)](https://securityscorecards.dev/viewer/?uri=github.com/restate-php/restate)
-[![Packagist](https://img.shields.io/packagist/v/restate/sdk?style=flat-square)](https://packagist.org/packages/restate/sdk)
 [![PHP](https://img.shields.io/badge/php-8.4%20%7C%208.5%20%7C%208.6-777bb4?style=flat-square)](docs/compatibility.md)
 
 [Restate](https://restate.dev) is a system for building resilient applications with durable execution. This
