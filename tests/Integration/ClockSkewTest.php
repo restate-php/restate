@@ -26,10 +26,13 @@ use Restate\Testing\RestateTestEnvironment;
  *
  * Measured with Restate 1.8.1: the held request is refused with 401 before the handler runs, Restate retries it like
  * any other failure, and the retry, signed anew, completes. Behind nginx the held request never gets that far: nginx's
- * `client_body_timeout` (60 s) closes it first, and Restate retries that too. Under FrankenPHP, whose PHP measures
- * `max_execution_time` (30 s by default) in wall-clock time, the limit runs out while the endpoint waits for the body:
- * the attempt ends in a fatal error page (RT0012), which Restate retries the same way. A skew larger than the lifetime would
- * refuse every attempt the same way: a 401 storm until the retry policy gives up, not a visible configuration error.
+ * `client_body_timeout` (60 s) closes it first, and Restate retries that too. Behind Caddy (caddy-fpm) neither:
+ * Caddy 2.11's `read_idle_timeout` (60 s by default, reset on every read of the body) aborts the body read, which
+ * cancels the request, and php_fastcgi answers 499 (RT0012) without reaching php-fpm; Restate retries that too. Under
+ * FrankenPHP, whose PHP measures `max_execution_time` (30 s by default) in wall-clock time, the limit runs out while
+ * the endpoint waits for the body: the attempt ends in a fatal error page (RT0012), which Restate retries the same
+ * way. A skew larger than the lifetime would refuse every attempt the same way: a 401 storm until the retry policy
+ * gives up, not a visible configuration error.
  */
 #[Group('failure-nightly')]
 final class ClockSkewTest extends TestCase
@@ -79,12 +82,14 @@ final class ClockSkewTest extends TestCase
         self::assertCount(3, $connections, 'The held attempt, then the two attempts of an unfaulted run.');
         // The held attempt never reached the handler: its token had expired.
         self::assertCount(2, new ChaosRecorder(IntegrationEndpoint::stateDir())->attempts($id));
-        // Behind nginx the held request never reaches PHP: nginx's client_body_timeout (60 s) closes it first. Under
-        // FrankenPHP PHP's max_execution_time (30 s, wall-clock time there) runs out while the endpoint waits for the
-        // body, and the attempt ends in PHP's fatal error page.
+        // Behind nginx the held request never reaches PHP: nginx's client_body_timeout (60 s) closes it first. Behind
+        // Caddy its read_idle_timeout (60 s) aborts the body read, and php_fastcgi answers 499 (client closed
+        // request) instead. Under FrankenPHP PHP's max_execution_time (30 s, wall-clock time there) runs out while the
+        // endpoint waits for the body, and the attempt ends in PHP's fatal error page.
         self::assertStringContainsString(
             match (true) {
                 str_starts_with(IntegrationEndpoint::server(), 'nginx-fpm') => 'connection closed before message completed',
+                IntegrationEndpoint::server() === 'caddy-fpm' => 'unexpected http status code: 499',
                 str_starts_with(IntegrationEndpoint::server(), 'frankenphp') => 'unexpected content type \'Some("text/html',
                 default => '401 Unauthorized',
             },
