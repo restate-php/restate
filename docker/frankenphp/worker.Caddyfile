@@ -8,7 +8,7 @@
 # MAX_REQUESTS                     requests per worker script run before it restarts (0: never)
 # RESTATE_PHP_TEST_DISPLAY_ERRORS  display_errors (default 1: the image has no php.ini, so PHP's own
 #                                  default, STDOUT)
-# RESTATE_PHP_TEST_POST_DATA_READING  enable_post_data_reading (default 0, as SERVING.md recommends:
+# RESTATE_PHP_TEST_POST_DATA_READING  enable_post_data_reading (default 0, as docs/serving.md recommends:
 #                                  a body over post_max_size makes PHP print a warning otherwise)
 {
 	admin off

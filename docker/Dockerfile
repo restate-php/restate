@@ -41,6 +41,25 @@ RUN php-config --version \
     && mkdir -p "/out$extension_dir" \
     && cp "$module" "/out$extension_dir/restate.so"
 
+# The PHP base of the Docker quickstart when it runs against this checkout instead of the released
+# extension and packages (examples/quickstart/compose.local.yaml): PHP_IMAGE with the extension built
+# from source, and a global Composer configuration that installs restate/* from packages/ at the
+# extension's version, so the quickstart's own Dockerfile and composer.json work unchanged.
+FROM ${PHP_IMAGE} AS quickstart-php-restate
+
+COPY --from=extension-bridge /out/ /
+COPY packages /opt/restate/packages
+COPY extension/extension/Cargo.toml /tmp/restate-extension-Cargo.toml
+ENV COMPOSER_HOME=/opt/composer
+
+RUN echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
+    && php --ri restate > /dev/null \
+    && version=$(sed -n 's/^version = "\(.*\)"/\1/p' /tmp/restate-extension-Cargo.toml) \
+    && mkdir -p "$COMPOSER_HOME" \
+    && printf '{"repositories": {"restate": {"type": "path", "url": "/opt/restate/packages/*", "options": {"symlink": false, "versions": {"restate/sdk": "%s", "restate/common": "%s", "restate/ingress": "%s", "restate/testing": "%s"}}}}}\n' \
+        "$version" "$version" "$version" "$version" > "$COMPOSER_HOME/config.json" \
+    && rm /tmp/restate-extension-Cargo.toml
+
 FROM ${PHP_IMAGE} AS upstream-base
 
 WORKDIR /app

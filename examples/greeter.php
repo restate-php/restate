@@ -11,5 +11,5 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 $greeter = Service::new('Greeter')
     ->handler('greet', static fn (Context $ctx, string $name): string => "Hello {$name}");
 
-// Needs the Restate PHP extension loaded (php -d extension=…); see docs/SERVING.md.
+// Needs the Restate PHP extension loaded (php -d extension=…); see docs/serving.md.
 Endpoint::serve([$greeter]);

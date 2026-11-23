@@ -2,6 +2,9 @@
 
 The Restate PHP extension (module `restate`, file `restate.so`, `ext-restate` to Composer) is the native core of the [Restate](https://restate.dev) PHP SDK. It embeds [`restate-sdk-shared-core`](https://crates.io/crates/restate-sdk-shared-core), the Rust core the official TypeScript, Python and Rust SDKs are built on, through [`ext-php-rs`](https://github.com/extphprs/ext-php-rs): every protocol frame, journal entry and suspension of a handler goes through it. You need it to serve services with [`restate/sdk`](https://github.com/restate-php/sdk), which requires it; there is no pure-PHP fallback. The ingress client and the test harness do not load it in their own process.
 
+> [!NOTE]
+> A community-maintained SDK: not an official Restate SDK, and not supported by Restate.
+
 ## Installation
 
 Install it with [PIE](https://github.com/php/pie), the PHP Foundation's extension installer:
@@ -60,15 +63,15 @@ Then load it in `devenv.nix` with `languages.php.extensions = [ "restate" ];`.
 
 ## Version compatibility
 
-The extension is released together with the `restate/*` packages, at the same version; `restate/sdk` requires the extension of its own minor version. [Extension Versions](https://github.com/restate-php/restate/blob/main/docs/EXTENSION_VERSIONS.md) lists each version with the shared-core version it carries and the PHP and Restate server versions it supports.
+The extension is released together with the `restate/*` packages, at the same version; `restate/sdk` requires the extension of its own minor version. [Compatibility](https://github.com/restate-php/restate/blob/main/docs/compatibility.md) lists each version with the shared-core version it carries and the PHP and Restate server versions it supports.
 
 ## Building from source
 
-There is no prebuilt binary for macOS, Windows, debug builds of PHP or glibc older than 2.28. Building it needs the Rust toolchain pinned in `rust-toolchain.toml`, libclang and the headers of the PHP that will load it; a module loads only into the PHP minor version and thread safety it was built for. See [Installing the extension](https://github.com/restate-php/restate#installing-the-extension) and [CONTRIBUTING.md](https://github.com/restate-php/restate/blob/main/CONTRIBUTING.md#building-the-extension) in the main repository.
+There is no prebuilt binary for macOS, Windows, debug builds of PHP or glibc older than 2.28. Building it needs the Rust toolchain pinned in `rust-toolchain.toml`, libclang and the headers of the PHP that will load it; a module loads only into the PHP minor version and thread safety it was built for. See [Building from source](https://github.com/restate-php/restate/blob/main/docs/installation.md#building-from-source) and [CONTRIBUTING.md](https://github.com/restate-php/restate/blob/main/CONTRIBUTING.md#building-the-extension) in the main repository.
 
 ## Documentation
 
-See the [main repository](https://github.com/restate-php/restate) for the SDK's documentation.
+See the [documentation](https://github.com/restate-php/restate/blob/main/docs/README.md) for the SDK.
 
 This repository is a read-only subtree split of [restate-php/restate](https://github.com/restate-php/restate). Report issues and send pull requests there.
 

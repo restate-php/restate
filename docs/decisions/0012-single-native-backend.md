@@ -10,7 +10,7 @@ A Restate SDK has to implement the service invocation protocol: replaying the jo
 
 ## Decision
 
-The SDK has exactly one backend: the PHP extension (`extension/extension`, module `restate`, built with [`ext-php-rs`](https://github.com/extphprs/ext-php-rs)), which embeds `restate-sdk-shared-core` through the core crate `extension/core`. All Restate traffic goes through it. Without the extension, or with one that speaks another contract version, building an endpoint throws `BackendUnavailableException`. The internal Backend Contract ([Backend Architecture](../BACKEND_ARCHITECTURE.md)) has this one production implementation, and fakes for the unit tests.
+The SDK has exactly one backend: the PHP extension (`extension/extension`, module `restate`, built with [`ext-php-rs`](https://github.com/extphprs/ext-php-rs)), which embeds `restate-sdk-shared-core` through the core crate `extension/core`. All Restate traffic goes through it. Without the extension, or with one that speaks another contract version, building an endpoint throws `BackendUnavailableException`. The internal Backend Contract ([Backend Architecture](../internals/architecture.md)) has this one production implementation, and fakes for the unit tests.
 
 ### Why not a pure-PHP implementation
 

@@ -162,7 +162,7 @@ The internal seam between the SDK's runtime classes and the Extension Backend: `
 
 ### Rust Core
 
-The Rust crate `extension/core`: the single implementation of every operation the Extension Backend performs on a `restate-sdk-shared-core` VM (VM construction, every `sys_*` call, awaiting, notification decoding, run completion, input validation, error classification). It has no PHP dependency; the extension crate is glue that converts arguments and results around it. See `docs/BACKEND_ARCHITECTURE.md`.
+The Rust crate `extension/core`: the single implementation of every operation the Extension Backend performs on a `restate-sdk-shared-core` VM (VM construction, every `sys_*` call, awaiting, notification decoding, run completion, input validation, error classification). It has no PHP dependency; the extension crate is glue that converts arguments and results around it. See `docs/internals/architecture.md`.
 
 ### Extension Surface
 
@@ -170,11 +170,11 @@ Everything the PHP extension defines, all in the internal `Restate\Extension` na
 
 ### Contract Version
 
-The integer version of the Extension Surface, returned by `Restate\Extension\contract_version()`. The extension and the Composer package are installed separately, so constructing the extension backend checks that the loaded extension's contract version equals the one the package was written for (`Backend::CONTRACT_VERSION`) and otherwise fails with both versions and how to fix it. It is 1 until the first release; after that, an incompatible change to the Extension Surface bumps it in the Rust crate and the PHP backend together, at most once per release and only in a new minor version (`docs/EXTENSION_VERSIONS.md`). It is independent of the Extension Version.
+The integer version of the Extension Surface, returned by `Restate\Extension\contract_version()`. The extension and the Composer package are installed separately, so constructing the extension backend checks that the loaded extension's contract version equals the one the package was written for (`Backend::CONTRACT_VERSION`) and otherwise fails with both versions and how to fix it. It is 1 until the first release; after that, an incompatible change to the Extension Surface bumps it in the Rust crate and the PHP backend together, at most once per release and only in a new minor version (`docs/compatibility.md`). It is independent of the Extension Version.
 
 ### Extension Version
 
-The version of the PHP extension itself: its crate version (`extension/extension/Cargo.toml`), returned by `Restate\Extension\version()` and `phpversion('restate')`, and the version Composer sees for `ext-restate`. It is also the version of every Package: the extension is released with them (see Release), and `restate/sdk` requires the extension of its own minor version (`~X.Y.0`). `docs/EXTENSION_VERSIONS.md` lists each one with the shared-core version, Contract Version and PHP versions it carries. Users and Composer see the Extension Version; the SDK decides compatibility by the Contract Version.
+The version of the PHP extension itself: its crate version (`extension/extension/Cargo.toml`), returned by `Restate\Extension\version()` and `phpversion('restate')`, and the version Composer sees for `ext-restate`. It is also the version of every Package: the extension is released with them (see Release), and `restate/sdk` requires the extension of its own minor version (`~X.Y.0`). `docs/compatibility.md` lists each one with the shared-core version, Contract Version and PHP versions it carries. Users and Composer see the Extension Version; the SDK decides compatibility by the Contract Version.
 
 ### Release
 

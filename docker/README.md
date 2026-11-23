@@ -1,4 +1,7 @@
-# Docker Images
+# Docker Images for the Test Suites
+
+> [!NOTE]
+> These images are test infrastructure, not images to deploy. To run a service of your own in Docker, start from the [Docker quickstart](../examples/quickstart/README.md) and the [serving guide](../docs/serving.md).
 
 `docker/` holds the images the test suites serve PHP endpoints with, and the server configuration baked into them or read from the mounted repository. The endpoints they serve live elsewhere: the upstream suite's [test services](../test-services/README.md), and the router scripts of the integration, load and soak suites under `tests/`. How the suites run is in [TESTING.md](../TESTING.md).
 
@@ -16,9 +19,10 @@ One file, so the targets share the stages that compile the extension inside each
 | `frankenphp-extension-release` | the load-test router, release build with OPcache | `composer load` |
 | `fpm-extension`, `fpm-extension-apache` | any router script under php-fpm behind nginx, Caddy or Apache | `composer test:fpm`, `composer test:serving-hazards` |
 | `frankenphp-worker-release`, `frankenphp-worker-debug` | the integration worker script with the `diagnostics` build | `composer test:soak` |
+| `quickstart-php-restate` | nothing: the PHP base of [`examples/quickstart`](../examples/quickstart/README.md) with the extension and packages from this checkout | `examples/quickstart/scripts/smoke-test.sh --local`, `quickstart.yaml` |
 
 ## Configuration
 
 - **`caddy/`**: the Caddyfile and entrypoint of `upstream-extension-caddy` (Caddy `reverse_proxy` over h2c in front of `php -S`).
-- **`fpm/`**: the php-fpm images. `entrypoint.sh` renders the `*.template` files from `RESTATE_PHP_FPM_*` variables and runs php-fpm behind nginx, Caddy `php_fastcgi` or Apache `mod_proxy_fcgi`, with the settings [SERVING.md](../docs/SERVING.md#php-fpm-and-fastcgi) recommends or the front door's defaults ([TESTING.md](../TESTING.md#serving-large-bodies-php-fpm-and-front-door-hazards)). `php.ini` goes on top of `php.ini-production`.
+- **`fpm/`**: the php-fpm images. `entrypoint.sh` renders the `*.template` files from `RESTATE_PHP_FPM_*` variables and runs php-fpm behind nginx, Caddy `php_fastcgi` or Apache `mod_proxy_fcgi`, with the settings [docs/serving.md](../docs/serving.md#php-fpm-and-fastcgi) recommends or the front door's defaults ([TESTING.md](../TESTING.md#serving-large-bodies-php-fpm-and-front-door-hazards)). `php.ini` goes on top of `php.ini-production`.
 - **`frankenphp/`**: the FrankenPHP Caddyfiles (`integration`, `worker`, `load`) and the load tests' ini settings. `worker.Caddyfile` is also read from the mounted repository at run time, so changing it needs no rebuild.

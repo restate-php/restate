@@ -1,0 +1,18 @@
+{
+  "name": "restate/quickstart",
+  "description": "A Restate service written in PHP, with a Restate server, in Docker Compose.",
+  "type": "project",
+  "license": "MIT",
+  "require": {
+    "php": "~8.4.0 || ~8.5.0 || ~8.6.0",
+    "restate/sdk": "^0.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/"
+    }
+  },
+  "config": {
+    "sort-packages": true
+  }
+}

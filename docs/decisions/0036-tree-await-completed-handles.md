@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Fixes the SDK side of wide fan-out being quadratic per attempt ([Wide Fan-out](../SERVING.md#wide-fan-out-costs-quadratic-time-per-attempt), measured by `FanOutTest` and `FanOutBench`). The shared-core side is not fixed in 8.7.2, the pinned version ([Shared Core](0014-shared-core.md)); an upstream fix, [restatedev/sdk-shared-core#122](https://github.com/restatedev/sdk-shared-core/pull/122), is open.
+Accepted. Fixes the SDK side of wide fan-out being quadratic per attempt ([Wide Fan-out](../serving.md#wide-fan-out-costs-quadratic-time-per-attempt), measured by `FanOutTest` and `FanOutBench`). The shared-core side is not fixed in 8.7.2, the pinned version ([Shared Core](0014-shared-core.md)); an upstream fix, [restatedev/sdk-shared-core#122](https://github.com/restatedev/sdk-shared-core/pull/122), is open.
 
 ## Context
 

@@ -1,6 +1,6 @@
 # Releasing
 
-A release publishes every package in `packages/` and the extension (`extension/`) at one version `X.Y.Z`, from one manual run of `.github/workflows/release.yaml` on `main`. Why it works this way is in [Release](docs/decisions/0031-release.md); version and compatibility rules are in [Extension Versions](docs/EXTENSION_VERSIONS.md).
+A release publishes every package in `packages/` and the extension (`extension/`) at one version `X.Y.Z`, from one manual run of `.github/workflows/release.yaml` on `main`. Why it works this way is in [Release](docs/decisions/0031-release.md); version and compatibility rules are in [Compatibility](docs/compatibility.md#bumping-versions).
 
 Copy the list for the release at hand into its tracking issue or pull request and tick it off there.
 
@@ -40,7 +40,7 @@ Done once.
 - [ ] On a branch, one commit "Release X.Y.Z":
   - [ ] `version = "X.Y.Z"` in `extension/extension/Cargo.toml`, then `cd extension && cargo update --workspace` so `extension/Cargo.lock` follows (the archives are built with `--locked`).
   - [ ] For a new minor: `"ext-restate": "~X.Y.0"` in `packages/sdk/composer.json` (`composer check:packages` fails until it matches the crate).
-  - [ ] The row for `X.Y.Z` in [Extension Versions](docs/EXTENSION_VERSIONS.md): shared-core, contract and PHP versions.
+  - [ ] The row for `X.Y.Z` in [Extension Versions](docs/compatibility.md): shared-core, contract and PHP versions.
   - [ ] The changelog, if one is kept.
 - [ ] `composer check` passes locally; for a release that touches the extension or the protocol, also `composer test:integration`, `composer test:frankenphp` and `bin/conformance-upstream-local.sh`.
 - [ ] Merge to `main` and push. `CI`, `Upstream SDK tests` and `Extension binaries` pass on that commit.
@@ -62,9 +62,9 @@ Done once.
 - [ ] Packagist shows `X.Y.Z` for all four packages and `restate/ext-restate`.
 - [ ] `gh attestation verify php_restate-X.Y.Z_<one archive>.tgz --repo restate-php/restate` (this repository, whose release run attests the archives) passes.
 - [ ] In `php:8.4-cli-trixie`, `php:8.5-zts-trixie`, `php:8.4-cli-alpine` and an arm64 image: `pie install restate/ext-restate:X.Y.Z`, then `php --ri restate` reports `X.Y.Z`, and `composer require restate/sdk:X.Y.Z` in an empty project installs.
-- [ ] A small service from the [Quickstart](README.md#quickstart) registers with a Restate server and handles a call.
+- [ ] The [Docker quickstart](examples/quickstart/README.md) works with the released extension and packages: run the **Quickstart** workflow by hand (Actions → **Quickstart**; its `released` job installs them with PIE and Composer). Then drop the pre-release notes from `README.md`, `docs/installation.md`, `docs/status.md` and the quickstart README.
 
 ### 4. Afterwards
 
 - [ ] Announce it (Restate Discord, the repository's release notes) if it is worth announcing.
-- [ ] Update [Status](docs/STATUS.md) if the release changes what is supported.
+- [ ] Update [Status](docs/status.md) if the release changes what is supported.

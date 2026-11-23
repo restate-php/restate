@@ -1,6 +1,6 @@
 # Integration-suite endpoint: every request goes to the harness router script, as with php -S.
 # The image has no php.ini, so display_errors stays on (PHP's default, as the stray-output tests
-# want); enable_post_data_reading=0 as SERVING.md recommends, so a journal over post_max_size
+# want); enable_post_data_reading=0 as docs/serving.md recommends, so a journal over post_max_size
 # (LongJournalTest) does not make PHP print a startup warning into every attempt's response.
 {
 	admin off

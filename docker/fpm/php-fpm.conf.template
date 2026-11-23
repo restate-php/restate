@@ -18,7 +18,7 @@ listen = 127.0.0.1:9000
 pm = static
 pm.max_children = ${RESTATE_PHP_FPM_MAX_CHILDREN}
 
-; The official images set no; php-fpm's own default is yes (docs/SERVING.md, "PHP-FPM and FastCGI").
+; The official images set no; php-fpm's own default is yes (docs/serving.md, "PHP-FPM and FastCGI").
 clear_env = ${RESTATE_PHP_FPM_CLEAR_ENV}
 ; 0: no limit. A terminated worker is a 502 at the front door.
 request_terminate_timeout = ${RESTATE_PHP_FPM_REQUEST_TERMINATE_TIMEOUT}

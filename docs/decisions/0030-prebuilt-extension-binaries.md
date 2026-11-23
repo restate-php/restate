@@ -6,7 +6,7 @@ Accepted. Nothing is published yet: no split repository, Packagist entry, tag or
 
 ## Context
 
-Serving needs the extension (module `restate`, `ext-restate` to Composer, [Extension Versions](../EXTENSION_VERSIONS.md)), and `restate/sdk` requires it, so `composer require restate/sdk` fails until the extension is installed. Building it from source needs a Rust toolchain and libclang, which users of a PHP library should not need. The goal is a prebuilt binary per PHP minor × thread safety × OS × architecture × libc, installed through PIE, the PHP Foundation's extension installer.
+Serving needs the extension (module `restate`, `ext-restate` to Composer, [Extension Versions](../compatibility.md)), and `restate/sdk` requires it, so `composer require restate/sdk` fails until the extension is installed. Building it from source needs a Rust toolchain and libclang, which users of a PHP library should not need. The goal is a prebuilt binary per PHP minor × thread safety × OS × architecture × libc, installed through PIE, the PHP Foundation's extension installer.
 
 PIE builds extensions with `phpize`, `./configure` and `make`; it cannot build a Cargo crate. Its one other Unix route is the `pre-packaged-binary` download method: the package's `composer.json` says so, and PIE downloads a prebuilt archive from the GitHub release of the package's version instead of building ([PIE's maintainer docs](https://github.com/php/pie/blob/1.5.5/docs/extension-maintainers.md#pre-packaged-binary)).
 

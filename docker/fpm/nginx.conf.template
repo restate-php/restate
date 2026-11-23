@@ -1,4 +1,4 @@
-# nginx in front of php-fpm, with the settings docs/SERVING.md ("PHP-FPM and FastCGI") recommends. Rendered by
+# nginx in front of php-fpm, with the settings docs/serving.md ("PHP-FPM and FastCGI") recommends. Rendered by
 # entrypoint.sh (RESTATE_PHP_FPM_FRONT=nginx or nginx-h2c, RESTATE_PHP_FPM_PROFILE=recommended).
 daemon off;
 worker_processes 2;

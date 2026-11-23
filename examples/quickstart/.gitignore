@@ -1,0 +1,3 @@
+/vendor/
+# This example installs the newest release; commit a composer.lock in your own project.
+/composer.lock
