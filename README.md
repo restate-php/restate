@@ -9,10 +9,35 @@
 repository is an SDK for writing Restate services in **PHP**: handlers whose steps, calls, timers and state Restate
 records, so they run to completion across crashes, restarts and deploys.
 
-> [!NOTE]
+> [!WARNING]
 > This is a **community-maintained, unofficial** SDK: it is not an official Restate SDK and is not supported by
-> Restate. It is **pre-release**: no version is published yet, and the API may change until 1.0.
-> See [Status](docs/status.md).
+> Restate.
+
+## Highlights
+
+- **All of Restate's service types**: [Basic Services, Virtual Objects and Workflows](docs/develop/services.md), as
+  attributed PHP classes or with builders.
+- **Durable building blocks**: [durable steps](docs/develop/durable-steps.md) with retry policies,
+  [state](docs/develop/state.md), [timers](docs/develop/timers.md),
+  [calls and messages](docs/develop/communication.md) with idempotency keys,
+  [awakeables, signals and durable promises](docs/develop/external-events.md), and
+  [durable futures](docs/develop/concurrency.md) to wait on several things at once.
+- **Runs where PHP runs**: [`php -S`, PHP-FPM, FrankenPHP (including worker mode) and any PSR-15
+  framework](docs/serving.md). There is no long-running worker process to manage: Restate calls your endpoint over
+  HTTP.
+- **Typed payloads**: JSON by default, mapped to [DTOs and enums](docs/develop/serialization.md) with inferred JSON
+  Schemas, plus Symfony Serializer and Valinor adapters and custom serializers.
+- **Production concerns**: [error handling](docs/develop/errors.md) with terminal errors, retry delays and pausing,
+  [PSR-3 logging and interceptors](docs/develop/logging-and-hooks.md), PSR-11 containers, and
+  [request identity validation](docs/serving.md#request-identity-validation).
+- **Beyond handlers**: an [ingress client](docs/ingress-client.md) to call services from your application, and a
+  [test harness](docs/develop/testing.md) that runs your endpoint against a real Restate server in PHPUnit.
+- **Built on Restate's own core**: protocol handling is done by
+  [`restate-sdk-shared-core`](https://crates.io/crates/restate-sdk-shared-core), the Rust library inside the
+  official TypeScript, Python and Rust SDKs, compiled into a PHP extension. The PHP SDK passes the
+  [test suite the official SDKs run](docs/internals/conformance.md).
+
+## Example
 
 ```php
 use Restate\Attributes as Restate;
@@ -59,30 +84,6 @@ final class Counter
 Endpoint::serve([new Onboarding(new Mailer()), new Counter()]);
 ```
 
-## Highlights
-
-- **All of Restate's service types**: [Basic Services, Virtual Objects and Workflows](docs/develop/services.md), as
-  attributed PHP classes or with builders.
-- **Durable building blocks**: [durable steps](docs/develop/durable-steps.md) with retry policies,
-  [state](docs/develop/state.md), [timers](docs/develop/timers.md),
-  [calls and messages](docs/develop/communication.md) with idempotency keys,
-  [awakeables, signals and durable promises](docs/develop/external-events.md), and
-  [durable futures](docs/develop/concurrency.md) to wait on several things at once.
-- **Runs where PHP runs**: [`php -S`, PHP-FPM, FrankenPHP (including worker mode) and any PSR-15
-  framework](docs/serving.md). There is no long-running worker process to manage: Restate calls your endpoint over
-  HTTP.
-- **Typed payloads**: JSON by default, mapped to [DTOs and enums](docs/develop/serialization.md) with inferred JSON
-  Schemas, plus Symfony Serializer and Valinor adapters and custom serializers.
-- **Production concerns**: [error handling](docs/develop/errors.md) with terminal errors, retry delays and pausing,
-  [PSR-3 logging and interceptors](docs/develop/logging-and-hooks.md), PSR-11 containers, and
-  [request identity validation](docs/serving.md#request-identity-validation).
-- **Beyond handlers**: an [ingress client](docs/ingress-client.md) to call services from your application, and a
-  [test harness](docs/develop/testing.md) that runs your endpoint against a real Restate server in PHPUnit.
-- **Built on Restate's own core**: protocol handling is done by
-  [`restate-sdk-shared-core`](https://crates.io/crates/restate-sdk-shared-core), the Rust library inside the
-  official TypeScript, Python and Rust SDKs, compiled into a PHP extension. The PHP SDK passes the
-  [test suite the official SDKs run](docs/internals/conformance.md).
-
 ## Quickstart
 
 ### With Docker
@@ -94,14 +95,6 @@ You don't need PHP on your machine.
 git clone https://github.com/restate-php/restate.git
 cd restate/examples/quickstart
 ```
-
-> [!IMPORTANT]
-> Until the first release, build the extension and the SDK from this repository first (takes a few minutes):
->
-> ```bash
-> docker build -f ../../docker/Dockerfile --target quickstart-php-restate -t restate-php-quickstart/php-restate:local ../..
-> export COMPOSE_FILE=compose.yaml:compose.local.yaml
-> ```
 
 ```bash
 docker compose up --build -d
@@ -122,10 +115,6 @@ Restate server ([`restate-server`](https://docs.restate.dev/installation), or th
 mkdir greeter && cd greeter
 composer require restate/sdk
 ```
-
-> [!IMPORTANT]
-> Until the first release, [build the extension from source](docs/installation.md#building-from-source) and
-> install the development version: `composer require restate/sdk:dev-main restate/common:dev-main`.
 
 Write the endpoint, `index.php`:
 
@@ -235,4 +224,4 @@ To work on the SDK, start with [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT; see [LICENSE](LICENSE). The extension and every package carry the same license.
+The project is licensed under the [MIT License](LICENSE).

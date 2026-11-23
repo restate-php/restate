@@ -10,9 +10,6 @@ The `restate/testing` package runs your services against a real Restate server. 
 composer require --dev restate/testing guzzlehttp/guzzle
 ```
 
-> [!NOTE]
-> Until 0.1.0 is released, Packagist only has `dev-main`: run `composer require --dev restate/testing:dev-main restate/ingress:dev-main restate/common:dev-main guzzlehttp/guzzle` instead ([Installation](../installation.md#installing-the-sdk)).
-
 What the harness needs:
 
 | Requirement | Why |
