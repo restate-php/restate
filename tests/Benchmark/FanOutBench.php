@@ -18,7 +18,7 @@ use Restate\Tests\Support\Workload\WorkloadRequest;
 
 /**
  * One attempt that combines n durable futures whose results are all in the journal, through the extension: what the
- * combinators cost per attempt (docs/SERVING.md, Wide Fan-out). all() and allSettled() await one tree; a
+ * combinators cost per attempt (docs/serving.md, Wide Fan-out). all() and allSettled() await one tree; a
  * select() loop awaits n trees over n, n - 1, … futures; any() over n rejected awakeables takes one failure per await.
  * The SDK's share is O(1) extension calls per combinator call; shared-core re-reduces the remaining tree for each
  * result it moves into view, so the select() loop and any() stay O(n^2) in the core until that is fixed upstream.

@@ -284,7 +284,7 @@ jobs:
       fail-fast: false
       matrix:
         # php-fpm behind nginx (HTTP/1.1, h2c) and Caddy php_fastcgi (h2c), with the front-door
-        # settings docs/SERVING.md recommends (docker/fpm/).
+        # settings docs/serving.md recommends (docker/fpm/).
         server: [nginx-fpm, nginx-fpm-h2c, caddy-fpm]
 
     steps:

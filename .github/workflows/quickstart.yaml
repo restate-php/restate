@@ -1,0 +1,82 @@
+# The Docker quickstart (examples/quickstart): starts it with Docker Compose and checks every step of its
+# walkthrough, so the README's first experience doesn't rot. Locally: examples/quickstart/scripts/smoke-test.sh.
+#
+# - local: against this commit (the extension built from source, the packages from packages/), on both CPUs
+#   the prebuilt extension targets: x86_64 and arm64.
+# - released: what users get (PIE and Packagist), nightly; skipped while no version is released.
+name: Quickstart
+
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - '.github/workflows/quickstart.yaml'
+      - 'bin/build-extension.sh'
+      - 'docker/Dockerfile'
+      - 'examples/quickstart/**'
+      - 'extension/**'
+      - 'packages/**'
+  pull_request:
+    paths: *paths
+  schedule:
+    - cron: '23 4 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: quickstart-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  local:
+    name: local (${{ matrix.runner }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check the Restate image against the integration harness
+        run: |
+          image=$(sed -n 's/^ *image: \(docker.restate.dev\/restatedev\/restate:.*\)$/\1/p' examples/quickstart/compose.yaml | sort -u)
+          if [ "$(wc -l <<<"$image")" != 1 ] || ! grep -qF "DEFAULT_IMAGE = '$image';" packages/testing/src/RestateContainer.php; then
+            echo "::error file=examples/quickstart/compose.yaml::The quickstart's Restate image ($image) differs from RestateContainer::DEFAULT_IMAGE"
+            exit 1
+          fi
+
+      - name: Run the quickstart against this commit
+        run: examples/quickstart/scripts/smoke-test.sh --local
+
+  released:
+    name: released
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check for a released version
+        id: released
+        run: |
+          if curl -fsS https://repo.packagist.org/p2/restate/sdk.json | grep -q '"version"'; then
+            echo "released=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No version of restate/sdk is released yet; skipping the released quickstart"
+          fi
+
+      - name: Run the quickstart against the released extension and packages
+        if: steps.released.outputs.released == 'true'
+        run: examples/quickstart/scripts/smoke-test.sh

@@ -20,7 +20,7 @@ use Restate\Testing\Internal\Process;
 use Restate\Testing\RestateTestEnvironment;
 
 /**
- * Front-door hazards of PHP-FPM (docs/SERVING.md, "PHP-FPM and FastCGI"), each
+ * Front-door hazards of PHP-FPM (docs/serving.md, "PHP-FPM and FastCGI"), each
  * against php-fpm behind a front door of the fpm-extension images (docker/fpm/), in an environment of its own:
  *
  * - Bodies through each front door at its defaults (RESTATE_PHP_FPM_PROFILE=defaults). Restate sends every invocation
@@ -150,7 +150,7 @@ final class ServingHazardsTest extends TestCase
 
     /**
      * clear_env = yes, php-fpm's own default (the official images set no): the router reads its identity key with
-     * `getenv()` as docs/SERVING.md shows, gets false, and building the endpoint throws (identity keys fail closed),
+     * `getenv()` as docs/serving.md shows, gets false, and building the endpoint throws (identity keys fail closed),
      * so the endpoint answers 500 to everything instead of serving unsigned requests. With clear_env = no the
      * same container verifies: unsigned discovery is 401, signed discovery 200. No Restate is involved.
      */

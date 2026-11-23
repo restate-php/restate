@@ -5,7 +5,7 @@
 #
 #   RESTATE_PHP_FPM_FRONT       nginx (HTTP/1.1), nginx-h2c (h2c and HTTP/1.1), caddy (h2c and HTTP/1.1), or apache
 #                               (HTTP/1.1; the fpm-extension-apache image only). Default nginx.
-#   RESTATE_PHP_FPM_PROFILE     recommended (docs/SERVING.md's body and timeout settings) or defaults (the front
+#   RESTATE_PHP_FPM_PROFILE     recommended (docs/serving.md's body and timeout settings) or defaults (the front
 #                               door's own defaults, for the serving-hazards tests). Default recommended.
 #   RESTATE_PHP_FPM_PORT        port the front door listens on. Default 8080.
 #   RESTATE_PHP_FPM_SCRIPT      the router script every request runs. Default the integration suite's endpoint.php.

@@ -20,7 +20,7 @@ To bump it:
 2. Recheck every workaround below against the new source, and run its pinning tests. Remove a workaround only when shared-core now does the job, and update the version the code comments name.
 3. If the generated protocol module changed, replace the test copy (`extension/core/tests/vm/protocol/`, see `tests/vm/protocol.rs`) with the new version's file.
 4. Confirm that `extension/Cargo.lock` changes only in the shared-core entry, or account for every new dependency.
-5. Run `composer check`, the integration suite against Restate 1.8 and 1.7, the FrankenPHP suite and the upstream suite ([TESTING.md](../../TESTING.md)), and update the row in [Extension Versions](../EXTENSION_VERSIONS.md).
+5. Run `composer check`, the integration suite against Restate 1.8 and 1.7, the FrankenPHP suite and the upstream suite ([TESTING.md](../../TESTING.md)), and update the row in [Extension Versions](../compatibility.md).
 
 A bump that changes no API the core uses needs no code change; that was the case from 8.6.0 to 8.7.2, where the new code (`ExplicitRecoveryVM`, which needs a bidirectional stream, and the `sql` feature) is unreachable from the core.
 
@@ -75,7 +75,7 @@ shared-core resolves a tree by first checking results already in view, then movi
 | `race()`, `select()`, `waitCompleted()`, `DurableFuturesUnordered::next()` | `FirstCompleted` | PHP takes the first completed future in key order. |
 | `any()` | a loop of `FirstCompleted` trees | `DurableFutureAggregateException::failures()` lists failures in completion order, which a `FirstSucceededOrAllFailed` tree cannot report. |
 
-A completed await reports which of the tree's handles it completed ([Tree Awaits Report Their Completed Handles](0036-tree-await-completed-handles.md)). Reducing the whole remaining tree once per result makes wide fan-out quadratic per attempt inside shared-core ([Wide Fan-out](../SERVING.md#wide-fan-out-costs-quadratic-time-per-attempt)); an upstream fix, [restatedev/sdk-shared-core#122](https://github.com/restatedev/sdk-shared-core/pull/122), is open and not in 8.7.2. `tests/vm/combinators.rs` (v5, v6, v7) and the integration `FutureTest` (Restate 1.8.1 and 1.7.14) cover when each combinator resolves, what a suspension carries, cancellation, and invalid trees.
+A completed await reports which of the tree's handles it completed ([Tree Awaits Report Their Completed Handles](0036-tree-await-completed-handles.md)). Reducing the whole remaining tree once per result makes wide fan-out quadratic per attempt inside shared-core ([Wide Fan-out](../serving.md#wide-fan-out-costs-quadratic-time-per-attempt)); an upstream fix, [restatedev/sdk-shared-core#122](https://github.com/restatedev/sdk-shared-core/pull/122), is open and not in 8.7.2. `tests/vm/combinators.rs` (v5, v6, v7) and the integration `FutureTest` (Restate 1.8.1 and 1.7.14) cover when each combinator resolves, what a suspension carries, cancellation, and invalid trees.
 
 ## Consequences
 

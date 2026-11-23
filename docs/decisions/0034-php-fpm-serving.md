@@ -6,7 +6,7 @@ Accepted. Covers stray output and large bodies, the integration suite on php-fpm
 
 ## Context
 
-PHP-FPM behind nginx, Caddy or Apache is a common production shape for `Endpoint::serve()` ([SERVING.md](../SERVING.md)), and what a FastCGI front door does to Restate's requests matters: Restate 1.8.1 sends every invocation body without `Content-Length` (chunked over HTTP/1.1, plain DATA frames over h2c), php-fpm reads at most `CONTENT_LENGTH` bytes, and each front door handles a length-less body differently. Suites that run only under `php -S` and FrankenPHP prove none of that, nor serving with OPcache on or over h2c.
+PHP-FPM behind nginx, Caddy or Apache is a common production shape for `Endpoint::serve()` ([SERVING.md](../serving.md)), and what a FastCGI front door does to Restate's requests matters: Restate 1.8.1 sends every invocation body without `Content-Length` (chunked over HTTP/1.1, plain DATA frames over h2c), php-fpm reads at most `CONTENT_LENGTH` bytes, and each front door handles a length-less body differently. Suites that run only under `php -S` and FrankenPHP prove none of that, nor serving with OPcache on or over h2c.
 
 ## Decision
 
@@ -20,5 +20,5 @@ PHP-FPM behind nginx, Caddy or Apache is a common production shape for `Endpoint
 
 - The integration suite passes on all three FPM servers (only `LargeBodyTest`'s `php -S` ini variants skip), and so do the large-bodies group and the upstream suite on `upstream-fpm-nginx`, so PHP-FPM behind nginx or Caddy with the documented settings is tested, OPcache and h2c included. SERVING.md records the measured hazards; each one is a bounded, visible failure under a retry policy, and an endless retry without one, as the sources predicted.
 - The FPM jobs build the image without a layer cache, like the FrankenPHP job: a few minutes of Rust build per job.
-- `clear_env = yes` with a key from `getenv()` fails closed (the endpoint answers `500` to everything, `/health` included), as [identity keys](../SERVING.md#request-identity-validation) promise. The integration endpoint's own `RESTATE_PHP_TEST_IDENTITY_KEYS` is optional by design, so it would still run unverified under `clear_env = yes`; the hazard test uses its own router (`tests/Integration/Support/identity-from-env.php`) with SERVING.md's pattern.
+- `clear_env = yes` with a key from `getenv()` fails closed (the endpoint answers `500` to everything, `/health` included), as [identity keys](../serving.md#request-identity-validation) promise. The integration endpoint's own `RESTATE_PHP_TEST_IDENTITY_KEYS` is optional by design, so it would still run unverified under `clear_env = yes`; the hazard test uses its own router (`tests/Integration/Support/identity-from-env.php`) with SERVING.md's pattern.
 - Signals to the container go to the entrypoint, which forwards `USR1`/`USR2` to the php-fpm master and stops gracefully on `QUIT` (the images' stop signal), so `signalEndpoint()` and `restartEndpoint(graceful: true)` reach php-fpm.

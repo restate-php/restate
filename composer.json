@@ -124,7 +124,7 @@
     ],
     "check:scripts": [
       "actionlint",
-      "shellcheck bin/*.sh docker/*/*.sh"
+      "shellcheck bin/*.sh docker/*/*.sh examples/quickstart/scripts/*.sh"
     ],
     "check:packages": [
       "@build:extension @no_additional_args",

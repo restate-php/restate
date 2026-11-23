@@ -1,0 +1,54 @@
+name: restate-php-quickstart
+
+services:
+  # The Restate server. Call your handlers through its ingress on port 8080; its admin API and UI are on 9070.
+  restate:
+    image: docker.restate.dev/restatedev/restate:1.8.1
+    ports:
+      - "8080:8080"
+      - "9070:9070"
+    extra_hosts:
+      # Lets Restate reach a PHP server running on your machine instead (README: "Run PHP on your machine").
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9070/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  # Your PHP service: index.php and src/, served by PHP's built-in server on port 9080 of the compose network.
+  greeter:
+    build: .
+    # php -S as PID 1 ignores SIGTERM; an init process makes `docker compose stop` prompt.
+    init: true
+    environment:
+      # debug shows each attempt (Starting, Replaying, suspended, completed) in `docker compose logs greeter`.
+      LOG_LEVEL: debug
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:9080/health') === false ? 1 : 0);"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  # Tells Restate where the service is, once both are up. Restate then asks the endpoint which services and
+  # handlers it has. php -S speaks HTTP/1.1 only, hence use_http_11. force replaces an earlier registration of
+  # the same URI, which is what you want after changing the code in development (never in production).
+  register:
+    image: docker.restate.dev/restatedev/restate:1.8.1
+    depends_on:
+      restate:
+        condition: service_healthy
+      greeter:
+        condition: service_healthy
+    restart: "no"
+    entrypoint:
+      - curl
+      - --fail-with-body
+      - --silent
+      - --show-error
+      # Restate's answer has no trailing newline; without one, `docker compose logs register` shows nothing.
+      - --write-out
+      - '\n'
+      - http://restate:9070/deployments
+      - --json
+      - '{"uri": "http://greeter:9080", "use_http_11": true, "force": true}'

@@ -11,7 +11,7 @@ devenv shell
 composer install   # all packages at once, through the root restate/monorepo package (development only)
 ```
 
-Run everything inside the shell (`devenv shell`, or prefix a command with `devenv shell --`). Every task is a Composer script; `composer run --list` lists them. For PHP 8.5, start the shell with `devenv -O languages.php.version:string 8.5 shell`.
+Run everything inside the shell (`devenv shell`, or prefix a command with `devenv shell --`). Every task is a Composer script; `composer run --list` lists them.
 
 ## Building the extension
 
@@ -39,11 +39,16 @@ composer test:integration  # builds the extension, then runs the integration sui
 
 [TESTING.md](TESTING.md) describes every suite (unit, extension, integration, FrankenPHP, PHP-FPM, scale, soak, upstream), the benchmarks and load tests, and CI.
 
+## Documentation
+
+User documentation lives in [`docs/`](docs/README.md): the guides for writing services in `docs/develop/`, and serving, installation and compatibility next to them. The [README](README.md) stays short: highlights, the quickstart, and links. When you change behaviour, update the guide that describes it; when you change the [Docker quickstart](examples/quickstart/README.md), run `examples/quickstart/scripts/smoke-test.sh --local` (CI runs it too). Write for PHP developers who may not know Restate, use Restate's vocabulary (Basic Service, Virtual Object, Workflow, durable step…), keep the design reasoning in decision records, and link those only from a page's "Design notes".
+
 ## Further reading
 
 - [CONTEXT.md](CONTEXT.md): the glossary, the terms the code and docs use.
-- [docs/decisions/](docs/decisions/): why the SDK is built the way it is; read the record of an area before changing it.
-- [Backend Architecture](docs/BACKEND_ARCHITECTURE.md): how the packages, the extension and shared-core fit together.
+- [docs/decisions/](docs/decisions/README.md): why the SDK is built the way it is; read the record of an area before changing it.
+- [Backend Architecture](docs/internals/architecture.md): how the packages, the extension and shared-core fit together.
+- [Conformance](docs/internals/conformance.md): how the upstream SDK test suite runs against the PHP test services.
 - [Public API Boundary](docs/decisions/0016-public-api-boundary.md): what is public API and what is internal (`Restate\Internal`).
-- [Extension Versions](docs/EXTENSION_VERSIONS.md): the version and contract rules for changes to the extension's surface.
+- [Bumping versions](docs/compatibility.md#bumping-versions): the version and contract rules for changes to the extension's surface.
 - [RELEASING.md](RELEASING.md): for maintainers, how a release is cut.

@@ -2,6 +2,9 @@
 
 `Restate\Ingress\IngressClient` invokes [Restate](https://restate.dev) services through the Restate ingress from code that is not a handler: a web controller, a CLI command, a queue worker, a test. It calls, sends (now or delayed) and attaches to invocations, with idempotency keys, headers, scopes and limit keys, submits and attaches to workflows, and resolves or rejects awakeables. It runs over any PSR-18 HTTP client and needs neither [`restate/sdk`](https://github.com/restate-php/sdk), the Restate PHP extension nor an endpoint.
 
+> [!NOTE]
+> A community-maintained SDK: not an official Restate SDK, and not supported by Restate.
+
 ## Installation
 
 ```bash
@@ -37,7 +40,7 @@ A handler's `TerminalError` is rethrown as is; every other failure is a `Restate
 
 ## Documentation
 
-See [Ingress Client](https://github.com/restate-php/restate#ingress-client) in the main repository for the full API, and the [main repository](https://github.com/restate-php/restate) for the rest of the SDK.
+See [Ingress client](https://github.com/restate-php/restate/blob/main/docs/ingress-client.md) for the full API, and the [documentation](https://github.com/restate-php/restate/blob/main/docs/README.md) for the rest of the SDK.
 
 This repository is a read-only subtree split of [restate-php/restate](https://github.com/restate-php/restate). Report issues and send pull requests there.
 

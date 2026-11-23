@@ -16,7 +16,7 @@ declare(strict_types=1);
 namespace Restate\Extension;
 
 /**
- * The extension's own version (its crate version, also `phpversion('restate')`; see docs/EXTENSION_VERSIONS.md).
+ * The extension's own version (its crate version, also `phpversion('restate')`; see docs/compatibility.md).
  *
  * @internal
  */

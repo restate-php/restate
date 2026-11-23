@@ -1,0 +1,13 @@
+# Runs the quickstart against this checkout of the SDK instead of the released extension and packages: until the
+# first release, and for CI and contributors trying a change. Build the base image, then point Compose at both files:
+#
+#   docker build -f ../../docker/Dockerfile --target quickstart-php-restate -t restate-php-quickstart/php-restate:local ../..
+#   export COMPOSE_FILE=compose.yaml:compose.local.yaml
+#   docker compose up --build -d
+#
+# scripts/smoke-test.sh --local does the same.
+services:
+  greeter:
+    build:
+      args:
+        PHP_RESTATE: restate-php-quickstart/php-restate:local

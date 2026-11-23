@@ -8,7 +8,7 @@ Accepted. The SDK serves request/response only. This record says why, what was p
 
 Restate talks to a deployment in one of two protocol modes, which the discovery manifest declares (`protocolMode`):
 
-- **`REQUEST_RESPONSE`:** each attempt is one HTTP request. When the handler awaits something Restate has not sent yet (a sleep, a call result, an awakeable, a run acknowledgement), the attempt suspends and ends; Restate resumes the invocation with a new request that replays the whole journal. A handler with N sequential steps takes N + 1 attempts and O(N²) replay work ([Long Journals](../SERVING.md#long-journals-cost-quadratic-replay)).
+- **`REQUEST_RESPONSE`:** each attempt is one HTTP request. When the handler awaits something Restate has not sent yet (a sleep, a call result, an awakeable, a run acknowledgement), the attempt suspends and ends; Restate resumes the invocation with a new request that replays the whole journal. A handler with N sequential steps takes N + 1 attempts and O(N²) replay work ([Long Journals](../serving.md#long-journals-cost-quadratic-replay)).
 - **`BIDI_STREAM`:** one HTTP/2 stream per attempt, open in both directions. The endpoint sends commands as response DATA while the request is still open, and Restate sends completions as request DATA. A wait does not end the attempt, so one attempt can run the whole invocation.
 
 Streaming needs a server that hands PHP request DATA before the request's `END_STREAM`, and sends response DATA before the request ends. PHP's classic serving model (one request in, one response out, the body read in full) does neither.
@@ -49,7 +49,7 @@ A call into the extension's `Vm` never blocks, never calls back into PHP, and re
 
 ## Consequences
 
-- Every suspension costs a new request and a replay, and an invocation whose replay alone exceeds its abort timeout cannot finish. The guidance is to keep journals short ([SERVING.md](../SERVING.md#long-journals-cost-quadratic-replay)).
-- [Status](../STATUS.md#known-gaps-and-limitations) lists bidirectional streaming as a known gap.
+- Every suspension costs a new request and a replay, and an invocation whose replay alone exceeds its abort timeout cannot finish. The guidance is to keep journals short ([SERVING.md](../serving.md#long-journals-cost-quadratic-replay)).
+- [Status](../status.md#known-gaps-and-limitations) lists bidirectional streaming as a known gap.
 - The main cost of a streaming entrypoint is outside the VM: the non-blocking-handler rule users must follow, the worker and concurrency settings, and splitting the endpoint so the routing and error paths stay shared. Its tests would need a `read_from_input` step in the unit tests' scripted invocation, and an integration run with an Amp endpoint asserting one attempt per sleep or call, suspension when the input closes, behaviour after a stream reset, and the advertised mode per HTTP version.
 - Output capture for stray output works per process, not per Fiber ([Stray Output](0032-stray-output.md)); a streaming entrypoint needs its own answer.
