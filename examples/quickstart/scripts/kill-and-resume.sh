@@ -12,7 +12,7 @@ ingress="${RESTATE_INGRESS_URL:-http://localhost:8080}"
 step() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 
 step "Send a greeting for $name without waiting for the result"
-response=$(curl --fail-with-body --silent --show-error "$ingress/restate/send/Greeter/greet" --json "{\"name\": \"$name\"}")
+response=$(curl --fail-with-body --silent --show-error "$ingress/Greeter/greet/send" --json "{\"name\": \"$name\"}")
 echo "$response"
 id=$(sed -E 's/.*"invocationId" *: *"([^"]+)".*/\1/' <<<"$response")
 

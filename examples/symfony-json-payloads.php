@@ -23,6 +23,8 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Serializer\Serializer;
 
+require dirname(__DIR__) . '/vendor/autoload.php';
+
 final class SymfonyUserSchemas
 {
     public const array CREATE_INPUT = [

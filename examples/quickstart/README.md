@@ -21,6 +21,9 @@ You need:
 
 ## 1. Start everything
 
+The image installs the released extension and packages. If `main` has changed since the latest release, check out
+that release's tag after cloning (`git checkout v0.1.0`, for example), so the code matches them.
+
 ```bash
 git clone https://github.com/restate-php/restate.git
 cd restate/examples/quickstart
@@ -109,7 +112,7 @@ About five seconds later:
 {"message":"You said hi to Sarah!"}
 ```
 
-The script calls `POST http://localhost:8080/restate/call/Greeter/greet` with `{"name": "Sarah"}`. Port 8080 is
+The script calls `POST http://localhost:8080/Greeter/greet` with `{"name": "Sarah"}`. Port 8080 is
 Restate's ingress, where clients call services.
 
 Now look at the service's log:
@@ -221,9 +224,9 @@ greeting still finishes.
 runs one exclusive handler per key at a time, so `add` needs no locks:
 
 ```bash
-curl localhost:8080/restate/call/Counter/mary/add --json 1          # 1
-curl localhost:8080/restate/call/Counter/mary/add --json 2          # 3
-curl -X POST localhost:8080/restate/call/Counter/mary/get           # 3
+curl localhost:8080/Counter/mary/add --json 1      # 1
+curl localhost:8080/Counter/mary/add --json 2      # 3
+curl -X POST localhost:8080/Counter/mary/get       # 3
 ```
 
 The state lives in Restate: there is no database to set up. `get` is a shared handler (`#[Restate\Shared]`): it
@@ -236,7 +239,7 @@ can read state but not write it, and runs concurrently with other invocations of
 waits for the user to click the link, for as long as it takes:
 
 ```bash
-curl localhost:8080/restate/send/Signup/mary/run --json '"mary@example.com"'
+curl localhost:8080/Signup/mary/run/send --json '"mary@example.com"'
 docker compose logs greeter | grep "Verification secret"
 ```
 
@@ -247,8 +250,8 @@ docker compose logs greeter | grep "Verification secret"
 "Click the link" by calling the shared handler `click` with that secret, then get the workflow's result:
 
 ```bash
-curl localhost:8080/restate/call/Signup/mary/click --json '"319ae43d-6e5c-4c09-9b58-7df03b019846"'
-curl localhost:8080/restate/workflow/Signup/mary/attach             # "Welcome, mary@example.com!"
+curl localhost:8080/Signup/mary/click --json '"319ae43d-6e5c-4c09-9b58-7df03b019846"'
+curl localhost:8080/restate/workflow/Signup/mary/attach    # "Welcome, mary@example.com!"
 ```
 
 While it waited, no PHP process was running. See
@@ -271,14 +274,17 @@ The `register` container runs again with `force`, which replaces the registratio
 
 ## 10. Run PHP on your machine instead
 
-If you have PHP 8.4 or newer with the Restate extension ([Installation](../../docs/installation.md)), run the
+If you have PHP 8.4, 8.5 or 8.6 with the Restate extension ([Installation](../../docs/installation.md)), run the
 service directly, with Restate still in Docker:
 
 ```bash
 docker compose up -d restate
 composer install
-PHP_CLI_SERVER_WORKERS=4 php -c php.ini -S 0.0.0.0:9080 index.php
+PHP_CLI_SERVER_WORKERS=4 php -d display_errors=0 -d log_errors=1 -d enable_post_data_reading=0 -d post_max_size=0 \
+    -S 0.0.0.0:9080 index.php
 ```
+
+The `-d` flags are the settings of [`php.ini`](php.ini), on top of your own php.ini, which loads the extension.
 
 In another terminal, register it. Restate reaches your machine as `host.docker.internal`:
 

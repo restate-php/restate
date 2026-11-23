@@ -33,13 +33,15 @@ final class StderrLogger extends AbstractLogger
 
     public function log($level, string|\Stringable $message, array $context = []): void
     {
+        $level = is_string($level) ? $level : LogLevel::INFO;
         if ((self::LEVELS[$level] ?? 0) < $this->minimum) {
             return;
         }
 
         $line = sprintf('[%s]', $level);
-        if (isset($context['restate.invocation.id'])) {
-            $line .= sprintf(' [%s]', $context['restate.invocation.id']);
+        $invocationId = $context['restate.invocation.id'] ?? null;
+        if (is_string($invocationId)) {
+            $line .= sprintf(' [%s]', $invocationId);
         }
         $line .= ' ' . $message;
         if (($context['exception'] ?? null) instanceof \Throwable) {

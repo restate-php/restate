@@ -14,6 +14,8 @@ use Restate\JsonPayloadOptions;
 use Restate\Payload;
 use Restate\Service;
 
+require dirname(__DIR__) . '/vendor/autoload.php';
+
 final class ValinorUserSchemas
 {
     public const array CREATE_INPUT = [
