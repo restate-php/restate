@@ -341,7 +341,7 @@ fn a_retryable_run_failure_schedules_a_retry_or_completes_once_exhausted() {
 fn a_retryable_handler_error_ends_the_attempt_for_restate_to_retry() {
     let mut vm = v7().running();
 
-    vm.notify_error(b"boom".to_vec(), b"at handler".to_vec(), None);
+    vm.notify_error(500, b"boom".to_vec(), b"at handler".to_vec(), None);
 
     let error: ErrorMessage = single(&output(&mut vm));
     assert_eq!(error.code, 500);

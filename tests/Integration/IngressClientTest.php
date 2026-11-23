@@ -147,7 +147,7 @@ final class IngressClientTest extends IntegrationTestCase
             $restate->serviceClient('IngressTargets')->request('fail', $failure)->call();
             self::fail('Expected a TerminalError.');
         } catch (TerminalError $e) {
-            self::assertSame(402, $e->code());
+            self::assertSame(402, $e->statusCode());
             self::assertSame('Card reported lost', $e->getMessage());
             self::assertSame(['reason' => 'lost'], $e->metadata());
         }
@@ -157,7 +157,7 @@ final class IngressClientTest extends IntegrationTestCase
             $sent->attach();
             self::fail('Expected a TerminalError.');
         } catch (TerminalError $e) {
-            self::assertSame(402, $e->code());
+            self::assertSame(402, $e->statusCode());
             self::assertSame(['reason' => 'lost'], $e->metadata());
         }
     }
@@ -191,7 +191,7 @@ final class IngressClientTest extends IntegrationTestCase
             self::client()->workflowClient('Checkout', self::key('never-submitted'))->attach();
             self::fail('Expected a TerminalError.');
         } catch (TerminalError $e) {
-            self::assertSame(404, $e->code());
+            self::assertSame(404, $e->statusCode());
         }
     }
 

@@ -214,8 +214,11 @@ final class Vm
     {
     }
 
-    /** Reports a retryable failure; `$retry_after_millis` asks Restate to wait that long before the next attempt. */
-    public function notifyError(string $message, string $stacktrace, ?int $retry_after_millis = null): void
+    /**
+     * Reports a retryable failure with `$code` (500 unless 400–599 and not 570); `$retry_after_millis` asks Restate to
+     * wait that long before the next attempt. The protocol's error message carries no metadata.
+     */
+    public function notifyError(int $code, string $message, string $stacktrace, ?int $retry_after_millis = null): void
     {
     }
 

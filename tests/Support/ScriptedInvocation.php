@@ -255,9 +255,9 @@ final class ScriptedInvocation implements Invocation, ReplayStateProvider
         $this->record(__FUNCTION__, [$code, $message, $metadata]);
     }
 
-    public function notifyError(string $message, string $stacktrace = '', ?int $retryAfterMillis = null): void
+    public function notifyError(string $message, string $stacktrace = '', ?int $retryAfterMillis = null, int $code = 500): void
     {
-        $this->record(__FUNCTION__, [$message, $stacktrace, $retryAfterMillis]);
+        $this->record(__FUNCTION__, [$message, $stacktrace, $retryAfterMillis, $code]);
     }
 
     public function notifyPause(string $message, string $stacktrace = ''): void

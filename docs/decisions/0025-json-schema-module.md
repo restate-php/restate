@@ -11,7 +11,7 @@ The JSON Schema module started as 7,644 lines in 82 files: an immutable builder 
 **What used which draft** (across the code, tests, examples, test services and docs):
 
 - Nothing outside the module used Draft-07 or 2019-09 except the facade methods that handed out their factories (`JsonSchema::draft07()`, `draft201909()`, `for()`), and `JsonSchemaMetadata::fromArray()`, which picked the raw-schema class of the draft a user-supplied document named in `$schema` (and rejected any other `$schema`).
-- DTO schema generation (`SchemaGenerator`, `JsonSchema::schemaFor()`), discovery inference (`Reflection\JsonSchemaInferer`, typed on `Draft202012\Schema`) and every `JsonSchema::…` shortcut build Draft 2020-12 only.
+- DTO schema generation (`SchemaGenerator`, `JsonSchema::schemaFor()`), discovery inference (`Reflection\Internal\JsonSchemaInferer`, typed on `Draft202012\Schema`) and every `JsonSchema::…` shortcut build Draft 2020-12 only.
 - The discovery manifest carries each payload's schema as a subschema, without `$schema` (`JsonSchemaMetadata::toManifestValue()`).
 - The only tests of the two older drafts were their own compatibility tests and the 2020-12 tests that checked a Draft-07 schema is rejected inside a 2020-12 one.
 

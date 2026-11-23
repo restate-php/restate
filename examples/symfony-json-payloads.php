@@ -9,6 +9,7 @@ use Restate\Endpoint;
 use Restate\JsonPayloadOptions;
 use Restate\JsonValueMappingContext;
 use Restate\Payload;
+use Restate\PayloadRole;
 use Restate\Service;
 use Symfony\Component\PropertyInfo\Extractor\ReflectionExtractor;
 use Symfony\Component\Serializer\Attribute\Context as SymfonyContext;
@@ -21,6 +22,8 @@ use Symfony\Component\Serializer\NameConverter\MetadataAwareNameConverter;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Serializer\Serializer;
+
+require dirname(__DIR__) . '/vendor/autoload.php';
 
 final class SymfonyUserSchemas
 {
@@ -92,8 +95,8 @@ $symfonySerializer = new Serializer([
 $adapter = new SymfonyJsonPayloadAdapter(
     $symfonySerializer,
     contextResolver: static fn (JsonValueMappingContext $context): array => match ($context->role) {
-        JsonValueMappingContext::ROLE_INPUT => ['groups' => ['user:write']],
-        JsonValueMappingContext::ROLE_OUTPUT => ['groups' => ['user:read']],
+        PayloadRole::Input => ['groups' => ['user:write']],
+        PayloadRole::Output => ['groups' => ['user:read']],
     },
 );
 

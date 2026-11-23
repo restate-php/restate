@@ -1,7 +1,7 @@
 # The package name is the PHP module name: ext-php-rs registers the module under
 # CARGO_PKG_NAME, so `extension_loaded('restate')` and `ext-restate` to Composer. The
 # version is the extension version (`Restate\Extension\version()`,
-# `phpversion('restate')`); docs/compatibility.md says when to bump it.
+# `phpversion('restate')`); RELEASING.md says when to bump it.
 [package]
 name = "restate"
 version = "0.1.0"

@@ -192,7 +192,7 @@ final class RunInterceptorTest extends TestCase
     public function testErrorMapperMayClassifyTheRunFailureAsRetryable(): void
     {
         $invocation = ScriptedInvocation::new();
-        $ctx = $this->context($invocation, errorMapper: static fn (\Throwable $e): RetryableError => new RetryableError('slow down', 250, $e, 503, ['provider' => 'acme']));
+        $ctx = $this->context($invocation, errorMapper: static fn (\Throwable $e): RetryableError => new RetryableError('slow down', 503, ['provider' => 'acme'], $e, 250));
 
         try {
             $ctx->run('charge', static fn (): never => throw new \OverflowException('rate limited'), RunRetryPolicy::fixedDelay(100));

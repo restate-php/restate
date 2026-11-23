@@ -7,7 +7,7 @@ namespace Restate\Tests\Unit\Sdk\Reflection;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
-use Restate\Reflection\JsonSchemaInferer;
+use Restate\Reflection\Internal\JsonSchemaInferer;
 use stdClass;
 
 final class JsonSchemaInfererFixture

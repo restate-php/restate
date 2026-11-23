@@ -50,5 +50,5 @@ User documentation lives in [`docs/`](docs/README.md): the guides for writing se
 - [Backend Architecture](docs/internals/architecture.md): how the packages, the extension and shared-core fit together.
 - [Conformance](docs/internals/conformance.md): how the upstream SDK test suite runs against the PHP test services.
 - [Public API Boundary](docs/decisions/0016-public-api-boundary.md): what is public API and what is internal (`Restate\Internal`).
-- [Bumping versions](docs/compatibility.md#bumping-versions): the version and contract rules for changes to the extension's surface.
+- [Bumping versions](RELEASING.md#bumping-versions): the version and contract rules for changes to the extension's surface.
 - [RELEASING.md](RELEASING.md): for maintainers, how a release is cut.

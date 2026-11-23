@@ -60,7 +60,7 @@ return Service::new('Pauses')
         static function () use ($attempt, $id): int {
             [$fixed, $attempts] = $attempt($id);
 
-            return $fixed ? $attempts : throw new RetryableError("unavailable (attempt {$attempts})", code: 503);
+            return $fixed ? $attempts : throw new RetryableError("unavailable (attempt {$attempts})", 503);
         },
         RunRetryPolicy::fixedDelay(10, maxAttempts: 2, onMaxAttempts: OnMaxAttempts::Pause),
     ))

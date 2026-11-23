@@ -146,7 +146,7 @@ final class ContextRunRetryTest extends TestCase
         $invocation = ScriptedInvocation::new();
         $ctx = Contexts::service($invocation);
         $policy = RunRetryPolicy::fixedDelay(100, 3, 1000);
-        $failure = new RetryableError('rate limited', 250);
+        $failure = new RetryableError('rate limited', retryAfterMillis: 250);
 
         try {
             $ctx->run('retryable-run', static fn (): never => throw $failure, $policy);
@@ -193,7 +193,7 @@ final class ContextRunRetryTest extends TestCase
         $invocation->retryableRunStatus = RunCompletionStatus::Completed;
         $ctx = Contexts::service($invocation);
         $policy = RunRetryPolicy::fixedDelay(10, maxAttempts: 2);
-        $failure = new RetryableError('unavailable', code: 503, metadata: ['retry-reason' => 'maintenance']);
+        $failure = new RetryableError('unavailable', 503, ['retry-reason' => 'maintenance']);
 
         try {
             $ctx->run('flaky', static fn (): never => throw $failure, $policy);
@@ -505,12 +505,11 @@ final class ContextRunRetryTest extends TestCase
     }
 
     /**
-     * @param int $code what PHP hands over: a RetryableError's exception code (the core keeps only failure codes), 500 for
-     *                  any other exception
+     * @param int $code what PHP hands over: a RetryableError's status code, 500 for any other exception
      * @param ?RunRetryPolicy $retryPolicy null means infinite
      * @param array<array-key, string> $metadata
      */
-    private static function assertSingleRetryableCompletion(ScriptedInvocation $invocation, string $message, ?RunRetryPolicy $retryPolicy, ?int $retryAfterMillis = null, int $code = 0, array $metadata = []): int
+    private static function assertSingleRetryableCompletion(ScriptedInvocation $invocation, string $message, ?RunRetryPolicy $retryPolicy, ?int $retryAfterMillis = null, int $code = 500, array $metadata = []): int
     {
         self::assertCount(1, $invocation->calls('proposeRunCompletionRetryable'));
         [$handle, $actualMessage, $attemptDurationMillis, $actualRetryPolicy, $actualRetryAfterMillis, $actualCode, $actualMetadata] = $invocation->calls('proposeRunCompletionRetryable')[0];

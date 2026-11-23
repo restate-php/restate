@@ -10,6 +10,8 @@ use Restate\Context;
 use Restate\HandlerDefinition;
 use Restate\ServiceDefinition;
 use Restate\Workflow;
+use Restate\ServiceType;
+use Restate\HandlerType;
 
 final class WorkflowTest extends TestCase
 {
@@ -24,12 +26,12 @@ final class WorkflowTest extends TestCase
             ->definition();
 
         self::assertSame('Checkout', $definition->name);
-        self::assertSame(ServiceDefinition::TYPE_WORKFLOW, $definition->type);
+        self::assertSame(ServiceType::Workflow, $definition->type);
         self::assertCount(2, $definition->handlers);
         self::assertSame('run', $definition->handlers[0]->name);
-        self::assertSame(HandlerDefinition::TYPE_WORKFLOW, $definition->handlers[0]->type);
+        self::assertSame(HandlerType::Workflow, $definition->handlers[0]->type);
         self::assertSame('approve', $definition->handlers[1]->name);
-        self::assertSame(HandlerDefinition::TYPE_SHARED, $definition->handlers[1]->type);
+        self::assertSame(HandlerType::Shared, $definition->handlers[1]->type);
     }
 
     public function testDuplicateSharedHandlerNamesAreRejected(): void

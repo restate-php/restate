@@ -19,6 +19,7 @@ use Restate\VirtualObject;
 use Restate\Workflow;
 use Restate\WorkflowContext;
 use Restate\WorkflowSharedContext;
+use Restate\ServiceType;
 
 /**
  * Selective state preloading: `InvocationConfiguration::$statePreload` (true = all state eager, false = all lazy, a list
@@ -184,6 +185,6 @@ final class StatePreloadTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Service Greeter has no state');
 
-        new ServiceDefinition('Greeter', [], ServiceDefinition::TYPE_SERVICE, invocationConfiguration: new InvocationConfiguration(statePreload: true));
+        new ServiceDefinition('Greeter', [], ServiceType::Service, invocationConfiguration: new InvocationConfiguration(statePreload: true));
     }
 }

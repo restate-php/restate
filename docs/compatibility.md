@@ -1,10 +1,10 @@
 # Compatibility
 
-Which versions of the SDK, the Restate PHP extension, PHP and the Restate server work together, and on which platforms. The last section is for maintainers: how to bump versions.
+Which versions of the SDK, the Restate PHP extension, PHP and the Restate server work together, and on which platforms. For maintainers, the rules for bumping the version and the contract version are in [RELEASING.md](../RELEASING.md#bumping-versions).
 
 ## Versions
 
-The Restate PHP extension (module `restate`, `ext-restate` to Composer, `restate/ext-restate` to PIE) is released together with the `restate/*` packages, at one version: `restate/sdk` `X.Y.Z` and `ext-restate` `X.Y.Z` come out together. The extension reports its version through `php --ri restate`, `phpversion('restate')` and `Restate\Extension\version()`, and Composer shows it for `ext-restate`.
+The Restate PHP extension (module `restate`, `ext-restate` to Composer, `restate/ext-restate` to PIE) is released together with the `restate/*` packages, at one version: `restate/sdk` `X.Y.Z` and `ext-restate` `X.Y.Z` come out together. The extension reports its version through `php --ri restate` and `phpversion('restate')`, and Composer shows it for `ext-restate`.
 
 | Version | `restate-sdk-shared-core` | Contract version | PHP versions | Prebuilt binaries | Restate server versions tested |
 | --- | --- | --- | --- | --- | --- |
@@ -14,7 +14,7 @@ The newest row is the version in the tree.
 
 **Matching the SDK and the extension.** `restate/sdk` requires the extension of its own minor version (`~X.Y.0`, now `~0.1.0`). So any patch release of the SDK works with any patch release of the extension of the same minor version. Composer enforces this when you install the SDK.
 
-**The contract version.** At run time the SDK does not check the extension's version number. It checks the contract version instead: the extension reports it (`Restate\Extension\contract_version()`), and the SDK compares it with the one it needs. The contract version says whether the two speak the same interface. It catches what Composer cannot see, such as an extension built from another commit of this repository. On a mismatch, or when the extension is not loaded, building an endpoint throws `BackendUnavailableException`. The message names both contract versions and the package version, and says which side to upgrade ([Troubleshooting](troubleshooting.md)).
+**The contract version.** At run time the SDK does not check the extension's version number. It checks the contract version instead: the extension reports it, and the SDK compares it with the one it needs. The contract version says whether the two speak the same interface. It catches what Composer cannot see, such as an extension built from another commit of this repository. On a mismatch, or when the extension is not loaded, building an endpoint throws `BackendUnavailableException`. The message names both contract versions and the package version, and says which side to upgrade ([Troubleshooting](troubleshooting.md)).
 
 ## Restate server versions
 
@@ -62,19 +62,6 @@ Prebuilt extension binaries, which PIE installs, exist for:
 | Debug builds of PHP | No | [Build from source](installation.md#building-from-source) |
 
 [Status](status.md#supported-platforms) has the evidence behind every row: which suites ran where.
-
-## Bumping versions
-
-<a id="how-to-bump"></a>
-This section is for maintainers. The version is the `version` in `extension/extension/Cargo.toml`; shared-core 8.7.2 speaks service protocol v5–v8, of which Restate 1.8 negotiates v7 and 1.7 v6.
-
-- **The version is the release's**, for the packages and the extension alike, by semantic versioning of the whole SDK: while it is 0.x, a new minor version for breaking changes and new features, a patch version for fixes. A release starts with the commit that sets it ([Release](decisions/0031-release.md#releasing)). A released version never changes; until a version is released, changes to the tree update its row instead of adding one.
-- **`restate/sdk`'s `ext-restate` constraint is `~X.Y.0` of that version**: a new minor version changes it in the same commit (`composer check:packages` fails otherwise).
-- **The contract version is bumped only by an incompatible change after a release.** It versions the extension surface (the classes, functions and argument and result shapes in `Restate\Extension`, described by `extension/restate.stub.php`) as released extensions carry it. `CONTRACT_VERSION` in `extension/extension/src/lib.rs` and `Backend::CONTRACT_VERSION` in `packages/sdk/src/Internal/Backend/Extension/Backend.php` always hold the same number and change in the same commit.
-  - **Until the first release it stays 1**, whatever changes: an incompatible change to the surface updates the unreleased row in place, like any other change, since before a release no extension with another number exists ([Composer Metadata](decisions/0026-composer-metadata.md#decision)).
-  - **After a release**, the first incompatible change to the surface since that release bumps the contract version by one. **It needs a new minor version**: `restate/sdk` accepts every extension of its minor version, so a patch release with a new contract version would accept an extension with the old one (the release workflow refuses it). Further incompatible changes before that version is released keep the number, so a release brings at most one new contract version.
-  - **Compatible changes never bump it**: a shared-core upgrade behind the same surface, a fix, a newly supported PHP minor.
-- **Update the table in the same commit** as the version bump or the change that alters a column: the version (`cargo` updates `extension/Cargo.lock`, which the release builds with `--locked`), the shared-core pin in `extension/core/Cargo.toml`, the contract version, the PHP matrix (with the `php` constraint of every `packages/*/composer.json`, the root `composer.json` and `extension/composer.json`, `phps` in `extension/flake.nix` and the `verify` matrix of `.github/workflows/extension.yaml`, see [Composer Metadata](decisions/0026-composer-metadata.md)), the prebuilt targets, or the server versions the suites ran against.
 
 ## Design notes
 

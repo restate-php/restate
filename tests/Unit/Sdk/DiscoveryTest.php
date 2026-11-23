@@ -36,6 +36,7 @@ use Restate\VirtualObject;
 use Restate\Workflow;
 use Restate\WorkflowContext;
 use Restate\WorkflowSharedContext;
+use Restate\PayloadRole;
 
 final class DiscoveryTestCustomSerde implements Serde
 {
@@ -77,11 +78,11 @@ final class DiscoveryTestSchemaProvider implements JsonSchemaProvider
 {
     public function schemaFor(JsonSchemaContext $context): JsonSchemaMetadata
     {
-        if ($context->role === JsonSchemaContext::ROLE_INPUT && $context->serviceName === 'Greeter' && $context->handlerName === 'greet') {
+        if ($context->role === PayloadRole::Input && $context->serviceName === 'Greeter' && $context->handlerName === 'greet') {
             return JsonSchemaMetadata::fromArray(['type' => 'string', 'description' => 'custom input schema']);
         }
 
-        if ($context->role === JsonSchemaContext::ROLE_OUTPUT && $context->serviceName === 'Greeter' && $context->handlerName === 'greet') {
+        if ($context->role === PayloadRole::Output && $context->serviceName === 'Greeter' && $context->handlerName === 'greet') {
             return JsonSchemaMetadata::fromArray(['type' => 'string', 'description' => 'custom output schema']);
         }
 
@@ -100,7 +101,7 @@ final class DiscoveryTestConfigurableSchemaProvider implements JsonSchemaProvide
 
     public function schemaFor(JsonSchemaContext $context): JsonSchemaMetadata
     {
-        $this->calls[] = "{$context->role}:{$context->serviceName}/{$context->handlerName}";
+        $this->calls[] = "{$context->role->value}:{$context->serviceName}/{$context->handlerName}";
 
         return $this->schema ?? throw UnsupportedJsonSchemaException::forContext($context);
     }

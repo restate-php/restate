@@ -101,12 +101,12 @@ Once the policy gives up, `onMaxAttempts` decides what happens:
 > [!NOTE]
 > `OnMaxAttempts::Pause` needs Restate 1.8 or newer. On 1.7 every retryable failure of such a step fails the attempt with error 573, and Restate retries it like any other failure ([Compatibility](../compatibility.md#restate-17)).
 
-The terminal failure keeps the last exception's message. Its status code is the exception's code when that is a failure status (400–599, except 570), and 500 otherwise, which covers every exception that is not a `RetryableError` with a code. The step's metadata comes from `RetryableError` only:
+The terminal failure keeps the last exception's message. Its status code and metadata come from a `RetryableError`, which takes them as `TerminalError` does (a status code of 400–599 other than 570, which Restate reserves); any other exception gives 500 and no metadata:
 
 ```php
 use Restate\RetryableError;
 
-throw new RetryableError('payment provider unavailable', code: 503, metadata: ['provider' => 'acme']);
+throw new RetryableError('payment provider unavailable', 503, ['provider' => 'acme']);
 ```
 
 `RunOptions` bundles a retry policy and a serializer: `RunOptions::none()`, `RunOptions::retryPolicy($policy)` and `RunOptions::serde($serde)` create one, `withRetryPolicy()` and `withSerde()` return a changed copy. A `$serde` argument passed to `$ctx->run()` wins over the serializer in `RunOptions`.

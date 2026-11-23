@@ -24,12 +24,13 @@ pub fn terminal_failure_code(code: i64) -> Result<u16> {
     Ok(code as u16)
 }
 
-/// The code a retryable run failure is submitted with, and becomes the run's
-/// terminal failure code with once its retry policy is exhausted: `code` when
-/// it is a failure code ([`TERMINAL_FAILURE_CODES`]) other than 570, else 500.
-/// A retryable error need not carry a status (PHP's default exception code is
-/// 0), so this never fails. 570 is excluded because shared-core treats it as
-/// a journal mismatch (on v7 it rewrites the error behaviour of 570 errors).
+/// The code a retryable failure is reported with: a handler's (the attempt's
+/// error code) or a run's (which becomes the run's terminal failure code once
+/// its retry policy is exhausted). `code` when it is a failure code
+/// ([`TERMINAL_FAILURE_CODES`]) other than 570, else 500. Any exception may
+/// fail an attempt (PHP's default exception code is 0), so this never fails.
+/// 570 is excluded because shared-core treats it as a journal mismatch (on v7
+/// it rewrites the error behaviour of 570 errors).
 pub fn retryable_failure_code(code: i64) -> u16 {
     const DEFAULT: u16 = 500;
     const JOURNAL_MISMATCH: u16 = restate_sdk_shared_core::error::codes::JOURNAL_MISMATCH.code();

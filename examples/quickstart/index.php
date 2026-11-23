@@ -16,6 +16,7 @@ use Restate\Endpoint;
 
 require __DIR__ . '/vendor/autoload.php';
 
-$logger = new StderrLogger(getenv('LOG_LEVEL') ?: 'info');
+$level = getenv('LOG_LEVEL');
+$logger = new StderrLogger($level !== false && $level !== '' ? $level : 'info');
 
 Endpoint::serve([new Greeter(new Notifications()), new Counter(), new Signup()], logger: $logger);

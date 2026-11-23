@@ -26,6 +26,8 @@ use Restate\Request;
 use Restate\ServiceDefinition;
 use Restate\TerminalError;
 use Restate\Tests\Support\FakeBackend;
+use Restate\ServiceType;
+use Restate\HandlerType;
 
 /**
  * Service classes instantiated per invocation attempt, by a factory or a PSR-11 container, and described without an
@@ -46,14 +48,14 @@ final class HandlerFactoryTest extends TestCase
         $definition = ServiceReflector::fromClass(FactoryGreeter::class, static fn (): never => throw new \LogicException('The factory must not run to describe the service.'));
 
         self::assertSame('FactoryGreeter', $definition->name);
-        self::assertSame(ServiceDefinition::TYPE_SERVICE, $definition->type);
+        self::assertSame(ServiceType::Service, $definition->type);
         self::assertSame(['greet', 'shout'], array_map(static fn (HandlerDefinition $h): string => $h->name, $definition->handlers));
         $greet = $definition->handlers[0];
         self::assertSame('Greets.', $greet->documentation);
         self::assertEquals(Payload::json(), $greet->inputPayload);
         self::assertSame('string', (string) $greet->inputType);
         self::assertSame('array', (string) $greet->outputType);
-        self::assertSame('greet', $greet->signature->getName());
+        self::assertSame('greet', $greet->signature()->getName());
         self::assertSame(0, FactoryGreeter::$constructed);
     }
 
@@ -173,8 +175,8 @@ final class HandlerFactoryTest extends TestCase
     {
         $definition = ServiceReflector::fromClass(FactoryCounter::class, static fn (): FactoryCounter => new FactoryCounter());
 
-        self::assertSame(ServiceDefinition::TYPE_VIRTUAL_OBJECT, $definition->type);
-        self::assertSame(['add' => HandlerDefinition::TYPE_EXCLUSIVE, 'get' => HandlerDefinition::TYPE_SHARED], array_column(array_map(static fn (HandlerDefinition $h): array => [$h->name, $h->type], $definition->handlers), 1, 0));
+        self::assertSame(ServiceType::VirtualObject, $definition->type);
+        self::assertSame(['add' => HandlerType::Exclusive, 'get' => HandlerType::Shared], array_column(array_map(static fn (HandlerDefinition $h): array => [$h->name, $h->type], $definition->handlers), 1, 0));
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('declares context Restate\ObjectContext');

@@ -23,7 +23,11 @@ use Restate\Target;
  */
 final readonly class ClientRequest
 {
-    /** @param array<string, string> $headers */
+    /**
+     * @param array<string, string> $headers
+     *
+     * @internal built by the clients {@see IngressClient} hands out
+     */
     public function __construct(
         private IngressClient $client,
         private Target $target,

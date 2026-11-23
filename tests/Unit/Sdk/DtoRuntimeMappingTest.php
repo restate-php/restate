@@ -74,6 +74,22 @@ final readonly class DtoRuntimeUnionB
     }
 }
 
+final class DtoRuntimeVirtualPropertyGreeting
+{
+    public string $full {
+        get => 'Hello, ' . $this->n;
+    }
+
+    public string $n;
+}
+
+final readonly class DtoRuntimeEmpty
+{
+    public function __construct()
+    {
+    }
+}
+
 final class DtoRuntimeMappingTest extends TestCase
 {
     public function testHydratesConstructorDtoInputAndNormalizesDtoOutput(): void
@@ -119,6 +135,36 @@ final class DtoRuntimeMappingTest extends TestCase
         $output = $registry->invoke('Users', 'update', '{"name":"Ada"}', $this->context());
 
         self::assertSame(['name' => 'Ada', 'age' => null], json_decode($output, true, flags: JSON_THROW_ON_ERROR));
+    }
+
+    public function testVirtualPropertiesAreNeitherHydratedNorNormalized(): void
+    {
+        $registry = new ServiceRegistry([
+            Service::new('Greeter')->handler(
+                'greet',
+                static function (Context $ctx, DtoRuntimeVirtualPropertyGreeting $greeting): DtoRuntimeVirtualPropertyGreeting {
+                    self::assertSame('Hello, v', $greeting->full);
+
+                    return $greeting;
+                },
+            ),
+        ]);
+
+        $output = $registry->invoke('Greeter', 'greet', '{"n":"v"}', $this->context());
+
+        self::assertSame('{"n":"v"}', $output);
+    }
+
+    public function testDtoWithoutFieldsNormalizesToJsonObject(): void
+    {
+        $registry = new ServiceRegistry([
+            Service::new('Users')->handler(
+                'touch',
+                static fn (Context $ctx, DtoRuntimeEmpty $input): DtoRuntimeEmpty => $input,
+            ),
+        ]);
+
+        self::assertSame('{}', $registry->invoke('Users', 'touch', '{}', $this->context()));
     }
 
     public function testMissingRequiredDtoFieldFailsAsBadRequest(): void

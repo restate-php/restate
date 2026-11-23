@@ -68,7 +68,7 @@ php -m | grep restate   # lists the module
 php --ri restate        # prints the extension version
 ```
 
-Check under the same PHP and SAPI that serves your endpoint: php-fpm and the CLI can read different php.ini files. From PHP code, `Restate\Extension\version()` returns the version.
+Check under the same PHP and SAPI that serves your endpoint: php-fpm and the CLI can read different php.ini files. From PHP code, `phpversion('restate')` returns the version.
 
 What can go wrong:
 

@@ -6,6 +6,7 @@ namespace Restate\Tests\Integration;
 
 use PHPUnit\Framework\Attributes\Group;
 use Restate\Tests\Integration\Support\HttpClient;
+use Restate\Tests\Integration\Support\IntegrationEndpoint;
 use Restate\Tests\Integration\Support\ProxiedTestCase;
 use Restate\Tests\Support\Faults\FaultProxy;
 
@@ -30,12 +31,22 @@ final class RequestStallTest extends ProxiedTestCase
     }
 
     /**
-     * More stalled requests than the endpoint has workers: the server reads request bodies before it runs PHP
-     * (`php -S` in its event loop, nginx and Caddy buffer them for php-fpm), so no worker waits on a stalled body and
-     * the endpoint keeps answering.
+     * Many stalled requests at once: `php -S` reads request bodies in its event loop before it runs PHP, and nginx
+     * and Caddy buffer them for php-fpm, so no worker waits on a stalled body and the endpoint keeps answering.
+     *
+     * FrankenPHP does not buffer: in classic mode the PHP thread reads the body itself (through the SAPI), so each
+     * stalled request holds a thread until its body arrives or `request_body_timeout` (60 s) cuts it off, and once
+     * every thread holds one, other requests, `/health` included, queue. With FrankenPHP's default `num_threads`
+     * (twice the CPUs: 8 on a 4-vCPU runner) the 12 stalls took every thread and `/health` timed out. The test
+     * Caddyfile (docker/frankenphp/integration.Caddyfile) pins 16 threads, so here it checks that a pool sized above
+     * the stalled requests keeps answering. Worker mode has the same limit with its worker threads (4 in the test
+     * Caddyfile), so it is skipped there.
      */
     public function testStalledRequestsDoNotExhaustThePool(): void
     {
+        if (IntegrationEndpoint::isWorker()) {
+            self::markTestSkipped('In worker mode each stalled body holds one of the 4 worker threads (docker/frankenphp/worker.Caddyfile), fewer than the 12 stalls.');
+        }
         self::proxy()->fault(FaultProxy::STALL_REQUEST, connections: 12, milliseconds: 3000);
         $ids = [];
         for ($i = 0; $i < 12; $i++) {

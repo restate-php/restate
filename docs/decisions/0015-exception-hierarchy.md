@@ -15,6 +15,7 @@ Accepted. Builds on [Suspension Is Not an Exception](0013-suspension-is-not-an-e
    | `Restate\PauseError` | `\RuntimeException` | yes | A failure that pauses the invocation until someone resumes it ([Pause](0021-pause.md)). |
    | `Restate\BackendUnavailableException` | `\RuntimeException` | yes | The extension is missing or speaks another contract version. |
    | `Restate\JsonMappingException`, `Restate\UnsupportedJsonSchemaException` | `\RuntimeException` | yes | JSON mapping and schema failures. |
+   | `Restate\JsonSchema\Generation\UnsupportedJsonSchemaTypeException` | `\InvalidArgumentException` | yes | A DTO property type that DTO JSON Schema Generation cannot describe. |
    | `Restate\DurableFutureAggregateException` | `\RuntimeException` | yes | Every future passed to `Context::any()` failed. |
    | `Restate\Internal\BackendException` | `\RuntimeException` | internal | An extension backend failure, with a `BackendErrorCategory`. |
 

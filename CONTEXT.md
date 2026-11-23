@@ -170,7 +170,7 @@ Everything the PHP extension defines, all in the internal `Restate\Extension` na
 
 ### Contract Version
 
-The integer version of the Extension Surface, returned by `Restate\Extension\contract_version()`. The extension and the Composer package are installed separately, so constructing the extension backend checks that the loaded extension's contract version equals the one the package was written for (`Backend::CONTRACT_VERSION`) and otherwise fails with both versions and how to fix it. It is 1 until the first release; after that, an incompatible change to the Extension Surface bumps it in the Rust crate and the PHP backend together, at most once per release and only in a new minor version (`docs/compatibility.md`). It is independent of the Extension Version.
+The integer version of the Extension Surface, returned by `Restate\Extension\contract_version()`. The extension and the Composer package are installed separately, so constructing the extension backend checks that the loaded extension's contract version equals the one the package was written for (`Backend::CONTRACT_VERSION`) and otherwise fails with both versions and how to fix it. It is 1 until the first release; after that, an incompatible change to the Extension Surface bumps it in the Rust crate and the PHP backend together, at most once per release and only in a new minor version (`RELEASING.md`, "Bumping versions"). It is independent of the Extension Version.
 
 ### Extension Version
 

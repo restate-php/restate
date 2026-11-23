@@ -15,6 +15,7 @@ use Restate\JsonSchemaMetadata;
 use Restate\JsonSerde;
 use Restate\JsonValueMappingContext;
 use Restate\Payload;
+use Restate\PayloadRole;
 use Restate\Reflection\BuiltinJsonValueMapper;
 use Restate\Serde;
 use Restate\ServiceDefinition;
@@ -33,7 +34,7 @@ final readonly class EffectiveHandlerPayload
         private string $handlerName,
         private Payload $payload,
         private ?ReflectionType $type,
-        private string $role,
+        private PayloadRole $role,
         private JsonPayloadOptions $jsonPayloads,
     ) {
     }
@@ -43,9 +44,9 @@ final readonly class EffectiveHandlerPayload
         return new self(
             $service->name,
             $handler->name,
-            self::resolve($handler->inputPayload, $handler->inputPayloadExplicit, self::defaultSerdeFor($service, $endpointDefaultSerde)),
+            self::resolve($handler->inputPayload, $handler->isInputPayloadExplicit(), self::defaultSerdeFor($service, $endpointDefaultSerde)),
             $handler->inputType,
-            JsonValueMappingContext::ROLE_INPUT,
+            PayloadRole::Input,
             $jsonPayloads,
         );
     }
@@ -55,9 +56,9 @@ final readonly class EffectiveHandlerPayload
         return new self(
             $service->name,
             $handler->name,
-            self::resolve($handler->outputPayload, $handler->outputPayloadExplicit, self::defaultSerdeFor($service, $endpointDefaultSerde)),
+            self::resolve($handler->outputPayload, $handler->isOutputPayloadExplicit(), self::defaultSerdeFor($service, $endpointDefaultSerde)),
             $handler->outputType,
-            JsonValueMappingContext::ROLE_OUTPUT,
+            PayloadRole::Output,
             $jsonPayloads,
         );
     }
@@ -67,14 +68,18 @@ final readonly class EffectiveHandlerPayload
     {
         $schema = $this->resolvedJsonSchema();
 
-        return $this->role === JsonValueMappingContext::ROLE_INPUT
+        return $this->role === PayloadRole::Input
             ? $this->payload->inputManifest($schema)
             : $this->payload->outputManifest($schema);
     }
 
-    public function decodeInput(string $input, JournalValueCodec $journalValueCodec): mixed
+    /**
+     * @param ?\ReflectionFunctionAbstract $signature the handler's signature, for the payload parameter's default when
+     *        the body is empty; passed per call so that building an endpoint creates no ReflectionParameter objects
+     */
+    public function decodeInput(string $input, JournalValueCodec $journalValueCodec, ?\ReflectionFunctionAbstract $signature = null): mixed
     {
-        if ($this->role !== JsonValueMappingContext::ROLE_INPUT) {
+        if ($this->role !== PayloadRole::Input) {
             throw new LogicException('Output payloads cannot decode handler input.');
         }
 
@@ -99,6 +104,10 @@ final readonly class EffectiveHandlerPayload
             }
         }
 
+        if ($input === '') {
+            return $this->emptyJsonInput($signature);
+        }
+
         try {
             $decodedInput = $journalValueCodec->decode($input);
             $value = $serde === null ? json_decode($decodedInput, true, flags: JSON_THROW_ON_ERROR) : $serde->deserialize($decodedInput);
@@ -117,7 +126,7 @@ final readonly class EffectiveHandlerPayload
 
     public function encodeOutput(mixed $result, JournalValueCodec $journalValueCodec): string
     {
-        if ($this->role !== JsonValueMappingContext::ROLE_OUTPUT) {
+        if ($this->role !== PayloadRole::Output) {
             throw new LogicException('Input payloads cannot encode handler output.');
         }
 
@@ -151,6 +160,28 @@ final readonly class EffectiveHandlerPayload
         $bytes = $serde === null ? json_encode($result, JSON_THROW_ON_ERROR) : $serde->serialize($result);
 
         return $journalValueCodec->encode($bytes);
+    }
+
+    /**
+     * A JSON input without a body: discovery advertises the input as optional unless it is declared required, and a
+     * caller sends a null payload as no body (the ingress client does). No JSON value encodes to no bytes, so it is
+     * no value: the parameter's default when it has one, null when its type accepts null (a nullable or `mixed`
+     * parameter, or an untyped one), and a 400 otherwise. Neither the Journal Value Codec nor JSON Value Mapping
+     * sees it.
+     */
+    private function emptyJsonInput(?\ReflectionFunctionAbstract $signature): mixed
+    {
+        // The payload parameter follows the context, as HandlerPayloadInferer reads it.
+        $parameter = $signature?->getParameters()[1] ?? null;
+        if ($parameter?->isDefaultValueAvailable() === true) {
+            return $parameter->getDefaultValue();
+        }
+
+        if ($this->type === null || $this->type->allowsNull()) {
+            return null;
+        }
+
+        throw new TerminalError("{$this->serviceName}/{$this->handlerName} requires an input payload, but the request has no body.", 400);
     }
 
     /**
@@ -204,6 +235,19 @@ final readonly class EffectiveHandlerPayload
         return new JsonValueMappingContext($this->type, $this->role, $this->serviceName, $this->handlerName);
     }
 
+    /**
+     * A DTO the built-in mapper cannot describe (two properties mapped to one JSON name) is a programming error no retry
+     * fixes, so it fails the invocation terminally, like a type without DTO mapping.
+     */
+    private static function builtInMapperSupports(BuiltinJsonValueMapper $mapper, JsonValueMappingContext $context): bool
+    {
+        try {
+            return $mapper->supports($context);
+        } catch (\InvalidArgumentException $e) {
+            throw new TerminalError($e->getMessage(), 500);
+        }
+    }
+
     private function mapJsonInput(mixed $value, mixed $builtInValue, JsonValueMappingContext $context): mixed
     {
         $customMapper = $this->jsonPayloads->valueMapper();
@@ -212,7 +256,7 @@ final readonly class EffectiveHandlerPayload
         }
 
         $builtInMapper = new BuiltinJsonValueMapper();
-        if ($builtInMapper->supports($context)) {
+        if (self::builtInMapperSupports($builtInMapper, $context)) {
             return $builtInMapper->hydrate($builtInValue, $context);
         }
 
@@ -231,7 +275,7 @@ final readonly class EffectiveHandlerPayload
         }
 
         $builtInMapper = new BuiltinJsonValueMapper();
-        if ($builtInMapper->supports($context)) {
+        if (self::builtInMapperSupports($builtInMapper, $context)) {
             return $builtInMapper->normalize($value, $context);
         }
 

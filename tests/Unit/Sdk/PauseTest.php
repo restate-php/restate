@@ -194,7 +194,7 @@ final class PauseTest extends TestCase
         $ctx = Contexts::service($invocation);
 
         try {
-            $ctx->run('charge', static fn (): never => throw new RetryableError('unavailable', code: 503), $policy);
+            $ctx->run('charge', static fn (): never => throw new RetryableError('unavailable', 503), $policy);
             self::fail('Expected the attempt to end.');
         } catch (SuspensionException $e) {
             self::assertSame('Run retry scheduled, or the invocation paused because the run retry policy is exhausted.', $e->getMessage());

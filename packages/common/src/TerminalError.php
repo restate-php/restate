@@ -34,11 +34,6 @@ class TerminalError extends \RuntimeException implements Exception
         parent::__construct($message, $statusCode, $previous);
     }
 
-    public function code(): int
-    {
-        return $this->statusCode;
-    }
-
     public function statusCode(): int
     {
         return $this->statusCode;

@@ -10,6 +10,8 @@ use Restate\Context;
 use Restate\HandlerDefinition;
 use Restate\ServiceDefinition;
 use Restate\VirtualObject;
+use Restate\ServiceType;
+use Restate\HandlerType;
 
 final class VirtualObjectTest extends TestCase
 {
@@ -24,12 +26,12 @@ final class VirtualObjectTest extends TestCase
             ->definition();
 
         self::assertSame('Counter', $definition->name);
-        self::assertSame(ServiceDefinition::TYPE_VIRTUAL_OBJECT, $definition->type);
+        self::assertSame(ServiceType::VirtualObject, $definition->type);
         self::assertCount(2, $definition->handlers);
         self::assertSame('add', $definition->handlers[0]->name);
-        self::assertSame(HandlerDefinition::TYPE_EXCLUSIVE, $definition->handlers[0]->type);
+        self::assertSame(HandlerType::Exclusive, $definition->handlers[0]->type);
         self::assertSame('get', $definition->handlers[1]->name);
-        self::assertSame(HandlerDefinition::TYPE_SHARED, $definition->handlers[1]->type);
+        self::assertSame(HandlerType::Shared, $definition->handlers[1]->type);
     }
 
     public function testDuplicateHandlerNamesAreRejectedAcrossExclusiveAndSharedHandlers(): void

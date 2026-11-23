@@ -12,6 +12,7 @@ use Restate\Payload;
 use Restate\Service;
 use Restate\VirtualObject;
 use Restate\Workflow;
+use Restate\HandlerType;
 
 final class ServiceBuilderTest extends TestCase
 {
@@ -33,9 +34,9 @@ final class ServiceBuilderTest extends TestCase
             ->sharedHandler('get', static fn (Context $ctx): int => 1, output: Payload::json(['type' => 'integer']))
             ->definition();
 
-        self::assertSame(HandlerDefinition::TYPE_EXCLUSIVE, $definition->handlers[0]->type);
+        self::assertSame(HandlerType::Exclusive, $definition->handlers[0]->type);
         self::assertSame(['required' => false, 'contentType' => 'application/json', 'jsonSchema' => ['type' => 'integer']], $definition->handlers[0]->inputPayload->inputManifest());
-        self::assertSame(HandlerDefinition::TYPE_SHARED, $definition->handlers[1]->type);
+        self::assertSame(HandlerType::Shared, $definition->handlers[1]->type);
         self::assertSame(['setContentTypeIfEmpty' => false, 'contentType' => 'application/json', 'jsonSchema' => ['type' => 'integer']], $definition->handlers[1]->outputPayload->outputManifest());
     }
 
@@ -49,10 +50,10 @@ final class ServiceBuilderTest extends TestCase
             ->sharedHandler('status', static fn (Context $ctx): string => 'ok', output: $statusOutput)
             ->definition();
 
-        self::assertSame(HandlerDefinition::TYPE_WORKFLOW, $definition->handlers[0]->type);
+        self::assertSame(HandlerType::Workflow, $definition->handlers[0]->type);
         self::assertSame($runInput, $definition->handlers[0]->inputPayload);
         self::assertSame(['required' => false, 'contentType' => 'application/json', 'jsonSchema' => ['type' => 'string']], $definition->handlers[0]->inputPayload->inputManifest());
-        self::assertSame(HandlerDefinition::TYPE_SHARED, $definition->handlers[1]->type);
+        self::assertSame(HandlerType::Shared, $definition->handlers[1]->type);
         self::assertSame($statusOutput, $definition->handlers[1]->outputPayload);
         self::assertSame(['setContentTypeIfEmpty' => false, 'contentType' => 'application/json', 'jsonSchema' => ['type' => 'string']], $definition->handlers[1]->outputPayload->outputManifest());
     }

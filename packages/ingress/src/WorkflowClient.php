@@ -14,7 +14,11 @@ use Restate\Target;
  */
 final readonly class WorkflowClient
 {
-    /** @param ?string $scope the scope the run is in ({@see IngressClient::scope()}); null for none */
+    /**
+     * @param ?string $scope the scope the run is in ({@see IngressClient::scope()}); null for none
+     *
+     * @internal built by {@see IngressClient::workflowClient()} and {@see Scope::workflowClient()}
+     */
     public function __construct(
         private IngressClient $client,
         private string $workflow,

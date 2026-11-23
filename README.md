@@ -31,7 +31,8 @@ records, so they run to completion across crashes, restarts and deploys.
 - **Ingress client and test harness**: [call services from your app](docs/ingress-client.md);
   [test in PHPUnit](docs/develop/testing.md) against a real Restate server.
 - **Restate's own core**: the [Rust core](https://crates.io/crates/restate-sdk-shared-core) of the official SDKs, as
-  a PHP extension. Passes their full [conformance suite](docs/internals/conformance.md).
+  a PHP extension. Passes the [end-to-end suite](docs/internals/conformance.md) the official SDKs run upstream (not an
+  official conformance claim).
 
 ## Example
 
@@ -70,7 +71,8 @@ final class Counter
     #[Restate\Handler]
     public function add(ObjectContext $ctx, int $amount): int
     {
-        $count = ($ctx->get('count') ?? 0) + $amount;
+        $count = $ctx->get('count'); // decoded JSON, or null for a key without a value
+        $count = (is_int($count) ? $count : 0) + $amount;
         $ctx->set('count', $count);
 
         return $count;
@@ -92,6 +94,9 @@ git clone https://github.com/restate-php/restate.git
 cd restate/examples/quickstart
 ```
 
+The quickstart installs the released extension and packages. If `main` has changed since the latest release, check
+out that release's tag first (`git checkout v0.1.0`, for example).
+
 ```bash
 docker compose up --build -d
 ./scripts/greet.sh Sarah            # {"message":"You said hi to Sarah!"}, about 5 seconds later
@@ -104,7 +109,7 @@ Object, and a Workflow waiting for an event.
 
 ### Without Docker
 
-You need PHP 8.4 or newer with the Restate extension ([Installation](docs/installation.md)), Composer, and a
+You need PHP 8.4, 8.5 or 8.6 with the Restate extension ([Installation](docs/installation.md)), Composer, and a
 Restate server ([`restate-server`](https://docs.restate.dev/installation), or the Docker image).
 
 ```bash
@@ -153,7 +158,7 @@ restate-server
 ```bash
 # In a third terminal. PHP's built-in server speaks HTTP/1.1 only, hence use_http_11.
 curl localhost:9070/deployments --json '{"uri": "http://localhost:9080", "use_http_11": true}'
-curl localhost:8080/restate/call/Greeter/greet --json '"Mary"'    # "Hello Mary"
+curl localhost:8080/Greeter/greet --json '"Mary"'    # "Hello Mary"
 ```
 
 If Restate runs in Docker instead, start it with

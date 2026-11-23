@@ -218,7 +218,7 @@ use Restate\TerminalError;
 try {
     $restate->serviceClient('Payments')->request('charge', $order)->call();
 } catch (TerminalError $e) {
-    // The handler failed: $e->code(), $e->getMessage(), $e->metadata().
+    // The handler failed: $e->statusCode(), $e->getMessage(), $e->metadata().
 } catch (IngressException $e) {
     // Restate was not reachable, or refused the request.
 }

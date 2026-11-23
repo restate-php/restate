@@ -16,6 +16,7 @@ use Restate\Internal\BackendErrorCategory;
 use Restate\Internal\BackendException;
 use Restate\Internal\SuspensionException;
 use Restate\JsonMappingException;
+use Restate\JsonSchema\Generation\UnsupportedJsonSchemaTypeException;
 use Restate\PauseError;
 use Restate\RetryableError;
 use Restate\TerminalError;
@@ -33,6 +34,7 @@ final class ErrorNamingTest extends TestCase
         yield 'backend unavailable' => [new BackendUnavailableException('not loaded')];
         yield 'json mapping' => [JsonMappingException::at('$.id', 'expected int')];
         yield 'unsupported json schema' => [new UnsupportedJsonSchemaException('unsupported')];
+        yield 'unsupported json schema type' => [UnsupportedJsonSchemaTypeException::forProperty('Order', 'items', 'array')];
         yield 'durable future aggregate' => [new DurableFutureAggregateException([])];
     }
 
@@ -69,7 +71,6 @@ final class ErrorNamingTest extends TestCase
     {
         $exception = new TerminalError('declined', 402, ['reason' => 'card']);
 
-        self::assertSame(402, $exception->code());
         self::assertSame(402, $exception->statusCode());
         self::assertSame(['reason' => 'card'], $exception->metadata());
     }
@@ -79,37 +80,65 @@ final class ErrorNamingTest extends TestCase
         $exception = new RetryableError('');
 
         self::assertSame('', $exception->getMessage());
-        self::assertSame(0, $exception->getCode());
+        self::assertSame(500, $exception->statusCode());
+        self::assertSame(500, $exception->getCode());
+        self::assertSame([], $exception->metadata());
+        self::assertNull($exception->getPrevious());
         self::assertNull($exception->retryAfterMillis());
     }
 
-    public function testRetryableErrorPreservesCodeAndPrevious(): void
+    /** The constructor mirrors TerminalError's, with the retry-after delay last. */
+    public function testRetryableErrorTakesItsArgumentsInTerminalErrorOrder(): void
     {
         $previous = new \RuntimeException('inner');
-        $exception = new RetryableError('try again', previous: $previous, code: 123);
+        $exception = new RetryableError('unavailable', 503, ['retry-reason' => 'maintenance', '503' => 'numeric key'], $previous, 250);
 
-        self::assertSame('try again', $exception->getMessage());
-        self::assertSame(123, $exception->getCode());
+        self::assertSame('unavailable', $exception->getMessage());
+        self::assertSame(503, $exception->statusCode());
+        self::assertSame(503, $exception->getCode());
+        self::assertSame(['retry-reason' => 'maintenance', '503' => 'numeric key'], $exception->metadata());
         self::assertSame($previous, $exception->getPrevious());
-        self::assertNull($exception->retryAfterMillis());
-    }
-
-    public function testRetryableErrorUsesRetryAfterMillisAndDefaultExceptionCode(): void
-    {
-        $exception = new RetryableError('try later', 250);
-
-        self::assertSame('try later', $exception->getMessage());
-        self::assertSame(0, $exception->getCode());
         self::assertSame(250, $exception->retryAfterMillis());
     }
 
-    public function testRetryableErrorCarriesCodeAndMetadata(): void
+    public function testRetryableErrorTakesARetryAfterByName(): void
     {
-        $exception = new RetryableError('unavailable', code: 503, metadata: ['retry-reason' => 'maintenance', '503' => 'numeric key']);
+        $exception = new RetryableError('try later', retryAfterMillis: 250);
 
-        self::assertSame(503, $exception->getCode());
-        self::assertSame(['retry-reason' => 'maintenance', '503' => 'numeric key'], $exception->metadata());
-        self::assertSame([], new RetryableError('unavailable')->metadata());
+        self::assertSame(500, $exception->statusCode());
+        self::assertSame(250, $exception->retryAfterMillis());
+    }
+
+    /** @return iterable<string, array{int}> */
+    public static function invalidRetryableStatusCodes(): iterable
+    {
+        yield 'zero' => [0];
+        yield 'success' => [200];
+        yield 'below the failure range' => [399];
+        yield 'above the failure range' => [600];
+    }
+
+    #[DataProvider('invalidRetryableStatusCodes')]
+    public function testRetryableErrorRejectsAStatusCodeThatIsNotAFailure(int $statusCode): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Retryable status code must be between 400 and 599.');
+
+        new RetryableError('unavailable', $statusCode);
+    }
+
+    public function testRetryableErrorRejectsTheJournalMismatchStatusCode(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Retryable status code must not be 570, which Restate reserves for journal mismatches.');
+
+        new RetryableError('unavailable', 570);
+    }
+
+    public function testRetryableErrorAcceptsTheBoundsOfTheFailureRange(): void
+    {
+        self::assertSame(400, new RetryableError('bad', 400)->statusCode());
+        self::assertSame(599, new RetryableError('bad', 599)->statusCode());
     }
 
     public function testRetryableErrorRejectsMetadataThatIsNotAStringMap(): void
@@ -125,7 +154,7 @@ final class ErrorNamingTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Retry-after delay must be greater than or equal to 0 milliseconds.');
 
-        new RetryableError('try later', -1);
+        new RetryableError('try later', retryAfterMillis: -1);
     }
 
     public function testContextAwakeableRejectionAcceptsTerminalError(): void

@@ -15,6 +15,7 @@ use Restate\VirtualObject;
 use Restate\Workflow;
 use Restate\WorkflowContext;
 use Restate\WorkflowSharedContext;
+use Restate\ServiceType;
 
 final class DefinitionMetadataTest extends TestCase
 {
@@ -33,7 +34,7 @@ final class DefinitionMetadataTest extends TestCase
         $service = new ServiceDefinition(
             'Greeter',
             [$handler],
-            ServiceDefinition::TYPE_SERVICE,
+            ServiceType::Service,
             documentation: 'Greeter service.',
             metadata: ['domain' => 'examples'],
             invocationRetryPolicy: $servicePolicy,

@@ -67,11 +67,11 @@ log=$(docker compose logs --no-log-prefix greeter | grep -F "$id")
 expect "kill-and-resume: notifications sent" 1 "$(grep -c 'Notification sent' <<<"$log")"
 expect "kill-and-resume: reminders sent" 1 "$(grep -c 'Reminder sent' <<<"$log")"
 
-expect "Counter add 1" 1 "$(curl -fsS "$ingress/restate/call/Counter/smoke/add" --json 1)"
-expect "Counter add 2" 3 "$(curl -fsS "$ingress/restate/call/Counter/smoke/add" --json 2)"
-expect "Counter get" 3 "$(curl -fsS -X POST "$ingress/restate/call/Counter/smoke/get")"
+expect "Counter add 1" 1 "$(curl -fsS "$ingress/Counter/smoke/add" --json 1)"
+expect "Counter add 2" 3 "$(curl -fsS "$ingress/Counter/smoke/add" --json 2)"
+expect "Counter get" 3 "$(curl -fsS -X POST "$ingress/Counter/smoke/get")"
 
-curl -fsS "$ingress/restate/send/Signup/smoke/run" --json '"smoke@example.com"' > /dev/null
+curl -fsS "$ingress/Signup/smoke/run/send" --json '"smoke@example.com"' > /dev/null
 secret=""
 for _ in $(seq 1 30); do
     secret=$(docker compose logs --no-log-prefix greeter | grep -o 'Verification secret for smoke@example.com: [0-9a-f-]*' | awk '{print $NF}' | tail -n 1)
@@ -79,7 +79,7 @@ for _ in $(seq 1 30); do
     sleep 1
 done
 [[ -n "$secret" ]] || fail "Signup: no verification secret in the log"
-curl -fsS "$ingress/restate/call/Signup/smoke/click" --json "\"$secret\"" > /dev/null
+curl -fsS "$ingress/Signup/smoke/click" --json "\"$secret\"" > /dev/null
 expect "Signup result" '"Welcome, smoke@example.com!"' "$(curl -fsS "$ingress/restate/workflow/Signup/smoke/attach")"
 
 echo "The quickstart works."

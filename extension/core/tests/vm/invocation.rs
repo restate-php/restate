@@ -224,13 +224,39 @@ fn a_terminal_failure_message_that_is_not_utf8_is_substituted() {
 fn a_retryable_error_ends_the_attempt_with_an_error_message() {
     let mut vm = Invocation::new().running();
 
-    vm.notify_error(b"caf\xe9 failed".to_vec(), b"at h\xe9".to_vec(), None);
+    vm.notify_error(500, b"caf\xe9 failed".to_vec(), b"at h\xe9".to_vec(), None);
 
     let error: ErrorMessage = single(&output(&mut vm));
     assert_eq!(error.code, 500);
     assert_eq!(error.message, "caf\u{fffd} failed");
     assert_eq!(error.stacktrace, "at h\u{fffd}");
     assert!(vm.take_output().is_none(), "the response is complete");
+}
+
+/// A handler's retryable error carries its status code when it is a failure
+/// code other than 570 (a journal mismatch to shared-core); anything else is
+/// reported as 500.
+#[test]
+fn a_retryable_error_carries_its_failure_code() {
+    for (content_type, code, expected) in [
+        (V5, 503, 503),
+        (V7, 503, 503),
+        (V7, 400, 400),
+        (V7, 599, 599),
+        (V7, 0, 500),
+        (V7, 200, 500),
+        (V7, 570, 500),
+        (V7, 600, 500),
+        (V7, -1, 500),
+    ] {
+        let mut vm = Invocation::new().content_type(content_type).running();
+
+        vm.notify_error(code, b"unavailable".to_vec(), b"".to_vec(), None);
+
+        let error: ErrorMessage = single(&output(&mut vm));
+        assert_eq!(error.code, expected, "{content_type} {code}");
+        assert_eq!(error.message, "unavailable");
+    }
 }
 
 /// A handler's retryable error may ask for the delay before the next attempt;
@@ -245,7 +271,7 @@ fn a_retryable_error_may_ask_for_a_retry_delay() {
     ] {
         let mut vm = Invocation::new().content_type(content_type).running();
 
-        vm.notify_error(b"rate limited".to_vec(), b"".to_vec(), retry_after);
+        vm.notify_error(500, b"rate limited".to_vec(), b"".to_vec(), retry_after);
 
         let error: ErrorMessage = single(&output(&mut vm));
         assert_eq!(error.message, "rate limited");

@@ -21,7 +21,7 @@ final class Counter
     #[Restate\Handler]
     public function add(ObjectContext $ctx, int $amount): int
     {
-        $count = ($ctx->get('count') ?? 0) + $amount;
+        $count = self::count($ctx) + $amount;
         $ctx->set('count', $count);
 
         return $count;
@@ -34,6 +34,16 @@ final class Counter
     #[Restate\Shared]
     public function get(ObjectSharedContext $ctx): int
     {
-        return $ctx->get('count') ?? 0;
+        return self::count($ctx);
+    }
+
+    /**
+     * State comes back as decoded JSON (`mixed`), or null for a key without a value.
+     */
+    private static function count(ObjectSharedContext $ctx): int
+    {
+        $count = $ctx->get('count');
+
+        return is_int($count) ? $count : 0;
     }
 }

@@ -31,5 +31,19 @@ services:
                 - Restate\AttachTarget::toArray
                 - Restate\RunRetryPolicy::toArray
                 - Restate\Ingress\Invocation::__construct
+                - Restate\HandlerDefinition::signature
+                - Restate\HandlerDefinition::isInputPayloadExplicit
+                - Restate\HandlerDefinition::isOutputPayloadExplicit
+                - Restate\ClientRequest::__construct
+                - Restate\ServiceClient::__construct
+                - Restate\ObjectClient::__construct
+                - Restate\WorkflowClient::__construct
+                - Restate\Scope::__construct
+                - Restate\Request::__construct
+                - Restate\Ingress\ClientRequest::__construct
+                - Restate\Ingress\ServiceClient::__construct
+                - Restate\Ingress\ObjectClient::__construct
+                - Restate\Ingress\WorkflowClient::__construct
+                - Restate\Ingress\Scope::__construct
         tags:
             - phpstan.rules.rule

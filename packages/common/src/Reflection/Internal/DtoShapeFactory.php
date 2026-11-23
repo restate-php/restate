@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Restate\Reflection;
+namespace Restate\Reflection\Internal;
 
+use InvalidArgumentException;
 use ReflectionClass;
 use ReflectionEnum;
 use ReflectionNamedType;
@@ -13,11 +14,17 @@ use ReflectionType;
 use ReflectionUnionType;
 use Restate\JsonSchema\Attributes\JsonName;
 
+/**
+ * Builds the {@see DtoShape} of a Mapping-Safe DTO class, or null when built-in DTO Mapping cannot handle the class.
+ *
+ * @internal
+ */
 final class DtoShapeFactory
 {
     /**
      * @param ReflectionClass<object> $class
      * @param array<class-string, true> $seen
+     * @throws InvalidArgumentException when two fields of the class, or of a DTO it contains, map to the same JSON name
      */
     public static function shapeFor(ReflectionClass $class, array $seen = []): ?DtoShape
     {
@@ -72,12 +79,12 @@ final class DtoShapeFactory
         }
 
         foreach ($class->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
-            if (!$property->isStatic() && $property->hasType() && !isset($mappedProperties[$property->getName()])) {
+            if (self::isField($property) && $property->hasType() && !isset($mappedProperties[$property->getName()])) {
                 return null;
             }
         }
 
-        return new DtoShape($class, DtoShape::MODE_CONSTRUCTOR, $fields);
+        return new DtoShape($class, DtoShape::MODE_CONSTRUCTOR, self::assertDistinctJsonNames($class, $fields));
     }
 
     /**
@@ -101,7 +108,7 @@ final class DtoShapeFactory
 
         $properties = array_filter(
             $class->getProperties(ReflectionProperty::IS_PUBLIC),
-            static fn (ReflectionProperty $property): bool => !$property->isStatic(),
+            self::isField(...),
         );
         usort($properties, static fn (ReflectionProperty $a, ReflectionProperty $b): int => $a->getName() <=> $b->getName());
 
@@ -119,7 +126,42 @@ final class DtoShapeFactory
             return null;
         }
 
-        return new DtoShape($class, DtoShape::MODE_PROPERTY, $fields);
+        return new DtoShape($class, DtoShape::MODE_PROPERTY, self::assertDistinctJsonNames($class, $fields));
+    }
+
+    /**
+     * Whether a public property is part of the JSON Wire Shape: static properties and virtual (hooked, unbacked)
+     * properties hold no per-object data, so they are neither written nor read.
+     */
+    private static function isField(ReflectionProperty $property): bool
+    {
+        return !$property->isStatic() && !$property->isVirtual();
+    }
+
+    /**
+     * @param ReflectionClass<object> $class
+     * @param list<DtoField> $fields
+     * @return list<DtoField>
+     */
+    private static function assertDistinctJsonNames(ReflectionClass $class, array $fields): array
+    {
+        $byJsonName = [];
+        foreach ($fields as $field) {
+            $other = $byJsonName[$field->jsonName] ?? null;
+            if ($other !== null) {
+                throw new InvalidArgumentException(sprintf(
+                    'DTO %s maps properties $%s and $%s to the same JSON name "%s".',
+                    $class->getName(),
+                    $other->name,
+                    $field->name,
+                    $field->jsonName,
+                ));
+            }
+
+            $byJsonName[$field->jsonName] = $field;
+        }
+
+        return $fields;
     }
 
     private static function jsonNameFor(ReflectionProperty $property, ?ReflectionParameter $parameter = null): string

@@ -49,6 +49,23 @@ final class RetryTest extends IntegrationTestCase
         self::assertGapAtLeast(2_000, self::attemptTimes($id));
     }
 
+    /** A handler's RetryableError fails the attempt with its status code, which Restate records as a transient error. */
+    public function testHandlerRetryableErrorFailsTheAttemptWithItsStatusCode(): void
+    {
+        $invocationId = self::sendInvocation('Retries/handlerFailureCode', json_encode(['id' => self::requestId()], JSON_THROW_ON_ERROR));
+        self::assertSame('2', self::attachInvocation($invocationId, 30.0)->body);
+
+        $errors = self::restate()->query(sprintf(
+            "SELECT event_json FROM sys_journal_events WHERE id = '%s' AND event_type = 'TransientError'",
+            $invocationId,
+        ));
+        self::assertCount(1, $errors, json_encode($errors, JSON_THROW_ON_ERROR));
+        $event = json_decode((string) $errors[0]['event_json'], true, flags: JSON_THROW_ON_ERROR);
+        self::assertIsArray($event);
+        self::assertSame(429, $event['error_code'] ?? null, (string) $errors[0]['event_json']);
+        self::assertSame('slow down', $event['error_message'] ?? null, (string) $errors[0]['event_json']);
+    }
+
     /**
      * Once the run's policy is exhausted, the last RetryableError becomes its terminal failure: the caller and the ingress
      * see its message, status code and metadata (shared-core 8.3.0+ carries code and metadata).

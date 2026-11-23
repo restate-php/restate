@@ -7,5 +7,5 @@ set -euo pipefail
 name="${1:-Sarah}"
 ingress="${RESTATE_INGRESS_URL:-http://localhost:8080}"
 
-curl --fail-with-body --silent --show-error "$ingress/restate/call/Greeter/greet" --json "{\"name\": \"$name\"}"
+curl --fail-with-body --silent --show-error "$ingress/Greeter/greet" --json "{\"name\": \"$name\"}"
 echo

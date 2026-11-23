@@ -2,10 +2,16 @@
 # The image has no php.ini, so display_errors stays on (PHP's default, as the stray-output tests
 # want); enable_post_data_reading=0 as docs/serving.md recommends, so a journal over post_max_size
 # (LongJournalTest) does not make PHP print a startup warning into every attempt's response.
+# num_threads is pinned rather than FrankenPHP's default (twice the CPUs, so 8 on a 4-vCPU CI
+# runner): in classic mode the PHP thread reads the request body itself, so a request whose body
+# stalls holds its thread until the body arrives (or request_body_timeout, 60 s, cuts it off).
+# RequestStallTest stalls 12 bodies and expects /health to keep answering; 16 threads keep that
+# independent of the machine's CPU count.
 {
 	admin off
 	auto_https off
 	frankenphp {
+		num_threads 16
 		php_ini enable_post_data_reading 0
 	}
 }

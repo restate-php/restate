@@ -23,6 +23,12 @@ final class CommunicationTest extends IntegrationTestCase
         self::assertInvocationReturns('"workflow ping"', 'Communicator/callWorkflow', '"n2-workflow"');
     }
 
+    /** A handler without output answers with no bytes; awaiting it, by call or through the send's handle, is null. */
+    public function testCallingAHandlerWithoutOutputReturnsNull(): void
+    {
+        self::assertInvocationReturns('{"call":null,"output":null}', 'Communicator/callVoid', null);
+    }
+
     public function testSend(): void
     {
         self::assertInvocationReturns('"sent"', 'Communicator/sendCounter', '{"key":"n2-send","amount":7}');

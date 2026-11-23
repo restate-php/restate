@@ -132,6 +132,8 @@ final class TestServicesDiscoveryTest extends TestCase
                 'ty' => 'SERVICE',
                 'handlers' => [
                     ['name' => 'greet', 'ty' => null],
+                    ['name' => 'greetOptional', 'ty' => null],
+                    ['name' => 'nothing', 'ty' => null],
                     ['name' => 'greetWithRun', 'ty' => null],
                     ['name' => 'greetWithRetryRun', 'ty' => null],
                     ['name' => 'schemaEcho', 'ty' => null],
@@ -143,6 +145,7 @@ final class TestServicesDiscoveryTest extends TestCase
                     ['name' => 'callGreeter', 'ty' => null],
                     ['name' => 'callCounter', 'ty' => null],
                     ['name' => 'callWorkflow', 'ty' => null],
+                    ['name' => 'callVoid', 'ty' => null],
                     ['name' => 'sleep', 'ty' => null],
                     ['name' => 'sleepCatchingException', 'ty' => null],
                     ['name' => 'awaitAwakeable', 'ty' => null],

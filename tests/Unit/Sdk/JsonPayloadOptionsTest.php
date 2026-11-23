@@ -20,6 +20,7 @@ use Restate\JsonValueMapper;
 use Restate\JsonValueMappingContext;
 use Restate\Payload;
 use Restate\UnsupportedJsonSchemaException;
+use Restate\PayloadRole;
 
 final class JsonPayloadOptionsFixture
 {
@@ -34,7 +35,7 @@ final readonly class JsonPayloadOptionsTestMapper implements JsonValueMapper
     #[\Override]
     public function supports(JsonValueMappingContext $context): bool
     {
-        return $context->role === JsonValueMappingContext::ROLE_INPUT;
+        return $context->role === PayloadRole::Input;
     }
 
     #[\Override]
@@ -203,11 +204,11 @@ final class JsonPayloadOptionsTest extends TestCase
         $reflection = new ReflectionMethod(JsonPayloadOptionsFixture::class, 'handle');
         $type = $reflection->getParameters()[1]->getType();
 
-        $context = new JsonValueMappingContext($type, JsonValueMappingContext::ROLE_INPUT, 'Greeter', 'greet');
+        $context = new JsonValueMappingContext($type, PayloadRole::Input, 'Greeter', 'greet');
         $child = $context->at('name', $type);
 
         self::assertSame($type, $context->type);
-        self::assertSame('input', $context->role);
+        self::assertSame(PayloadRole::Input, $context->role);
         self::assertSame('Greeter', $context->serviceName);
         self::assertSame('greet', $context->handlerName);
         self::assertSame('$', $context->path);
@@ -220,10 +221,10 @@ final class JsonPayloadOptionsTest extends TestCase
         $reflection = new ReflectionMethod(JsonPayloadOptionsFixture::class, 'handle');
         $type = $reflection->getReturnType();
 
-        $context = new JsonSchemaContext($type, JsonSchemaContext::ROLE_OUTPUT, 'Greeter', 'greet');
+        $context = new JsonSchemaContext($type, PayloadRole::Output, 'Greeter', 'greet');
 
         self::assertSame($type, $context->type);
-        self::assertSame('output', $context->role);
+        self::assertSame(PayloadRole::Output, $context->role);
         self::assertSame('Greeter', $context->serviceName);
         self::assertSame('greet', $context->handlerName);
     }
@@ -239,6 +240,6 @@ final class JsonPayloadOptionsTest extends TestCase
     {
         $reflection = new ReflectionMethod(JsonPayloadOptionsFixture::class, 'handle');
 
-        return new JsonSchemaContext($reflection->getReturnType(), JsonSchemaContext::ROLE_OUTPUT, 'Greeter', 'greet');
+        return new JsonSchemaContext($reflection->getReturnType(), PayloadRole::Output, 'Greeter', 'greet');
     }
 }

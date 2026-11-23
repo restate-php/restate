@@ -14,6 +14,8 @@ use ReflectionUnionType;
 use Restate\JsonMappingException;
 use Restate\JsonValueMapper;
 use Restate\JsonValueMappingContext;
+use Restate\Reflection\Internal\DtoShape;
+use Restate\Reflection\Internal\DtoShapeFactory;
 
 final class BuiltinJsonValueMapper implements JsonValueMapper
 {
@@ -221,9 +223,9 @@ final class BuiltinJsonValueMapper implements JsonValueMapper
 
     /**
      * @param class-string $class
-     * @return array<string, mixed>
+     * @return array<string, mixed>|\stdClass an object without fields is an empty \stdClass, so it encodes as {} rather than []
      */
-    private function normalizeDto(mixed $value, string $class, JsonValueMappingContext $context): array
+    private function normalizeDto(mixed $value, string $class, JsonValueMappingContext $context): array|\stdClass
     {
         if (!$value instanceof $class) {
             throw JsonMappingException::at($context->path, 'expected ' . $class . ', got ' . gettype($value));
@@ -244,7 +246,7 @@ final class BuiltinJsonValueMapper implements JsonValueMapper
             $normalized[$field->jsonName] = $this->mapValue($field->property->getValue($value), $fieldContext, false);
         }
 
-        return $normalized;
+        return $normalized === [] ? new \stdClass() : $normalized;
     }
 
     private function typeError(JsonValueMappingContext $context, string $expected, mixed $value): JsonMappingException

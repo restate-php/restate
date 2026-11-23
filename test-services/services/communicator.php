@@ -14,6 +14,15 @@ return Service::new('Communicator')
     ->handler('callGreeter', static fn (Context $ctx, string $name): mixed => $ctx->call(Target::service('Greeter', 'greet'), $name))
     ->handler('callCounter', static fn (Context $ctx, array $request): mixed => $ctx->call(Target::object('Counter', $request['key'], 'add'), $request['amount']))
     ->handler('callWorkflow', static fn (Context $ctx, string $key): mixed => $ctx->call(Target::workflow('EchoWorkflow', $key, 'run'), 'ping'))
+    // A handler without output answers with no bytes: the call, and the output of a send's handle, are null.
+    ->handler('callVoid', static function (Context $ctx): array {
+        $greeter = $ctx->serviceClient('Greeter');
+
+        return [
+            'call' => $greeter->request('nothing')->call(),
+            'output' => $greeter->request('nothing')->send()->output(),
+        ];
+    })
     ->handler('sleep', static function (Context $ctx, int $delayMillis): string {
         $ctx->sleep($delayMillis);
         return "slept {$delayMillis}ms";

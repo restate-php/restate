@@ -62,7 +62,7 @@ $client->rejectAwakeable('sign_1abc', 'denied');
 try {
     $client->serviceClient('Payments')->request('charge', ['amount' => 1])->call();
 } catch (TerminalError $e) {
-    $results['terminal'] = [$e->code(), $e->getMessage()];
+    $results['terminal'] = [$e->statusCode(), $e->getMessage()];
 }
 
 try {

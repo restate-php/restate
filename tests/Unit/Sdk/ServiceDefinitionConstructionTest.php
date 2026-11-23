@@ -23,6 +23,7 @@ use Restate\Workflow;
 use Restate\WorkflowContext;
 use Restate\WorkflowSharedContext;
 use Restate\Tests\Support\FakeProtocolVersions;
+use Restate\HandlerType;
 
 #[Restate\Service(
     'ConstructionGreeter',
@@ -144,7 +145,7 @@ final class ServiceDefinitionConstructionTest extends TestCase
 
         self::assertSame(self::definitionMetadata($builder), self::definitionMetadata($reflected));
         self::assertSame('run', $reflected->handlers[0]->name);
-        self::assertSame(HandlerDefinition::TYPE_WORKFLOW, $reflected->handlers[0]->type);
+        self::assertSame(HandlerType::Workflow, $reflected->handlers[0]->type);
     }
 
     public function testDiscoveryConsumesEquivalentCanonicalDefinitionsFromBothAdapters(): void
@@ -274,8 +275,8 @@ final class ServiceDefinitionConstructionTest extends TestCase
             'output' => $handler->outputPayload->outputManifest(),
             'inputType' => self::typeName($handler->inputType),
             'outputType' => self::typeName($handler->outputType),
-            'inputPayloadExplicit' => $handler->inputPayloadExplicit,
-            'outputPayloadExplicit' => $handler->outputPayloadExplicit,
+            'inputPayloadExplicit' => $handler->isInputPayloadExplicit(),
+            'outputPayloadExplicit' => $handler->isOutputPayloadExplicit(),
         ];
     }
 

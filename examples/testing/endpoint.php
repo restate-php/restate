@@ -20,7 +20,8 @@ $greeter = Service::new('Greeter')
 
 $counter = VirtualObject::new('Counter')
     ->handler('add', static function (ObjectContext $ctx, int $amount): int {
-        $value = (int) ($ctx->get('value') ?? 0) + $amount;
+        $value = $ctx->get('value'); // decoded JSON, or null for a key without a value
+        $value = (is_int($value) ? $value : 0) + $amount;
         $ctx->set('value', $value);
 
         return $value;

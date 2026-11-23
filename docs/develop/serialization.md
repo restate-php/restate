@@ -22,8 +22,9 @@ A handler takes at most one payload parameter after its context, and its types d
 | `stdClass` | Not supported: JSON objects decode to arrays | Encoded as JSON |
 
 Input that does not match its declared type fails the invocation with a terminal error with status 400, and so does
-input that is not valid JSON. A handler that declares a payload parameter needs a JSON body: an empty body is invalid
-JSON, even when the parameter is nullable or has a default. Send `null` instead. See
+input that is not valid JSON. An empty body is no value: the parameter gets its default when it has one, and `null`
+when its type accepts `null` (a nullable, `mixed` or untyped parameter); any other parameter fails with status 400.
+Restate accepts an empty body unless the input is declared `required: true`. See
 [Invalid input](errors.md#invalid-input).
 
 Context operations use plain JSON too, without type mapping: a DTO you store with `$ctx->set()` is written through its
@@ -40,8 +41,9 @@ safe subset of PHP types:
 | --- | --- |
 | Scalars | `string`, `int`, `float`, `bool`, `null`, the literal types `true` and `false`, their nullable forms, and unions of scalars and `null`. A nullable `true` or `false` literal is not inferred. |
 | Backed enums | Also nullable; for a nullable enum payload the schema lists `null` in both `type` and `enum`. |
-| Constructor DTOs | A public constructor whose parameters are all promoted public properties of supported types (other DTOs included), and no other public typed properties. |
+| Constructor DTOs | A public constructor whose parameters are all promoted public properties of supported types (other DTOs included), and no other public typed properties except virtual ones. A constructor without parameters makes a DTO without fields, which maps to `{}`. |
 | Property DTOs | No constructor, or a public one whose parameters all have defaults, and public, non-static, typed properties of supported types. |
+| Virtual properties | A property with hooks and no backing value (`public string $fullName { get => … }`) is not a field: it is neither read from the JSON nor written to it, and the schema leaves it out. |
 | `stdClass` | Publishes a generic object schema, but decodes to an associative array, so a `stdClass` input needs a custom mapper or serializer. |
 
 | Not supported | |
@@ -77,6 +79,9 @@ enum Status: string
     case Disabled = 'disabled';
 }
 ```
+
+Two fields of one DTO with the same JSON name are an error that names both properties, raised when the DTO is first
+reflected: at discovery with the built-in schema provider, otherwise on the first invocation, which fails with status 500.
 
 A handler that takes `CreateUser` accepts `{"user_name": "Ada", "status": "active"}`. Unknown fields are ignored, and a
 missing required field is a terminal 400 that names it (`$.user_name: required field is missing`).
@@ -269,7 +274,7 @@ $endpoint = Endpoint::builder()
 Symfony attributes such as `#[SerializedName]`, `#[Groups]`, `#[Ignore]` and `#[Context]` work through your normalizer.
 The constructor also takes `normalizationContext`, `denormalizationContext` and a `contextResolver` callable that
 receives a `JsonValueMappingContext` and returns extra context, for example serialization groups by role
-(`JsonValueMappingContext::ROLE_INPUT` or `ROLE_OUTPUT`). See `examples/symfony-json-payloads.php`.
+(`$context->role`, `Restate\PayloadRole::Input` or `PayloadRole::Output`). See `examples/symfony-json-payloads.php`.
 
 ### Valinor
 

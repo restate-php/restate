@@ -28,6 +28,7 @@ use Symfony\Component\Serializer\Mapping\Loader\AttributeLoader;
 use Symfony\Component\Serializer\NameConverter\MetadataAwareNameConverter;
 use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Serializer\Serializer;
+use Restate\PayloadRole;
 
 final class SymfonyJsonPayloadCreateUser
 {
@@ -112,10 +113,10 @@ final class SymfonyJsonPayloadAdapterTest extends TestCase
     {
         $adapter = new SymfonyJsonPayloadAdapter($this->serializer());
 
-        self::assertTrue($adapter->schemaFor($this->schemaContext('create', JsonSchemaContext::ROLE_INPUT))->isUnknown());
+        self::assertTrue($adapter->schemaFor($this->schemaContext('create', PayloadRole::Input))->isUnknown());
 
         $this->expectException(UnsupportedJsonSchemaException::class);
-        $adapter->schemaFor($this->schemaContext('scalar', JsonSchemaContext::ROLE_INPUT));
+        $adapter->schemaFor($this->schemaContext('scalar', PayloadRole::Input));
     }
 
     public function testWrapsSymfonyMappingFailuresAsJsonMappingExceptions(): void
@@ -198,7 +199,7 @@ final class SymfonyJsonPayloadAdapterTest extends TestCase
 
         return new JsonValueMappingContext(
             $reflection->getParameters()[1]->getType(),
-            JsonValueMappingContext::ROLE_INPUT,
+            PayloadRole::Input,
             'Users',
             $method,
         );
@@ -210,16 +211,16 @@ final class SymfonyJsonPayloadAdapterTest extends TestCase
 
         return new JsonValueMappingContext(
             $reflection->getReturnType(),
-            JsonValueMappingContext::ROLE_OUTPUT,
+            PayloadRole::Output,
             'Users',
             $method,
         );
     }
 
-    private function schemaContext(string $method, string $role): JsonSchemaContext
+    private function schemaContext(string $method, PayloadRole $role): JsonSchemaContext
     {
         $reflection = new ReflectionMethod(SymfonyJsonPayloadFixture::class, $method);
-        $type = $role === JsonSchemaContext::ROLE_INPUT
+        $type = $role === PayloadRole::Input
             ? $reflection->getParameters()[1]->getType()
             : $reflection->getReturnType();
 

@@ -15,6 +15,8 @@ use Restate\Reflection\ServiceReflector;
 use Restate\ServiceDefinition;
 use Restate\WorkflowContext;
 use Restate\WorkflowSharedContext;
+use Restate\ServiceType;
+use Restate\HandlerType;
 
 #[Restate\Service('MetaGreeter', documentation: 'Greeter service.', metadata: ['domain' => 'examples'], invocationRetryPolicy: new InvocationRetryPolicy(initialIntervalMillis: 100))]
 final class ReflectorMetadataServiceFixture
@@ -62,7 +64,7 @@ final class ServiceReflectorMetadataTest extends TestCase
         $definition = ServiceReflector::fromObject(new ReflectorMetadataServiceFixture());
 
         self::assertSame('MetaGreeter', $definition->name);
-        self::assertSame(ServiceDefinition::TYPE_SERVICE, $definition->type);
+        self::assertSame(ServiceType::Service, $definition->type);
         self::assertSame('Greeter service.', $definition->documentation);
         self::assertSame(['domain' => 'examples'], $definition->metadata);
         self::assertSame(['retryPolicyInitialInterval' => 100], $definition->invocationRetryPolicy?->manifestFields());
@@ -83,18 +85,18 @@ final class ServiceReflectorMetadataTest extends TestCase
         $definition = ServiceReflector::fromObject(new ReflectorMetadataObjectFixture());
 
         self::assertSame('MetaCounter', $definition->name);
-        self::assertSame(ServiceDefinition::TYPE_VIRTUAL_OBJECT, $definition->type);
+        self::assertSame(ServiceType::VirtualObject, $definition->type);
         self::assertSame('Counter object.', $definition->documentation);
         self::assertSame(['domain' => 'state'], $definition->metadata);
 
         self::assertCount(2, $definition->handlers);
         self::assertSame('add', $definition->handlers[0]->name);
-        self::assertSame(HandlerDefinition::TYPE_EXCLUSIVE, $definition->handlers[0]->type);
+        self::assertSame(HandlerType::Exclusive, $definition->handlers[0]->type);
         self::assertSame('Adds to the counter.', $definition->handlers[0]->documentation);
         self::assertSame(['consistency' => 'exclusive'], $definition->handlers[0]->metadata);
 
         self::assertSame('get', $definition->handlers[1]->name);
-        self::assertSame(HandlerDefinition::TYPE_SHARED, $definition->handlers[1]->type);
+        self::assertSame(HandlerType::Shared, $definition->handlers[1]->type);
         self::assertSame('Reads the counter.', $definition->handlers[1]->documentation);
         self::assertSame(['consistency' => 'shared'], $definition->handlers[1]->metadata);
     }
@@ -104,18 +106,18 @@ final class ServiceReflectorMetadataTest extends TestCase
         $definition = ServiceReflector::fromObject(new ReflectorMetadataWorkflowFixture());
 
         self::assertSame('MetaCheckout', $definition->name);
-        self::assertSame(ServiceDefinition::TYPE_WORKFLOW, $definition->type);
+        self::assertSame(ServiceType::Workflow, $definition->type);
         self::assertSame('Checkout workflow.', $definition->documentation);
         self::assertSame(['domain' => 'orders'], $definition->metadata);
 
         self::assertCount(2, $definition->handlers);
         self::assertSame('run', $definition->handlers[0]->name);
-        self::assertSame(HandlerDefinition::TYPE_WORKFLOW, $definition->handlers[0]->type);
+        self::assertSame(HandlerType::Workflow, $definition->handlers[0]->type);
         self::assertSame('Runs checkout.', $definition->handlers[0]->documentation);
         self::assertSame(['stage' => 'run'], $definition->handlers[0]->metadata);
 
         self::assertSame('status', $definition->handlers[1]->name);
-        self::assertSame(HandlerDefinition::TYPE_SHARED, $definition->handlers[1]->type);
+        self::assertSame(HandlerType::Shared, $definition->handlers[1]->type);
         self::assertSame('Reads checkout status.', $definition->handlers[1]->documentation);
         self::assertSame(['stage' => 'query'], $definition->handlers[1]->metadata);
     }

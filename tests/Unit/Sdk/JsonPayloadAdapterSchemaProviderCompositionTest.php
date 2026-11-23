@@ -28,6 +28,7 @@ use Symfony\Component\Serializer\Mapping\Factory\ClassMetadataFactory;
 use Symfony\Component\Serializer\Mapping\Loader\AttributeLoader;
 use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Serializer\Serializer;
+use Restate\PayloadRole;
 
 final readonly class JsonPayloadCompositionCreateUser
 {
@@ -70,7 +71,7 @@ final class JsonPayloadCompositionSchemaProvider implements JsonSchemaProvider
         }
 
         return match ($context->role) {
-            JsonSchemaContext::ROLE_INPUT => JsonSchemaMetadata::fromArray([
+            PayloadRole::Input => JsonSchemaMetadata::fromArray([
                 'type' => 'object',
                 'description' => 'Custom schema for composed create user input.',
                 'required' => ['name'],
@@ -81,7 +82,7 @@ final class JsonPayloadCompositionSchemaProvider implements JsonSchemaProvider
                     ],
                 ],
             ]),
-            JsonSchemaContext::ROLE_OUTPUT => JsonSchemaMetadata::fromArray([
+            PayloadRole::Output => JsonSchemaMetadata::fromArray([
                 'type' => 'object',
                 'description' => 'Custom schema for composed create user output.',
                 'required' => ['id', 'name'],
@@ -90,7 +91,6 @@ final class JsonPayloadCompositionSchemaProvider implements JsonSchemaProvider
                     'name' => ['type' => 'string'],
                 ],
             ]),
-            default => throw UnsupportedJsonSchemaException::forContext($context),
         };
     }
 }

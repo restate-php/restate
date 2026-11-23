@@ -13,7 +13,9 @@ use Restate\Internal\FlowControlKeys;
  */
 final readonly class Scope
 {
-    /** Usually built by {@see IngressClient::scope()}. */
+    /**
+     * @internal built by {@see IngressClient::scope()}
+     */
     public function __construct(
         private IngressClient $client,
         private string $scope,
