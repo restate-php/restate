@@ -68,7 +68,7 @@ final class FutureCombinatorsReplayTest extends ExtensionTestCase
                 }
             }
             $arriving = $random->getInt(1, $count);
-            $journal = [...$journal, ...array_values(array_slice($random->shuffleArray($notifications), 0, $arriving))];
+            $journal = [...$journal, ...array_slice($random->shuffleArray($notifications), 0, $arriving)];
             $invocation = self::running($journal, contentType: [self::V5, self::V6, self::V7][$seed % 3]);
             $handles = array_map(static fn (string $kind): int => $kind === 'sleep' ? $invocation->sysSleep(1) : $invocation->sysAwakeable()->handle, $kinds);
 

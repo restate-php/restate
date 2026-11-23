@@ -24,11 +24,11 @@
     "phpstan/phpstan": "^2.1",
     "phpstan/phpstan-phpunit": "^2.0",
     "phpstan/phpstan-strict-rules": "^2.0",
-    "phpunit/phpunit": "^11.5",
+    "phpunit/phpunit": "^13.4",
     "shipmonk/composer-dependency-analyser": "^1.8",
-    "symfony/property-access": "^6.4 || ^7.0",
+    "symfony/property-access": "^8.1.11",
     "symfony/property-info": "^6.4 || ^7.0",
-    "symfony/serializer": "^6.4.50 || ^7.4.23"
+    "symfony/serializer": "^8.1.11"
   },
   "replace": {
     "restate/common": "self.version",

@@ -208,7 +208,7 @@ final class EndpointStrayOutputTest extends TestCase
      * The response has gone out as text/html; the endpoint says so, in its log and in the body, and runs nothing.
      * PHP 8.6's built-in server answers 413 itself instead (below).
      */
-    #[RequiresPhp('< 8.6')]
+    #[RequiresPhp('< 8.6.0-dev')]
     public function testAStartupWarningForABodyOverPostMaxSizeIsReportedAsOutputBeforeTheScript(): void
     {
         [$response, $log] = self::runServer(['display_errors' => '1', 'post_max_size' => '1K'], [], str_repeat('x', 2048));
@@ -225,7 +225,7 @@ final class EndpointStrayOutputTest extends TestCase
     }
 
     /** The documented fix: enable_post_data_reading=0 removes the startup warning; the SDK reads php://input itself. */
-    #[RequiresPhp('< 8.6')]
+    #[RequiresPhp('< 8.6.0-dev')]
     public function testEnablePostDataReadingOffRemovesThePostMaxSizeWarning(): void
     {
         [$response, $log] = self::runServer(['display_errors' => '1', 'post_max_size' => '1K', 'enable_post_data_reading' => '0'], [], str_repeat('x', 2048));
@@ -240,7 +240,7 @@ final class EndpointStrayOutputTest extends TestCase
      * PHP 8.6's built-in server checks post_max_size before it runs the script, whatever enable_post_data_reading
      * says: a body over it gets a 413 from the server, and the endpoint never runs.
      */
-    #[RequiresPhp('>= 8.6')]
+    #[RequiresPhp('>= 8.6.0-dev')]
     public function testThePhp86BuiltInServerAnswers413ForABodyOverPostMaxSizeWithoutRunningTheScript(): void
     {
         // runServer checks that the script wrote no log, so it never ran.
@@ -250,7 +250,7 @@ final class EndpointStrayOutputTest extends TestCase
     }
 
     /** The fix on PHP 8.6's built-in server: no post_max_size limit (0), with enable_post_data_reading=0 as before. */
-    #[RequiresPhp('>= 8.6')]
+    #[RequiresPhp('>= 8.6.0-dev')]
     public function testNoPostMaxSizeLimitServesALargeBodyOnThePhp86BuiltInServer(): void
     {
         [$response, $log] = self::runServer(['display_errors' => '1', 'post_max_size' => '0', 'enable_post_data_reading' => '0'], [], str_repeat('x', 2048));

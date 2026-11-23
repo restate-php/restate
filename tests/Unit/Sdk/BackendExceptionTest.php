@@ -31,9 +31,11 @@ final class BackendExceptionTest extends TestCase
 
     public function testCategoryNamesAreTheOnesTheRustCoreProduces(): void
     {
+        $rustCategories = ['invalid_argument', 'suspended', 'protocol', 'journal_mismatch', 'closed', 'internal'];
+
         self::assertSame(
-            ['invalid_argument', 'suspended', 'protocol', 'journal_mismatch', 'closed', 'internal'],
-            array_map(static fn (BackendErrorCategory $category): string => $category->value, BackendErrorCategory::cases()),
+            $rustCategories,
+            array_map(static fn (string $name): string => BackendErrorCategory::fromExtension($name)->value, $rustCategories),
         );
     }
 

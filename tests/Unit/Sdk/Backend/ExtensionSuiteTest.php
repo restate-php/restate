@@ -24,7 +24,7 @@ final class ExtensionSuiteTest extends TestCase
             Repository::ROOT . '/phpunit.xml.dist',
             '--testsuite',
             'extension',
-            '--do-not-cache-result',
+            '--do-not-record-test-run-history',
             '--colors=never',
         ]);
 

@@ -18,6 +18,7 @@ namespace Restate\Tests\Unit\Sdk;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Restate\Context;
 use Restate\Endpoint;
@@ -535,7 +536,7 @@ final class EndpointRoutingTest extends TestCase
     public function testHandleRequestReportsUnhandledHandlerExceptionAsRetryableError(): void
     {
         $chunks = [];
-        $invocation = $this->successfulInvocation([['content-type', 'application/vnd.restate.invocation.v6']]);
+        $invocation = $this->successfulInvocationMock([['content-type', 'application/vnd.restate.invocation.v6']]);
         $invocation->expects(self::once())
             ->method('notifyError')
             ->with('boom')
@@ -583,7 +584,7 @@ final class EndpointRoutingTest extends TestCase
 
     public function testHandleRequestReportsJsonExceptionFromHandlerCodeAsRetryableError(): void
     {
-        $invocation = $this->successfulInvocation([['content-type', 'application/vnd.restate.invocation.v6']]);
+        $invocation = $this->successfulInvocationMock([['content-type', 'application/vnd.restate.invocation.v6']]);
         $invocation->expects(self::once())->method('notifyError')->with(self::jsonError('{bad-json'));
         $invocation->expects(self::never())->method('writeOutputFailure');
         $invocation->expects(self::never())->method('end');
@@ -596,7 +597,7 @@ final class EndpointRoutingTest extends TestCase
 
     public function testHandleRequestReportsOutputEncodingFailureAsRetryableError(): void
     {
-        $invocation = $this->successfulInvocation([['content-type', 'application/vnd.restate.invocation.v6']]);
+        $invocation = $this->successfulInvocationMock([['content-type', 'application/vnd.restate.invocation.v6']]);
         $invocation->expects(self::once())->method('notifyError')->with('Malformed UTF-8 characters, possibly incorrectly encoded');
         $invocation->expects(self::never())->method('writeOutputFailure');
         $invocation->expects(self::never())->method('writeOutputSuccess');
@@ -610,7 +611,7 @@ final class EndpointRoutingTest extends TestCase
 
     public function testHandleRequestRejectsMalformedHandlerInputAsTerminal400(): void
     {
-        $invocation = $this->successfulInvocation(
+        $invocation = $this->successfulInvocationMock(
             [['content-type', 'application/vnd.restate.invocation.v6']],
             input: '{bad-json',
         );
@@ -674,10 +675,33 @@ final class EndpointRoutingTest extends TestCase
      * @param list<array{0: string, 1: string}> $inputHeaders
      * @param string|InvocationInput $input the invocation input bytes, or the whole input
      */
-    private function successfulInvocation(array $responseHeaders, array $inputHeaders = [], string|InvocationInput $input = '"Mary"'): Invocation&MockObject
+    private function successfulInvocation(array $responseHeaders, array $inputHeaders = [], string|InvocationInput $input = '"Mary"'): Invocation&Stub
+    {
+        return self::succeeding(self::createStub(Invocation::class), $responseHeaders, $inputHeaders, $input);
+    }
+
+    /**
+     * successfulInvocation() as a mock, for a test that sets expectations on it.
+     *
+     * @param list<array{0: string, 1: string}> $responseHeaders
+     */
+    private function successfulInvocationMock(array $responseHeaders, string|InvocationInput $input = '"Mary"'): Invocation&MockObject
+    {
+        return self::succeeding($this->createMock(Invocation::class), $responseHeaders, [], $input);
+    }
+
+    /**
+     * @template T of Invocation&Stub
+     *
+     * @param T                                 $invocation
+     * @param list<array{0: string, 1: string}> $responseHeaders
+     * @param list<array{0: string, 1: string}> $inputHeaders
+     *
+     * @return T
+     */
+    private static function succeeding(Invocation&Stub $invocation, array $responseHeaders, array $inputHeaders, string|InvocationInput $input): Invocation&Stub
     {
         $chunks = [];
-        $invocation = $this->createMock(Invocation::class);
         $invocation->method('responseHead')->willReturn(new ResponseHead(202, $responseHeaders));
         $invocation->method('isReadyToExecute')->willReturn(true);
         $invocation->method('input')->willReturn($input instanceof InvocationInput ? $input : new InvocationInput('inv-1', 0, '', $inputHeaders, $input));

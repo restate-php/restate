@@ -72,7 +72,7 @@ final readonly class CombinatorScenario
 
         $steps = [];
         foreach (range(1, $random->getInt(1, 4)) as $_) {
-            $members = array_values($random->shuffleArray($random->pickArrayKeys(range(0, $count - 1), $random->getInt(1, $count))));
+            $members = $random->shuffleArray($random->pickArrayKeys(range(0, $count - 1), $random->getInt(1, $count)));
             $op = self::OPERATIONS[$random->getInt(0, count(self::OPERATIONS) - 1)];
             $takes = [];
             if ($op === 'select') {
