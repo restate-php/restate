@@ -12,12 +12,14 @@ use Restate\JsonMappingException;
 use Restate\JsonPayloadOptions;
 use Restate\JsonSchemaContext;
 use Restate\JsonSchemaMetadata;
+use Restate\JsonSchema\Attributes\JsonName;
 use Restate\JsonSchemaProvider;
 use Restate\JsonValueMapper;
 use Restate\JsonValueMappingContext;
 use Restate\Payload;
 use Restate\Serde;
 use Restate\Service;
+use Restate\TerminalError;
 use Restate\Internal\ServiceRegistry;
 use Restate\Tests\Support\FakeProtocolVersions;
 use Restate\Tests\Support\ScriptedInvocation;
@@ -120,6 +122,24 @@ final class EffectiveHandlerPayloadTest extends TestCase
         self::assertSame(1, $mapper->hydrateCalls);
     }
 
+    public function testADtoWithCollidingJsonNamesFailsTheInvocationTerminally(): void
+    {
+        $registry = new ServiceRegistry([
+            Service::new('Users')->handler(
+                'save',
+                static fn (Context $ctx, EffectiveHandlerPayloadJsonNameCollision $user): string => $user->name,
+            ),
+        ]);
+
+        try {
+            $registry->invoke('Users', 'save', '{"name":"Ada"}', $this->context());
+            self::fail('Expected a terminal error.');
+        } catch (TerminalError $e) {
+            self::assertSame(500, $e->statusCode());
+            self::assertStringContainsString('to the same JSON name "name"', $e->getMessage());
+        }
+    }
+
     private function context(): InvocationAttempt
     {
         return new InvocationAttempt(ScriptedInvocation::unused());
@@ -216,5 +236,15 @@ final class EffectiveHandlerPayloadSchemaProvider implements JsonSchemaProvider
         ++$this->calls;
 
         return JsonSchemaMetadata::fromArray(['type' => 'string', 'description' => "{$context->role->value} schema"]);
+    }
+}
+
+final readonly class EffectiveHandlerPayloadJsonNameCollision
+{
+    public function __construct(
+        #[JsonName('name')]
+        public string $userName,
+        public string $name,
+    ) {
     }
 }

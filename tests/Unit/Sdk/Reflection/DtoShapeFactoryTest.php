@@ -144,6 +144,60 @@ final class DtoShapeFactoryTypeFixture
     }
 }
 
+final class DtoShapeFactoryVirtualPropertyUser
+{
+    public string $full {
+        get => $this->first . ' ' . $this->last;
+    }
+
+    public string $first;
+    public string $last = '';
+}
+
+final class DtoShapeFactoryConstructorVirtualPropertyUser
+{
+    public string $upper {
+        get => strtoupper($this->name);
+    }
+
+    public function __construct(public string $name)
+    {
+    }
+}
+
+final readonly class DtoShapeFactoryEmpty
+{
+    public function __construct()
+    {
+    }
+}
+
+final readonly class DtoShapeFactoryJsonNameCollision
+{
+    public function __construct(
+        #[JsonName('name')]
+        public string $userName,
+        public string $name,
+    ) {
+    }
+}
+
+final class DtoShapeFactoryPropertyJsonNameCollision
+{
+    #[JsonName('id')]
+    public string $externalId;
+
+    #[JsonName('id')]
+    public string $internalId;
+}
+
+final readonly class DtoShapeFactoryNestedJsonNameCollision
+{
+    public function __construct(public DtoShapeFactoryJsonNameCollision $user)
+    {
+    }
+}
+
 final class DtoShapeFactoryTest extends TestCase
 {
     /**
@@ -178,6 +232,26 @@ final class DtoShapeFactoryTest extends TestCase
             ['age', 'name'],
             ['age', 'user_name'],
         ];
+        yield 'property dto with a virtual property' => [
+            DtoShapeFactoryVirtualPropertyUser::class,
+            DtoShape::MODE_PROPERTY,
+            ['first', 'last'],
+            ['first', 'last'],
+        ];
+
+        yield 'constructor dto with a virtual property' => [
+            DtoShapeFactoryConstructorVirtualPropertyUser::class,
+            DtoShape::MODE_CONSTRUCTOR,
+            ['name'],
+            ['name'],
+        ];
+
+        yield 'dto without fields' => [
+            DtoShapeFactoryEmpty::class,
+            DtoShape::MODE_CONSTRUCTOR,
+            [],
+            [],
+        ];
     }
 
     /** @param class-string $className */
@@ -198,6 +272,35 @@ final class DtoShapeFactoryTest extends TestCase
         yield 'class scalar union' => [DtoShapeFactoryClassScalarUnion::class];
         yield 'untyped property' => [DtoShapeFactoryUntypedProperty::class];
         yield 'required constructor property dto' => [DtoShapeFactoryRequiredConstructorProperty::class];
+    }
+
+    /** @param class-string $className */
+    #[DataProvider('jsonNameCollisionProvider')]
+    public function testRejectsFieldsWithTheSameJsonName(string $className, string $message): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage($message);
+
+        DtoShapeFactory::shapeFor(new ReflectionClass($className));
+    }
+
+    /** @return iterable<string, array{class-string, string}> */
+    public static function jsonNameCollisionProvider(): iterable
+    {
+        yield 'constructor dto' => [
+            DtoShapeFactoryJsonNameCollision::class,
+            'DTO ' . DtoShapeFactoryJsonNameCollision::class . ' maps properties $userName and $name to the same JSON name "name".',
+        ];
+
+        yield 'property dto' => [
+            DtoShapeFactoryPropertyJsonNameCollision::class,
+            'DTO ' . DtoShapeFactoryPropertyJsonNameCollision::class . ' maps properties $externalId and $internalId to the same JSON name "id".',
+        ];
+
+        yield 'nested dto' => [
+            DtoShapeFactoryNestedJsonNameCollision::class,
+            'DTO ' . DtoShapeFactoryJsonNameCollision::class . ' maps properties $userName and $name to the same JSON name "name".',
+        ];
     }
 
     #[DataProvider('typeSupportProvider')]

@@ -157,8 +157,20 @@ final readonly class DtoSchemaCustomContact implements ProvidesSchema
     }
 }
 
+final class DtoSchemaVirtualPropertyGreeting
+{
+    public string $full {
+        get => 'Hello, ' . $this->n;
+    }
+
+    public string $n;
+}
+
 final class DtoSchemaFixture
 {
+    public function virtualPropertyDto(DtoSchemaVirtualPropertyGreeting $value): void
+    {
+    }
     public function constructorDto(DtoSchemaConstructorUser $value): void
     {
     }
@@ -276,6 +288,20 @@ final class DtoSchemaInferenceTest extends TestCase
             ],
             'required' => ['name'],
         ], JsonSchemaInferer::schemaFor($this->parameterType('staticPropertyDto')));
+    }
+
+    public function testIgnoresVirtualPropertiesInPropertyDtoSchema(): void
+    {
+        $expected = [
+            'type' => 'object',
+            'properties' => [
+                'n' => ['type' => 'string'],
+            ],
+            'required' => ['n'],
+        ];
+
+        self::assertSame($expected, JsonSchemaInferer::schemaFor($this->parameterType('virtualPropertyDto')));
+        self::assertSame($expected, json_decode(JsonSchema::schemaFor(DtoSchemaVirtualPropertyGreeting::class)->toJson(), true, flags: JSON_THROW_ON_ERROR));
     }
 
     public function testIgnoresStaticPropertiesWhenValidatingConstructorDtoSchema(): void

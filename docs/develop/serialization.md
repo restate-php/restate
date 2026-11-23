@@ -40,8 +40,9 @@ safe subset of PHP types:
 | --- | --- |
 | Scalars | `string`, `int`, `float`, `bool`, `null`, the literal types `true` and `false`, their nullable forms, and unions of scalars and `null`. A nullable `true` or `false` literal is not inferred. |
 | Backed enums | Also nullable; for a nullable enum payload the schema lists `null` in both `type` and `enum`. |
-| Constructor DTOs | A public constructor whose parameters are all promoted public properties of supported types (other DTOs included), and no other public typed properties. |
+| Constructor DTOs | A public constructor whose parameters are all promoted public properties of supported types (other DTOs included), and no other public typed properties except virtual ones. A constructor without parameters makes a DTO without fields, which maps to `{}`. |
 | Property DTOs | No constructor, or a public one whose parameters all have defaults, and public, non-static, typed properties of supported types. |
+| Virtual properties | A property with hooks and no backing value (`public string $fullName { get => … }`) is not a field: it is neither read from the JSON nor written to it, and the schema leaves it out. |
 | `stdClass` | Publishes a generic object schema, but decodes to an associative array, so a `stdClass` input needs a custom mapper or serializer. |
 
 | Not supported | |
@@ -77,6 +78,9 @@ enum Status: string
     case Disabled = 'disabled';
 }
 ```
+
+Two fields of one DTO with the same JSON name are an error that names both properties, raised when the DTO is first
+reflected: at discovery with the built-in schema provider, otherwise on the first invocation, which fails with status 500.
 
 A handler that takes `CreateUser` accepts `{"user_name": "Ada", "status": "active"}`. Unknown fields are ignored, and a
 missing required field is a terminal 400 that names it (`$.user_name: required field is missing`).
