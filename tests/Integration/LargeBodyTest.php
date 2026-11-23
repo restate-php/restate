@@ -11,6 +11,7 @@ use Restate\Tests\Integration\Services\ChaosRecorder;
 use Restate\Tests\Integration\Services\MemoryProbe;
 use Restate\Tests\Integration\Support\HttpClient;
 use Restate\Tests\Integration\Support\IntegrationEndpoint;
+use Restate\Tests\Integration\Support\IntegrationRestate;
 use Restate\Tests\Integration\Support\IntegrationTestCase;
 use Restate\Tests\Integration\Support\JsonLinesLogger;
 use Restate\Testing\RestateTestEnvironment;
@@ -214,9 +215,12 @@ final class LargeBodyTest extends IntegrationTestCase
 
         $name = "display_errors={$displayErrors}, enable_post_data_reading={$postDataReading}";
 
-        return self::$variants[$name] ??= RestateTestEnvironment::start(IntegrationEndpoint::phpCli()
-            ->withIniSetting('display_errors', (string) $displayErrors)
-            ->withIniSetting('enable_post_data_reading', (string) $postDataReading));
+        return self::$variants[$name] ??= RestateTestEnvironment::start(
+            IntegrationEndpoint::phpCli()
+                ->withIniSetting('display_errors', (string) $displayErrors)
+                ->withIniSetting('enable_post_data_reading', (string) $postDataReading),
+            IntegrationRestate::get(),
+        );
     }
 
     /**

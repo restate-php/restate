@@ -167,9 +167,11 @@ final class PayloadMappingTest extends IntegrationTestCase
         $service = json_decode($response->body, true, flags: JSON_THROW_ON_ERROR);
         self::assertIsArray($service);
         self::assertIsArray($service['handlers'] ?? null);
-        $handlers = array_column($service['handlers'], null, 'name');
+        // Restate 1.7 returns the schemas with their object keys sorted, 1.8 in the order they were registered. Member
+        // order carries no meaning in JSON Schema, so compare with sorted keys; lists (`required`, `enum`) keep theirs.
+        $handlers = self::sortedKeys(array_column($service['handlers'], null, 'name'));
 
-        $address = [
+        $address = self::sortedKeys([
             'type' => 'object',
             'properties' => [
                 'street' => ['type' => 'string'],
@@ -177,8 +179,8 @@ final class PayloadMappingTest extends IntegrationTestCase
                 'unit' => ['type' => ['string', 'null']],
             ],
             'required' => ['street', 'postal_code'],
-        ];
-        self::assertSame([
+        ]);
+        self::assertSame(self::sortedKeys([
             '$defs' => ['Address' => $address],
             'type' => 'object',
             'properties' => [
@@ -191,7 +193,7 @@ final class PayloadMappingTest extends IntegrationTestCase
                 'giftMessage' => ['type' => ['string', 'null']],
             ],
             'required' => ['id', 'quantity', 'shipTo', 'weight_kg'],
-        ], $handlers['quote']['input_json_schema'] ?? null);
+        ]), $handlers['quote']['input_json_schema'] ?? null);
 
         $output = $handlers['quote']['output_json_schema'] ?? null;
         self::assertIsArray($output);
@@ -202,8 +204,8 @@ final class PayloadMappingTest extends IntegrationTestCase
 
         self::assertSame(['object', 'null'], $handlers['maybeQuote']['input_json_schema']['type'] ?? null);
         self::assertSame(['object', 'null'], $handlers['maybeQuote']['output_json_schema']['type'] ?? null);
-        self::assertSame(['type' => 'string', 'enum' => ['normal', 'express']], $handlers['escalate']['input_json_schema'] ?? null);
-        self::assertSame(['type' => 'string', 'enum' => ['normal', 'express']], $handlers['escalate']['output_json_schema'] ?? null);
+        self::assertSame(['enum' => ['normal', 'express'], 'type' => 'string'], $handlers['escalate']['input_json_schema'] ?? null);
+        self::assertSame(['enum' => ['normal', 'express'], 'type' => 'string'], $handlers['escalate']['output_json_schema'] ?? null);
 
         // Binary and custom payloads have a content type and no schema.
         foreach (['reverseBytes' => 'application/octet-stream', 'shout' => 'text/plain'] as $name => $contentType) {
@@ -211,6 +213,27 @@ final class PayloadMappingTest extends IntegrationTestCase
             self::assertArrayNotHasKey('input_json_schema', $handlers[$name]);
             self::assertArrayNotHasKey('output_json_schema', $handlers[$name]);
         }
+    }
+
+    /**
+     * The array with the keys of every string-keyed array in it sorted, recursively; lists keep their order.
+     *
+     * @param array<mixed> $value
+     *
+     * @return array<mixed>
+     */
+    private static function sortedKeys(array $value): array
+    {
+        foreach ($value as $key => $item) {
+            if (is_array($item)) {
+                $value[$key] = self::sortedKeys($item);
+            }
+        }
+        if (!array_is_list($value)) {
+            ksort($value, SORT_STRING);
+        }
+
+        return $value;
     }
 
     private static function quoteSerdes(): HandlerSerdes

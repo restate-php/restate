@@ -32,8 +32,15 @@ abstract class FaultInjectionTestCase extends IntegrationTestCase
         return new ChaosRecorder(self::stateDir());
     }
 
+    /**
+     * A plan by idempotency key needs the key in the start message, which Restate sends from service protocol v7
+     * (Restate 1.8) on: against Restate 1.7 (v6) the injector could never match it, so the test is skipped there.
+     */
     protected static function writePlan(FaultPlan $plan): void
     {
+        if ($plan->kind === 'idempotency-key' && version_compare(self::restate()->serverVersion(), '1.8.0', '<')) {
+            self::markTestSkipped('A fault plan by idempotency key needs the key in the start message, which Restate sends from 1.8 (service protocol v7) on.');
+        }
         $plan->write(self::stateDir());
     }
 
