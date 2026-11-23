@@ -63,7 +63,7 @@ final class RuntimeExecutionHooksTest extends TestCase
 
     public function testInterceptorSeesTheRequestAndTheReplayState(): void
     {
-        $invocation = $this->createMockForIntersectionOfInterfaces([Invocation::class, ReplayStateProvider::class]);
+        $invocation = self::createStubForIntersectionOfInterfaces([Invocation::class, ReplayStateProvider::class]);
         $invocation->method('responseHead')->willReturn(new ResponseHead(200, []));
         $invocation->method('isReadyToExecute')->willReturn(true);
         $invocation->method('input')->willReturn(new InvocationInput('inv-1', 0, 'alice', [], '"Mary"'));

@@ -70,7 +70,8 @@ final class ServingTest extends IntegrationTestCase
     }
 
     /**
-     * @param list<string> $headers
+     * @param non-empty-string $method
+     * @param list<string>     $headers
      *
      * @return array{int, array<string, string>, string} status, response headers (lower-cased names), body
      */

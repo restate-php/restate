@@ -99,7 +99,7 @@ final class EndpointFailureTest extends TestCase
     public function testTakeOutputFailureBecomesAnInternalServerError(): void
     {
         $invocation = $this->invocation(takeOutput: false);
-        $invocation->method('takeOutput')->willThrowException(new BackendException('output unavailable'));
+        $invocation->expects(self::once())->method('takeOutput')->willThrowException(new BackendException('output unavailable'));
 
         $this->assertErrorResponse(500, 'output unavailable', $this->endpoint($invocation)->handleRequest(self::SERVER, 'request-body'));
     }

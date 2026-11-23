@@ -484,7 +484,7 @@ final class IdentityVerifierTest extends ExtensionTestCase
     /** @return non-empty-string */
     private static function restateTestSeed(): string
     {
-        $seed = substr((string) base64_decode(self::RESTATE_TEST_PRIVATE_KEY_DER, true), -32);
+        $seed = substr(base64_decode(self::RESTATE_TEST_PRIVATE_KEY_DER, true), -32);
         self::assertSame(32, strlen($seed));
 
         return $seed;

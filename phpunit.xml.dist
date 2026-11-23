@@ -8,6 +8,10 @@
          failOnRisky="true"
          failOnDeprecation="true"
          colors="true">
+    <!-- PHPUnit 13 holds more per run than PHP's default 128M allows the unit suite (its large-output tests included). -->
+    <php>
+        <ini name="memory_limit" value="512M"/>
+    </php>
     <testsuites>
         <testsuite name="unit">
             <directory>tests/Unit</directory>

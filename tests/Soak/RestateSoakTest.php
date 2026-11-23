@@ -57,7 +57,7 @@ final class RestateSoakTest extends TestCase
         $total = SoakSettings::invocations();
         $ingress = $environment->ingressUrl();
 
-        $adds = array_fill(0, self::KEYS, 0);
+        $adds = [];
         $prefix = bin2hex(random_bytes(4));
         $wrong = [];
         $windows = [];
@@ -65,14 +65,13 @@ final class RestateSoakTest extends TestCase
         $latencies = [];
         $started = microtime(true);
 
-        $calls = (static function () use ($total, &$adds, $prefix): \Generator {
+        $calls = (static function () use ($total, $prefix): \Generator {
             for ($i = 0; $i < $total; ++$i) {
                 $kind = $i % 20;
                 if ($kind < 8) {
                     yield ['Soak/greet', json_encode("soak {$i}", JSON_THROW_ON_ERROR), json_encode("Hello soak {$i}", JSON_THROW_ON_ERROR)];
                 } elseif ($kind < 11) {
                     $key = $i % self::KEYS;
-                    ++$adds[$key];
                     yield ["SoakCounter/{$prefix}-{$key}/add", '1', null];
                 } elseif ($kind < 13) {
                     yield ['Soak/sleepy', '5', '"slept"'];
@@ -87,8 +86,12 @@ final class RestateSoakTest extends TestCase
         })();
 
         $done = 0;
-        self::call($ingress, $calls, function (array $call, int $status, string $body, float $seconds) use (&$wrong, &$latencies, &$windows, &$done, $window): void {
+        self::call($ingress, $calls, function (array $call, int $status, string $body, float $seconds) use (&$adds, &$wrong, &$latencies, &$windows, &$done, $window): void {
             [$path, , $expected] = $call;
+            if (str_ends_with($path, '/add')) {
+                $counter = substr($path, 0, -strlen('/add'));
+                $adds[$counter] = ($adds[$counter] ?? 0) + 1;
+            }
             if ($status !== 200 || ($expected !== null && $body !== $expected)) {
                 $wrong[$path] = ($wrong[$path] ?? 0) + 1;
                 if ($wrong[$path] <= 3) {
@@ -113,11 +116,9 @@ final class RestateSoakTest extends TestCase
 
         // Every counter got every add, once.
         $counts = [];
-        $counterCalls = (static function () use ($adds, $prefix): \Generator {
-            foreach ($adds as $key => $count) {
-                if ($count > 0) {
-                    yield ["SoakCounter/{$prefix}-{$key}/get", null, (string) $count];
-                }
+        $counterCalls = (static function () use ($adds): \Generator {
+            foreach ($adds as $counter => $count) {
+                yield ["{$counter}/get", null, (string) $count];
             }
         })();
         self::call($ingress, $counterCalls, function (array $call, int $status, string $body) use (&$counts): void {
