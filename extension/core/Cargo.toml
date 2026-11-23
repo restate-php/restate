@@ -21,7 +21,7 @@ tracing = "0.1"
 [dev-dependencies]
 # Signs the tokens tests/identity.rs verifies, with the provider shared-core
 # selects. Already in the lockfile through shared-core.
-jsonwebtoken = { version = "10.3", default-features = false, features = ["rust_crypto"] }
+jsonwebtoken = { version = "11.1", default-features = false, features = ["rust_crypto"] }
 # Encodes the protocol frames the VM tests feed and decodes what the VM writes
 # (tests/vm/protocol.rs). Resolves to the prost shared-core already uses, so it
 # adds no crate to the lockfile.
