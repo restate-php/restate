@@ -2,11 +2,6 @@
 
 This page covers what the Restate PHP SDK needs, which Composer packages it is made of, and how to install the native extension and the packages. It ends with pointers to your first service.
 
-> [!WARNING]
-> **No version is released yet.** Packagist has only the `dev-main` versions of the packages, and the extension has no GitHub release with prebuilt archives. So `pie install restate/ext-restate` and `composer require restate/sdk` work only once 0.1.0 is out.
->
-> Until then, [build the extension from source](#building-from-source) and install the packages at `dev-main` ([Installing the SDK](#installing-the-sdk)). Or start with the Docker quickstart in [`examples/quickstart/`](../examples/quickstart/README.md), which builds everything from the checkout.
-
 ## Requirements
 
 | Component | PHP | Restate PHP extension | Restate server |
@@ -97,7 +92,7 @@ PIE itself checks nothing beyond HTTPS for prebuilt archives.
 
 ### Building from source
 
-There is no prebuilt binary for macOS (untested), Windows (not supported), debug builds of PHP, or glibc older than 2.28. Until the first release, building from source is also the way to get the extension.
+There is no prebuilt binary for macOS (untested), Windows (not supported), debug builds of PHP, or glibc older than 2.28.
 
 You need:
 
@@ -142,7 +137,7 @@ To try it, run nixpkgs' PHP with the extension:
 nix run github:restate-php/ext-restate#php -- --ri restate
 ```
 
-Once 0.1.0 is released, pin the version in the reference: `github:restate-php/ext-restate/0.1.0`. The [extension's README](../extension/README.md#with-nix) shows how to add the overlay to your own flake or to a [devenv](https://devenv.sh) shell.
+To pin a version, put it in the reference: `github:restate-php/ext-restate/0.1.0`. The [extension's README](../extension/README.md#with-nix) shows how to add the overlay to your own flake or to a [devenv](https://devenv.sh) shell.
 
 ## Installing the SDK
 
@@ -153,17 +148,6 @@ composer require restate/sdk
 ```
 
 Composer checks `ext-restate` against the PHP that runs it. If you install dependencies with a different PHP than the one that serves (for example in a separate Docker build stage), pass `--ignore-platform-req=ext-restate`, and make sure the serving PHP loads the extension.
-
-> [!NOTE]
-> Until 0.1.0 is released, require the `dev-main` versions, which follow the `main` branch of this repository. Name `restate/common` too, because Composer accepts a development version of a dependency only when you ask for it:
->
-> ```bash
-> composer require restate/sdk:dev-main restate/common:dev-main
-> composer require restate/ingress:dev-main restate/common:dev-main
-> composer require --dev restate/testing:dev-main restate/ingress:dev-main restate/common:dev-main
-> ```
->
-> A module built from source reports version 0.1.0, which satisfies `restate/sdk`'s `ext-restate` constraint.
 
 For code that only calls services, install `restate/ingress` instead, which needs no extension. For tests, add `restate/testing` as a dev dependency.
 

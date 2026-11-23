@@ -19,18 +19,6 @@ You need:
 - Ports 8080 and 9070 free
 - Linux, macOS (Intel or Apple silicon), or Windows with WSL 2
 
-> [!IMPORTANT]
-> **No version of the SDK is released yet**, so the image can't install the extension with PIE or the SDK from
-> Packagist. Until the first release, build them from this repository instead, from this directory:
->
-> ```bash
-> docker build -f ../../docker/Dockerfile --target quickstart-php-restate -t restate-php-quickstart/php-restate:local ../..
-> export COMPOSE_FILE=compose.yaml:compose.local.yaml
-> ```
->
-> The first command compiles the extension, which takes a few minutes. The second makes every `docker compose`
-> command below use [`compose.local.yaml`](compose.local.yaml) as well, so the rest of the walkthrough stays the same.
-
 ## 1. Start everything
 
 ```bash

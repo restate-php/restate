@@ -2,7 +2,7 @@
 
 What the PHP SDK does, the tests that show it, where it differs from the official SDKs, what is missing, and what it runs on.
 
-No version is released yet: Packagist lists only `dev-main` of every package (`restate/sdk`, `restate/common`, `restate/ingress`, `restate/testing`, `restate/ext-restate`), and the extension has no GitHub release with prebuilt archives yet ([RELEASING.md](../RELEASING.md#before-the-first-release) lists what stands between the SDK and its first release). Passing the upstream suite is not an official Restate SDK conformance claim ([Official Conformance](internals/conformance.md#official-conformance)).
+Passing the upstream suite is not an official Restate SDK conformance claim ([Official Conformance](internals/conformance.md#official-conformance)).
 
 ## Evidence
 
