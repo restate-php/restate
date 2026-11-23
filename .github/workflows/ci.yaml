@@ -9,6 +9,10 @@ on:
   workflow_dispatch:
   # The release (.github/workflows/release.yaml) runs it on the commit it releases.
   workflow_call:
+    secrets:
+      CACHIX_AUTH_TOKEN:
+        description: Pushes the Nix builds to restate-php.cachix.org
+        required: false
 
 # Inside a called workflow github.workflow is the caller's name, so the group names this
 # workflow itself; manual runs and the release's call (workflow_dispatch) get a group of their

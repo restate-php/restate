@@ -128,6 +128,8 @@ jobs:
     needs: version
     if: ${{ !inputs.skip-tests }}
     uses: ./.github/workflows/ci.yaml
+    secrets:
+      CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
   upstream:
     name: Upstream SDK tests
@@ -180,7 +182,7 @@ jobs:
           rm ./*.sha256
           sha256sum ./*.tgz | sed 's| \./| |' > SHA256SUMS
           cat SHA256SUMS
-          test "$(grep -c . SHA256SUMS)" = 16
+          test "$(grep -c . SHA256SUMS)" = 24
 
       # Provenance of every archive, recorded in this repository: `gh attestation verify
       # <archive> --repo <this repository>`, or with the bundle the release carries. PIE checks
