@@ -11,7 +11,8 @@ use Restate\Tests\Support\Repository;
 /**
  * bin/split.sh, the release's subtree split (docs/decisions/0031-release.md), on a throwaway monorepo with the
  * published directories, pushing to local bare repositories (`file://`) instead of GitHub: what a release run, a
- * re-run, the next release and a run that must stop do to the split repositories. In the `release` group, which
+ * re-run, the next release, a push to main (no version: main only), a release of a commit that later pushes passed,
+ * and a run that must stop do to the split repositories. In the `release` group, which
  * `composer test` leaves out (each split takes a few hundred milliseconds): `composer test:release`, and `composer check`.
  */
 #[Group('release')]
@@ -147,6 +148,87 @@ final class SplitScriptTest extends TestCase
         );
     }
 
+    public function testWithoutAVersionARunPushesMainOnlyAsEveryPushToMainDoes(): void
+    {
+        [$exitCode, $stdout, $stderr] = $this->split(['publish', '--remote', $this->remote]);
+
+        self::assertSame(0, $exitCode, $stderr);
+        $commits = self::published($stdout);
+        self::assertSame(array_keys(self::REPOSITORIES), array_keys($commits));
+        self::assertStringNotContainsString('tag', $stdout);
+        foreach (self::REPOSITORIES as $directory => $repository) {
+            self::assertStringContainsString("{$directory} -> {$repository}: split {$commits[$directory]}; main created\n", $stdout);
+            self::assertSame("{$commits[$directory]}\trefs/heads/main", $this->git(['ls-remote', '--refs', "{$this->dir}/remotes/{$repository}.git"]));
+        }
+
+        $remotes = $this->remotes();
+        [$exitCode, $stdout] = $this->split(['publish', '--remote', $this->remote]);
+        self::assertSame(0, $exitCode);
+        self::assertSame(5, substr_count($stdout, "main up to date\n"));
+        self::assertSame($remotes, $this->remotes());
+    }
+
+    public function testAReleaseOfAnEarlierCommitTagsItAndLeavesALaterMainAlone(): void
+    {
+        $this->write('packages/sdk/Context.php', "<?php\n");
+        $this->commit('Add the context');
+        $release = $this->git(['rev-parse', 'HEAD']);
+        $this->write('packages/sdk/Client.php', "<?php\n");
+        $this->commit('Add the client');
+        // A push to main splits the later commit, in a checkout of its own: its split commits are not in this one.
+        $clone = "{$this->dir}/push-clone";
+        $this->exec(['git', 'clone', '--quiet', $this->monorepo, $clone], $this->dir);
+        [$exitCode, $stdout, $stderr] = $this->exec(['bash', Repository::ROOT . '/bin/split.sh', 'publish', '--remote', $this->remote, 'packages/sdk'], $clone);
+        self::assertSame(0, $exitCode, $stderr);
+        $later = self::published($stdout)['packages/sdk'];
+        $this->git(['checkout', '--quiet', '--detach', $release]);
+
+        [$exitCode, $stdout, $stderr] = $this->split(['publish', '--dry-run', '--version', '0.1.0', '--remote', $this->remote, 'packages/sdk']);
+        self::assertSame(0, $exitCode, $stderr);
+        self::assertStringContainsString('main would be left alone (ahead at ' . substr($later, 0, 12) . '); tag v0.1.0 would be created', $stdout);
+
+        [$exitCode, $stdout, $stderr] = $this->split(['publish', '--version', '0.1.0', '--remote', $this->remote, 'packages/sdk']);
+        self::assertSame(0, $exitCode, $stderr);
+        $split = self::published($stdout)['packages/sdk'];
+        self::assertStringContainsString('main left alone (ahead at ' . substr($later, 0, 12) . '); tag v0.1.0 created', $stdout);
+        self::assertSame($split, $this->git(['rev-parse', "{$later}^"]));
+        self::assertSame(
+            "{$later}\trefs/heads/main\n{$split}\trefs/tags/v0.1.0",
+            $this->git(['ls-remote', '--refs', "{$this->dir}/remotes/sdk.git"]),
+        );
+    }
+
+    public function testAMainThatMovesOnToALaterSplitDuringThePushIsLeftAlone(): void
+    {
+        $this->split(['publish', '--version', '0.1.0', '--remote', $this->remote, 'packages/sdk']);
+        $this->write('packages/sdk/Context.php', "<?php\n");
+        $this->commit('Add the context');
+        $release = $this->git(['rev-parse', 'HEAD']);
+        $this->write('packages/sdk/Client.php', "<?php\n");
+        $this->commit('Add the client');
+        $later = self::commits($this->split(['split', 'packages/sdk'])[1])['packages/sdk'];
+        $this->git(['checkout', '--quiet', '--detach', $release]);
+        // Another run (a push to main) pushes the later split after this run read main and before it pushes.
+        mkdir("{$this->dir}/hooks");
+        file_put_contents("{$this->dir}/hooks/pre-push", <<<SH
+            #!/bin/sh
+            [ -e '{$this->dir}/raced' ] && exit 0
+            touch '{$this->dir}/raced'
+            exec git push --quiet --no-verify "\$2" {$later}:refs/heads/main
+            SH);
+        chmod("{$this->dir}/hooks/pre-push", 0o700);
+        $this->git(['config', 'core.hooksPath', "{$this->dir}/hooks"]);
+
+        [$exitCode, $stdout, $stderr] = $this->split(['publish', '--version', '0.2.0', '--remote', $this->remote, 'packages/sdk']);
+
+        self::assertSame(0, $exitCode, $stderr);
+        self::assertFileExists("{$this->dir}/raced");
+        $split = self::published($stdout)['packages/sdk'];
+        self::assertStringContainsString("sdk's main moved on to " . substr($later, 0, 12) . ', which contains the split: left alone', $stdout);
+        self::assertSame("{$later}\trefs/heads/main", $this->git(['ls-remote', "{$this->dir}/remotes/sdk.git", 'refs/heads/main']));
+        self::assertSame("{$split}\trefs/tags/v0.2.0", $this->git(['ls-remote', "{$this->dir}/remotes/sdk.git", 'refs/tags/v0.2.0']));
+    }
+
     public function testATagOnAnotherCommitStopsTheRunBeforeThatDirectoryIsPushed(): void
     {
         $old = self::published($this->split(['publish', '--version', '0.1.0', '--remote', $this->remote, 'packages/common'])[1])['packages/common'];
@@ -167,13 +249,10 @@ final class SplitScriptTest extends TestCase
     {
         $directories = ['packages/common', 'packages/ingress', 'packages/testing'];
         $this->split(['publish', '--version', '0.1.0', '--remote', $this->remote, ...$directories]);
-        // A commit pushed to ingress by hand, which no split contains, and testing's tag gone.
-        $clone = "{$this->dir}/ingress-clone";
-        $this->exec(['git', 'clone', '--quiet', "{$this->dir}/remotes/ingress.git", $clone], $this->dir);
-        file_put_contents("{$clone}/HOTFIX", "hand-made\n");
-        $this->exec(['git', 'add', 'HOTFIX'], $clone);
-        $this->exec(['git', 'commit', '--quiet', '-m', 'Hotfix'], $clone);
-        $this->exec(['git', 'push', '--quiet', 'origin', 'main'], $clone);
+        // ingress's main replaced by hand with a commit no split contains; a commit pushed by hand on top of testing's
+        // split, and its tag gone.
+        $this->changeByHand('ingress', ['commit', '--quiet', '--amend', '-m', 'Rewritten']);
+        $this->changeByHand('testing', ['commit', '--quiet', '--allow-empty', '-m', 'Hotfix']);
         $this->exec(['git', 'push', '--quiet', "{$this->dir}/remotes/testing.git", ':refs/tags/v0.1.0'], $this->monorepo);
         $remotes = $this->remotes();
 
@@ -184,12 +263,21 @@ final class SplitScriptTest extends TestCase
         self::assertStringContainsString('main would be up to date; tag v0.1.0 would be already there', $stdout);
         self::assertStringContainsString('main would be NOT a fast-forward', $stdout);
         self::assertStringContainsString("ingress's main", $stderr);
-        self::assertStringContainsString('tag v0.1.0 would be created', $stdout);
+        // A release cannot tell a commit on top of its split from the split of a later commit: it tags its own split.
+        self::assertMatchesRegularExpression('/^packages\/testing -> testing: .*; main would be left alone \(ahead at [0-9a-f]{12}\); tag v0\.1\.0 would be created$/m', $stdout);
         self::assertSame($remotes, $this->remotes(), 'a dry run pushed');
 
         [$exitCode, , $stderr] = $this->split(['publish', '--version', '0.1.0', '--remote', $this->remote, 'packages/ingress']);
         self::assertSame(1, $exitCode);
         self::assertStringContainsString('pushing would not be a fast-forward', $stderr);
+        self::assertSame($remotes, $this->remotes());
+
+        // A run without a version splits the tip of main: a commit on top of that split was pushed by hand.
+        [$exitCode, $stdout, $stderr] = $this->split(['publish', '--remote', $this->remote, 'packages/testing']);
+        self::assertSame(1, $exitCode);
+        self::assertStringContainsString('main AHEAD at', $stdout);
+        self::assertStringContainsString("testing's main", $stderr);
+        self::assertStringContainsString('pushed by hand', $stderr);
         self::assertSame($remotes, $this->remotes());
     }
 
@@ -203,7 +291,7 @@ final class SplitScriptTest extends TestCase
             [$exitCode] = $this->split($arguments);
             self::assertSame(1, $exitCode, implode(' ', $arguments));
         }
-        self::assertSame(2, $this->split(['publish', '--remote', $this->remote])[0], 'no version: usage');
+        self::assertSame(2, $this->split(['publish', '--version', '0.1.0'])[0], 'no remote: usage');
         self::assertSame(2, $this->split([])[0]);
 
         $this->git(['config', 'i18n.commitEncoding', 'ISO-8859-1']);
@@ -249,6 +337,20 @@ final class SplitScriptTest extends TestCase
         }
 
         return $refs;
+    }
+
+    /**
+     * Commits in a clone of a split repository and force-pushes its main, as someone with write access could.
+     *
+     * @param list<string> $commit the git command that commits
+     */
+    private function changeByHand(string $repository, array $commit): void
+    {
+        $clone = "{$this->dir}/{$repository}-clone";
+        foreach ([[['git', 'clone', '--quiet', "{$this->dir}/remotes/{$repository}.git", $clone], $this->dir], [['git', ...$commit], $clone], [['git', 'push', '--quiet', '--force', 'origin', 'main'], $clone]] as [$command, $directory]) {
+            [$exitCode, , $stderr] = $this->exec($command, $directory);
+            self::assertSame(0, $exitCode, implode(' ', $command) . ": {$stderr}");
+        }
     }
 
     private function write(string $path, string $contents): void

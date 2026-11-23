@@ -178,7 +178,7 @@ The version of the PHP extension itself: its crate version (`extension/extension
 
 ### Release
 
-One version of the SDK, published by one manual run of `.github/workflows/release.yaml` on `main`: every Package and the extension at the version in the extension crate, after CI, the upstream suite and the extension builds pass on that commit. Each package directory and `extension/` is pushed to a read-only repository of its own (a Split Repository, which Packagist and PIE read), tagged `vX.Y.Z` (the extension's bare `X.Y.Z`); this repository gets the release `vX.Y.Z`. See `docs/decisions/0031-release.md`.
+One version of the SDK, published by one manual run of `.github/workflows/release.yaml` on `main`: every Package and the extension at the version in the extension crate, after CI, the upstream suite and the extension builds pass on that commit. Each package directory and `extension/` is pushed to a read-only repository of its own (a Split Repository, which Packagist and PIE read; `.github/workflows/split.yaml` also pushes its `main` on every push to this repository's `main`, so `dev-main` follows it), tagged `vX.Y.Z` (the extension's bare `X.Y.Z`); this repository gets the release `vX.Y.Z`. See `docs/decisions/0031-release.md`.
 
 ### Thread-Safe Extension Build
 

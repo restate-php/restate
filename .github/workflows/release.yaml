@@ -14,7 +14,8 @@
 #                repository's release vX.Y.Z.
 #
 # Publishing skips what is already there and refuses what differs, so a failed run can be
-# re-run. Nothing is ever force-pushed.
+# re-run. Nothing is ever force-pushed. With split.yaml on, the repositories' main already holds
+# the release commit's split (or a later one, which is left alone): publishing then only tags.
 name: Release
 
 on:

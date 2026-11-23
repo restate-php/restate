@@ -22,12 +22,13 @@ Done once.
 ### GitHub
 
 - [ ] Immutable releases on the extension repository (optional; the release creates a draft, uploads, then publishes, so it works either way).
+- [ ] For the push split (`.github/workflows/split.yaml`, [Release](docs/decisions/0031-release.md) decision 9): it uses the `release` environment, so its required reviewers, if any, approve every push run too. Run the workflow once by hand (Actions → **Split**) and check that every repository's `main` has the split; then set the repository variable `SPLIT_ON_PUSH` to `true`.
 - [ ] Optional: Dependabot or Renovate to keep the workflows' commit-SHA action pins (and their version comments) current.
 
 ### Packagist
 
 - [ ] Claim the vendor on Packagist.
-- [ ] Submit the five repositories, `restate/ext-restate` included (PIE resolves the extension through Packagist), right after the first release's publish job has pushed them: Packagist only accepts a repository with a `composer.json` on its default branch, and then reads the tags already there.
+- [ ] Submit the five repositories, `restate/ext-restate` included (PIE resolves the extension through Packagist), right after the first run that pushed them (the first manual **Split** run, or the first release's publish job): Packagist only accepts a repository with a `composer.json` on its default branch, and then reads the tags already there.
 - [ ] Packagist's GitHub integration (or its webhook) on each of the five, so later tags appear without a manual update.
 
 ## Every release
@@ -43,7 +44,7 @@ Done once.
   - [ ] The changelog, if one is kept.
 - [ ] `composer check` passes locally; for a release that touches the extension or the protocol, also `composer test:integration`, `composer test:frankenphp` and `bin/conformance-upstream-local.sh`.
 - [ ] Merge to `main` and push. `CI`, `Upstream SDK tests` and `Extension binaries` pass on that commit.
-- [ ] Rehearse the split on that commit: `composer release:split -- publish --dry-run --version X.Y.Z --remote https://github.com/restate-php/{repository}.git`. For every repository it reports `main` as created, fast-forwarded or up to date, and the tag (`X.Y.Z` for the extension, `vX.Y.Z` for the packages) as created; it pushes nothing, and fails on what would stop the release ([Release](docs/decisions/0031-release.md), decision 5).
+- [ ] Rehearse the split on that commit: `composer release:split -- publish --dry-run --version X.Y.Z --remote https://github.com/restate-php/{repository}.git`. For every repository it reports `main` as created, fast-forwarded, up to date or left alone (ahead: the push split already pushed a later commit's split), and the tag (`X.Y.Z` for the extension, `vX.Y.Z` for the packages) as created; it pushes nothing, and fails on what would stop the release ([Release](docs/decisions/0031-release.md), decision 5).
 
 ### 2. Release
 

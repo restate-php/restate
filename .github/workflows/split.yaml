@@ -1,0 +1,78 @@
+# Keeps the read-only repositories' main up to date with this repository's main between releases, so
+# Composer's dev-main of every package follows it (docs/decisions/0031-release.md, decision 9):
+# `bin/split.sh publish` without --version, which pushes each directory's history to its
+# repository's main (fast-forward only, never forced) and tags nothing. Releases tag through
+# release.yaml, which tags the split of its own commit even when this workflow has pushed a later one.
+#
+# Off until the repository variable SPLIT_ON_PUSH is `true` (RELEASING.md); manual runs work either
+# way. A run fails when a repository's main has commits the split of main's tip does not: someone
+# pushed to it by hand, and it needs repairing by hand.
+name: Split
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - extension/**
+      - packages/**
+      - bin/split.sh
+      - .github/workflows/split.yaml
+  # A retry net for a failed push run, and for main's tip after a push the paths left out. Scheduled
+  # runs split the default branch.
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One at a time; a newer pending run replaces an older one, whose split it contains. Not shared with
+# release.yaml, which would let a push cancel a pending release: a push that loses a race with the
+# other workflow finds main already containing its split, and leaves it (bin/split.sh).
+concurrency:
+  group: split
+  cancel-in-progress: false
+
+jobs:
+  split:
+    name: Split
+    if: github.event_name == 'workflow_dispatch' || vars.SPLIT_ON_PUSH == 'true'
+    runs-on: ubuntu-24.04
+    # The release's environment, which holds the GitHub App's key; required reviewers on it hold
+    # every run for approval too (docs/decisions/0031-release.md, decision 9).
+    environment: release
+
+    steps:
+      - name: Check the branch
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Split main, not $GITHUB_REF"
+          exit 1
+
+      # The whole history: git subtree split rewrites it per directory.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: List the repositories
+        id: repositories
+        run: echo "repositories=$(bash bin/split.sh list | awk '{ print $2 }' | paste -sd, -)" >> "$GITHUB_OUTPUT"
+
+      # A token for the split repositories only, with contents: write: push.
+      - name: Create a token for the repositories
+        id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: ${{ vars.RELEASE_OWNER }}
+          repositories: ${{ steps.repositories.outputs.repositories }}
+          permission-contents: write
+
+      - name: Push each directory's history
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          OWNER: ${{ vars.RELEASE_OWNER }}
+        run: bash bin/split.sh publish --remote "https://x-access-token:$GH_TOKEN@github.com/$OWNER/{repository}.git"
