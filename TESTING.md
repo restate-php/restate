@@ -365,7 +365,7 @@ composer load -- <scenario> --quick     # load test against Restate (bin/load-te
 
 ### PHP micro-benchmarks
 
-`tests/Benchmark/*Bench.php` are phpbench 1.7 benchmarks (`phpbench.json`: bootstrap `vendor/autoload.php`, attributes only). Every iteration runs in its own PHP process with the **release** extension (`extension/target/release/restate.so`; `composer bench` builds it), `opcache.enable_cli=1`, JIT off and `zend.assertions=-1`. Each subject sends its request once before it is timed and throws if the response is not the expected one, so a benchmark cannot silently time an error path. PHPStan and php-cs-fixer cover them like the rest of `tests/`; PHPUnit ignores them (no `*Test.php`).
+`tests/Benchmark/*Bench.php` are phpbench 1.7 benchmarks (`phpbench.json`: bootstrap `tests/Benchmark/bootstrap.php`, attributes only). The bootstrap loads `vendor/autoload.php`, then resets PHP's peak memory, so a subject's peak memory leaves out compiling Composer's class map, which changes whenever a dev dependency adds classes. Every iteration runs in its own PHP process with the **release** extension (`extension/target/release/restate.so`; `composer bench` builds it), `opcache.enable_cli=1`, JIT off and `zend.assertions=-1`. Each subject sends its request once before it is timed and throws if the response is not the expected one, so a benchmark cannot silently time an error path. PHPStan and php-cs-fixer cover them like the rest of `tests/`; PHPUnit ignores them (no `*Test.php`).
 
 | Benchmark | Subjects |
 | --- | --- |
