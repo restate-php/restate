@@ -73,7 +73,7 @@ jobs:
       # Fails when the version is already a tag or not newer than the latest vX.Y.Z.
       - name: Check the version
         id: pick
-        uses: sagikazarmark/next-version@e291b39a83bf84c948c419871f910173bf8343dc # v0.2.0
+        uses: sagikazarmark/next-version@fc0401d3719a172991c36ec41f5e43419c30e90f # v0.3.0
         with:
           version: ${{ steps.crate.outputs.version }}
 
@@ -238,7 +238,7 @@ jobs:
       # A token for the split repositories only, with contents: write: push, tag, release.
       - name: Create a token for the repositories
         id: app
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
