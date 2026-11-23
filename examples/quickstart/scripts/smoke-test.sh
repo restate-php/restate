@@ -33,7 +33,16 @@ for _ in $(seq 1 90); do
     sleep 2
 done
 [[ "$state" == "exited 0" ]] || fail "register did not finish: $state"
-docker compose logs --no-log-prefix register | grep -q '"name":"Greeter"' || fail "the deployment has no Greeter"
+
+# Capture before grepping: with pipefail, `grep -q` closing the pipe early would fail the pipeline.
+services=$(curl -fsS "${RESTATE_ADMIN_URL:-http://localhost:9070}/services")
+for service in Greeter Counter Signup; do
+    grep -q "\"name\":\"$service\"" <<<"$services" || fail "Restate has no $service service: $services"
+done
+echo "ok: registered Greeter, Counter and Signup"
+register_log=$(docker compose logs --no-log-prefix register)
+grep -q '"name":"Greeter"' <<<"$register_log" || fail "docker compose logs register does not show the deployment: $register_log"
+echo "ok: docker compose logs register shows the deployment"
 
 expect() {
     local what="$1" expected="$2" actual="$3"

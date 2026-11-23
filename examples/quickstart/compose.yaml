@@ -46,6 +46,9 @@ services:
       - --fail-with-body
       - --silent
       - --show-error
+      # Restate's answer has no trailing newline; without one, `docker compose logs register` shows nothing.
+      - --write-out
+      - '\n'
       - http://restate:9070/deployments
       - --json
       - '{"uri": "http://greeter:9080", "use_http_11": true, "force": true}'
