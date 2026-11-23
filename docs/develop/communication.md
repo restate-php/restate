@@ -29,7 +29,7 @@ final class Onboarding
 }
 ```
 
-The call is durable. Restate journals it, delivers the request to the callee, and journals the result. While the callee runs, the caller suspends; when the result is in, Restate resumes the caller, which replays its journal and continues with the result. A retried or resumed attempt never calls the handler a second time.
+The call is durable. Restate journals it, delivers the request to the callee, and journals the result. While the callee runs, the caller suspends; when the result is in, Restate resumes the caller, which replays its journal and continues with the result. A retried or resumed attempt never calls the handler a second time. A call to a handler without output (`void`) returns `null`, as does the output of its invocation handle; a custom output serializer gets the empty bytes to decode.
 
 If the callee throws a terminal error, the call throws the same `TerminalError` in the caller, with its status code, message and metadata. Catch it to compensate, or let it fail the caller as well ([Error handling](errors.md#terminal-and-retryable-errors)).
 

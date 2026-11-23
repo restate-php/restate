@@ -10,6 +10,11 @@ use Restate\Service;
 
 return Service::new('Greeter')
     ->handler('greet', static fn (Context $ctx, string $name): string => "Hello {$name}")
+    // Optional input: an empty body is the default.
+    ->handler('greetOptional', static fn (Context $ctx, ?string $name = null): string => 'Hello ' . ($name ?? 'stranger'))
+    // No output: Communicator/callVoid calls it.
+    ->handler('nothing', static function (Context $ctx): void {
+    })
     ->handler(
         'greetWithRun',
         static fn (Context $ctx, string $name): string => $ctx->run(

@@ -122,6 +122,45 @@ final class EffectiveHandlerPayloadTest extends TestCase
         self::assertSame(1, $mapper->hydrateCalls);
     }
 
+    /** @return iterable<string, array{\Closure, string}> */
+    public static function optionalInputs(): iterable
+    {
+        yield 'nullable with a default' => [static fn (Context $ctx, ?string $name = null): string => $name ?? 'nobody', '"nobody"'];
+        yield 'default' => [static fn (Context $ctx, string $name = 'world'): string => $name, '"world"'];
+        yield 'nullable' => [static fn (Context $ctx, ?string $name): string => $name ?? 'nobody', '"nobody"'];
+        yield 'mixed' => [static fn (Context $ctx, mixed $value): string => get_debug_type($value), '"null"'];
+        yield 'untyped' => [static fn (Context $ctx, $value): string => get_debug_type($value), '"null"'];
+        yield 'nullable DTO' => [static fn (Context $ctx, ?EffectiveHandlerPayloadPerson $person): string => $person->name ?? 'nobody', '"nobody"'];
+    }
+
+    /**
+     * An empty body is no value: discovery advertises the input as optional, and the ingress client sends a null
+     * payload as no body. The handler gets the parameter's default, or null when the type accepts it, without the
+     * JSON value mapper seeing it.
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('optionalInputs')]
+    public function testAnEmptyJsonInputIsTheParametersDefaultOrNull(\Closure $handler, string $output): void
+    {
+        $mapper = new EffectiveHandlerPayloadInputCountingMapper();
+        $registry = new ServiceRegistry([Service::new('Greeter')->handler('greet', $handler)], JsonPayloadOptions::new()->withValueMapper($mapper));
+
+        self::assertSame($output, $registry->invoke('Greeter', 'greet', '', $this->context()));
+        self::assertSame(0, $mapper->inputCalls);
+    }
+
+    public function testAnEmptyJsonInputForAParameterThatNeedsAValueIsABadRequest(): void
+    {
+        $registry = new ServiceRegistry([Service::new('Greeter')->handler('greet', static fn (Context $ctx, string $name): string => $name)]);
+
+        try {
+            $registry->invoke('Greeter', 'greet', '', $this->context());
+            self::fail('Expected an empty body to fail.');
+        } catch (TerminalError $e) {
+            self::assertSame(400, $e->statusCode());
+            self::assertSame('Greeter/greet requires an input payload, but the request has no body.', $e->getMessage());
+        }
+    }
+
     public function testADtoWithCollidingJsonNamesFailsTheInvocationTerminally(): void
     {
         $registry = new ServiceRegistry([
@@ -236,6 +275,41 @@ final class EffectiveHandlerPayloadSchemaProvider implements JsonSchemaProvider
         ++$this->calls;
 
         return JsonSchemaMetadata::fromArray(['type' => 'string', 'description' => "{$context->role->value} schema"]);
+    }
+}
+
+final readonly class EffectiveHandlerPayloadPerson
+{
+    public function __construct(public string $name)
+    {
+    }
+}
+
+/** Maps no output, and counts the inputs it is asked about. */
+final class EffectiveHandlerPayloadInputCountingMapper implements JsonValueMapper
+{
+    public int $inputCalls = 0;
+
+    #[\Override]
+    public function supports(JsonValueMappingContext $context): bool
+    {
+        if ($context->role === PayloadRole::Input) {
+            ++$this->inputCalls;
+        }
+
+        return false;
+    }
+
+    #[\Override]
+    public function hydrate(mixed $value, JsonValueMappingContext $context): mixed
+    {
+        return $value;
+    }
+
+    #[\Override]
+    public function normalize(mixed $value, JsonValueMappingContext $context): mixed
+    {
+        return $value;
     }
 }
 

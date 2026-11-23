@@ -10,6 +10,7 @@ use PHPUnit\Framework\TestCase;
 use Restate\Internal\Context\DurableFutureImpl;
 use Restate\Internal\Backend\AwaitState;
 use Restate\Internal\Backend\NotificationResult;
+use Restate\DurablePromise;
 use Restate\Internal\SuspensionException;
 use Restate\TerminalError;
 use Restate\Tests\Support\Contexts;
@@ -37,16 +38,33 @@ final class DurablePromiseTest extends TestCase
         self::assertSame([1], $invocation->taken());
     }
 
-    public function testPromiseValueThrowsJsonExceptionForMalformedBackendJson(): void
+    /** @return iterable<string, array{string, \Closure(DurablePromise): mixed, string}> */
+    public static function promiseReads(): iterable
+    {
+        yield 'value' => ['sysGetPromise', static fn (DurablePromise $promise): mixed => $promise->value(), 'Promise get'];
+        yield 'peek' => ['sysPeekPromise', static fn (DurablePromise $promise): mixed => $promise->peek(), 'Promise peek'];
+        yield 'future' => ['sysGetPromise', static fn (DurablePromise $promise): mixed => $promise->future()->awaitResult(), 'Promise get'];
+    }
+
+    /**
+     * Every way of reading a promise reports malformed JSON alike, as the operation's (retryable) failure.
+     *
+     * @param \Closure(DurablePromise): mixed $read
+     */
+    #[DataProvider('promiseReads')]
+    public function testEveryPromiseReadReportsMalformedBackendJsonAlike(string $operation, \Closure $read, string $name): void
     {
         $invocation = ScriptedInvocation::new();
-        $invocation->onNext('sysGetPromise', NotificationResult::success('{bad json'));
+        $invocation->onNext($operation, NotificationResult::success('{bad json'));
         $ctx = Contexts::workflow($invocation, 'checkout-1');
 
-        $this->expectException(JsonException::class);
-        $this->expectExceptionMessage('Syntax error');
-
-        $ctx->promise('approval')->value();
+        try {
+            $read($ctx->promise('approval'));
+            self::fail('Expected malformed promise JSON to throw.');
+        } catch (\RuntimeException $e) {
+            self::assertSame("{$name} returned invalid success JSON.", $e->getMessage());
+            self::assertInstanceOf(JsonException::class, $e->getPrevious());
+        }
     }
 
     /** @param array<array-key, string> $metadata */

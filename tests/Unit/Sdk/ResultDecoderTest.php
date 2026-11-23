@@ -13,6 +13,7 @@ use Restate\Internal\ResultDecoder;
 use Restate\Internal\SuspensionException;
 use Restate\JournalValueCodec;
 use Restate\JsonSerde;
+use Restate\Reflection\HandlerSerdes;
 use Restate\Serde;
 use Restate\TerminalError;
 
@@ -113,6 +114,36 @@ final class ResultDecoderTest extends TestCase
         ResultDecoder::serde('state get', new JsonSerde())->decode(NotificationResult::success('{bad'));
     }
 
+    /**
+     * A handler without output writes no bytes, so awaiting a call to it (or its invocation's output) completes with an
+     * empty success. No JSON value encodes to no bytes: for JSON it is null, without the codec, which might not accept
+     * empty bytes.
+     *
+     * @return iterable<string, array{ResultDecoder<mixed>}>
+     */
+    public static function jsonDecoders(): iterable
+    {
+        yield 'json' => [ResultDecoder::json('service call', new RejectingEmptyCodec())];
+        yield 'serde with the JSON serializer' => [ResultDecoder::serde('invocation output', new JsonSerde(), new RejectingEmptyCodec())];
+        yield 'value with the JSON serializer' => [ResultDecoder::value('awakeable', new JsonSerde(), new RejectingEmptyCodec())];
+        yield 'serde with a handler-mapped JSON serializer' => [ResultDecoder::serde('service call', HandlerSerdes::of('Probe', 'nothing', static function (): void {
+        })->output, new RejectingEmptyCodec())];
+    }
+
+    /** @param ResultDecoder<mixed> $decoder */
+    #[DataProvider('jsonDecoders')]
+    public function testAnEmptySuccessIsNullForJson(ResultDecoder $decoder): void
+    {
+        self::assertNull($decoder->decode(NotificationResult::success('')));
+    }
+
+    /** Any other serializer decides what empty bytes are: they can be a value of its own format. */
+    public function testAnEmptySuccessGoesToAnyOtherSerializer(): void
+    {
+        self::assertSame('', ResultDecoder::serde('state get', new UpperSerde())->decode(NotificationResult::success('')));
+        self::assertSame('', ResultDecoder::value('service call', new UpperSerde())->decode(NotificationResult::success('')));
+    }
+
     public function testValuePicksJsonForTheJsonSerializer(): void
     {
         $this->expectExceptionMessage('Awakeable returned invalid success JSON.');
@@ -158,6 +189,19 @@ final class ReversingCodec implements JournalValueCodec
     public function decode(string $bytes): string
     {
         return strrev($bytes);
+    }
+}
+
+final class RejectingEmptyCodec implements JournalValueCodec
+{
+    public function encode(string $bytes): string
+    {
+        return $bytes;
+    }
+
+    public function decode(string $bytes): string
+    {
+        return $bytes === '' ? throw new \LogicException('The codec must not see an empty success.') : $bytes;
     }
 }
 

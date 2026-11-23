@@ -22,8 +22,9 @@ A handler takes at most one payload parameter after its context, and its types d
 | `stdClass` | Not supported: JSON objects decode to arrays | Encoded as JSON |
 
 Input that does not match its declared type fails the invocation with a terminal error with status 400, and so does
-input that is not valid JSON. A handler that declares a payload parameter needs a JSON body: an empty body is invalid
-JSON, even when the parameter is nullable or has a default. Send `null` instead. See
+input that is not valid JSON. An empty body is no value: the parameter gets its default when it has one, and `null`
+when its type accepts `null` (a nullable, `mixed` or untyped parameter); any other parameter fails with status 400.
+Restate accepts an empty body unless the input is declared `required: true`. See
 [Invalid input](errors.md#invalid-input).
 
 Context operations use plain JSON too, without type mapping: a DTO you store with `$ctx->set()` is written through its

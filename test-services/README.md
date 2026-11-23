@@ -8,7 +8,7 @@ Each file in `services/` returns one service definition implementing a contract 
 
 | File | Service | Served by |
 | --- | --- | --- |
-| `greeter.php` | `Greeter`: JSON in and out, durable and retrying `ctx.run`, explicit discovery schemas | both |
+| `greeter.php` | `Greeter`: JSON in and out, optional input, no output, durable and retrying `ctx.run`, explicit discovery schemas | both |
 | `communicator.php` | `Communicator`: calls, sends, timers, awakeables, combinators and invocation handles across the other services | both |
 | `counter.php` | `Counter`: Virtual Object with per-key JSON state | both |
 | `payments.php` | `Payments`: terminal errors with status code and metadata | both |
