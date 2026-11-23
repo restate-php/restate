@@ -32,18 +32,11 @@ concurrency:
   group: release
   cancel-in-progress: false
 
-env:
-  # The read-only repositories a release publishes to, all owned by the RELEASE_OWNER variable
-  # (restate-php, the owner of this repository, restate-php/restate):
-  # "<directory> <repository>". Each gets the directory's history (git subtree split) on main
-  # and the release tag: X.Y.Z for the extension (PIE puts the tag in the asset names it looks
-  # for), vX.Y.Z for the packages. The extension's line comes first.
-  SPLITS: |
-    extension ext-restate
-    packages/common common
-    packages/ingress ingress
-    packages/sdk sdk
-    packages/testing testing
+# The read-only repositories a release publishes to, all owned by the RELEASE_OWNER variable
+# (restate-php, the owner of this repository, restate-php/restate), are listed by
+# `bin/split.sh list` ("<directory> <repository>", the extension first). Each gets the directory's
+# history (git subtree split) on main and the release tag: X.Y.Z for the extension (PIE puts the
+# tag in the asset names it looks for), vX.Y.Z for the packages.
 
 jobs:
   version:
@@ -121,13 +114,13 @@ jobs:
                 failed=1
               fi
             done
-          done <<< "$SPLITS"
+          done <<< "$(bash bin/split.sh list)"
 
           exit "$failed"
 
       - name: List the repositories
         id: repositories
-        run: echo "repositories=$(awk 'NF { print $2 }' <<< "$SPLITS" | paste -sd, -)" >> "$GITHUB_OUTPUT"
+        run: echo "repositories=$(bash bin/split.sh list | awk '{ print $2 }' | paste -sd, -)" >> "$GITHUB_OUTPUT"
 
   ci:
     name: CI
@@ -256,33 +249,26 @@ jobs:
         run: |
           set -euo pipefail
 
-          # The directory's history on the repository's main (fast-forward only: the split of a
-          # later commit extends the earlier one) and the tag on it.
-          split() {
-            local directory=$1 repository=$2 tag=$3 url commit existing
-            url="https://x-access-token:$GH_TOKEN@github.com/$OWNER/$repository.git"
-            echo "::group::$directory -> $OWNER/$repository $tag"
-            commit=$(git subtree split --prefix="$directory" HEAD)
-            echo "Split commit: $commit"
-            git push "$url" "$commit:refs/heads/main"
-            existing=$(git ls-remote "$url" "refs/tags/$tag" | cut -f1)
-            if [ -z "$existing" ]; then
-              git push "$url" "$commit:refs/tags/$tag"
-            elif [ "$existing" != "$commit" ]; then
-              echo "::error::$OWNER/$repository has $tag on $existing, not on $commit"
-              exit 1
-            fi
-            echo "::endgroup::"
-          }
+          # bin/split.sh derives the packages' tags from the version: they must be this release's.
+          if [ "$TAG" != "v$VERSION" ]; then
+            echo "::error::The release tag $TAG is not v$VERSION, the packages' tag bin/split.sh pushes"
+            exit 1
+          fi
+
+          # Each directory's history on its repository's main (fast-forward only, never forced)
+          # and the tag on it: bin/split.sh, which `composer release:split` runs locally too.
+          remote="https://x-access-token:$GH_TOKEN@github.com/$OWNER/{repository}.git"
+          splits=$(bash bin/split.sh list)
+          read -r directory repository <<< "$(head -n 1 <<< "$splits")"
+          if [ "$directory" != extension ]; then
+            echo "::error::bin/split.sh list must start with the extension"
+            exit 1
+          fi
+          echo "::group::$directory -> $OWNER/$repository $VERSION"
+          bash bin/split.sh publish --version "$VERSION" --remote "$remote" "$directory"
+          echo "::endgroup::"
 
           {
-            read -r directory repository
-            if [ "$directory" != extension ]; then
-              echo "::error::The first line of SPLITS must be the extension"
-              exit 1
-            fi
-            split "$directory" "$repository" "$VERSION"
-
             # The archives go to a draft first (assets can be added to a draft even with
             # immutable releases), which is published once it has them all. PIE sees published
             # releases only.
@@ -303,12 +289,12 @@ jobs:
               gh release edit "$VERSION" --repo "$extension" --draft=false --latest="$MAKE_LATEST"
             fi
 
-            while read -r directory repository; do
-              if [ -n "$directory" ]; then
-                split "$directory" "$repository" "$TAG"
-              fi
-            done
-          } <<< "$SPLITS"
+            # Then the packages, in bin/split.sh list's order.
+            read -r -a packages <<< "$(tail -n +2 <<< "$splits" | cut -d' ' -f1 | tr '\n' ' ')"
+            echo "::group::${packages[*]} -> $TAG"
+            bash bin/split.sh publish --version "$VERSION" --remote "$remote" "${packages[@]}"
+            echo "::endgroup::"
+          }
 
       - name: Release this repository
         env:

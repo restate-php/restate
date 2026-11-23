@@ -41,6 +41,8 @@
             <group>serving-hazards</group>
             <group>failure-nightly</group>
             <group>scale</group>
+            <!-- bin/split.sh on a throwaway monorepo: composer test:release (and composer check). -->
+            <group>release</group>
         </exclude>
     </groups>
     <!-- ignoreIndirectDeprecations: a deprecation that third-party code triggers in third-party code is not ours to
