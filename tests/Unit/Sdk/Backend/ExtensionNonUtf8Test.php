@@ -83,7 +83,7 @@ final class ExtensionNonUtf8Test extends TestCase
             $handle = $run->sysRun('charge');
             $run->doAwait($handle);
             echo json_encode([
-                'error' => $attempt(static fn () => $vm->notifyError("caf\xE9 failed", "#0 h\xE9()")),
+                'error' => $attempt(static fn () => $vm->notifyError(500, "caf\xE9 failed", "#0 h\xE9()")),
                 'output' => $output($vm),
                 'run' => $run->proposeRunRetryable($handle, 500, "timeout \xE9", [], 5, null, null),
                 'runOutput' => $output($run),

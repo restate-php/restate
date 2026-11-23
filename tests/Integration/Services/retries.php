@@ -65,6 +65,19 @@ return Service::new('Retries')
         },
         invocationRetryPolicy: new InvocationRetryPolicy(initialIntervalMillis: 100, exponentiationFactor: 1.0),
     )
+    // A handler whose first attempt fails with a 429, under an invocation retry policy that retries after 100 ms.
+    ->handler(
+        'handlerFailureCode',
+        static function (Context $ctx, array $request) use ($attemptFile, $recordAttempt): int {
+            $attempts = $recordAttempt($attemptFile((string) $request['id']));
+            if ($attempts === 1) {
+                throw new RetryableError('slow down', 429);
+            }
+
+            return $attempts;
+        },
+        invocationRetryPolicy: new InvocationRetryPolicy(initialIntervalMillis: 100, exponentiationFactor: 1.0),
+    )
     // A run that fails every attempt with a 503 and metadata, under a policy that allows two attempts.
     ->handler('runExhausted', static function (Context $ctx, array $request) use ($attemptFile, $recordAttempt): void {
         $ctx->run(
@@ -72,7 +85,7 @@ return Service::new('Retries')
             static function () use ($request, $attemptFile, $recordAttempt): never {
                 $attempts = $recordAttempt($attemptFile((string) $request['id']));
 
-                throw new RetryableError("unavailable (attempt {$attempts})", code: 503, metadata: ['retry-reason' => 'maintenance', '503' => 'numeric key']);
+                throw new RetryableError("unavailable (attempt {$attempts})", 503, ['retry-reason' => 'maintenance', '503' => 'numeric key']);
             },
             RunRetryPolicy::fixedDelay(10, maxAttempts: 2),
         );

@@ -561,25 +561,28 @@ final class EndpointRoutingTest extends TestCase
         self::assertSame('', $response->body);
     }
 
-    public function testHandleRequestPassesTheRetryAfterOfARetryableErrorFromTheHandler(): void
+    /** A handler's RetryableError reports its retry-after delay and status code; any other exception is 500. */
+    public function testHandleRequestPassesTheRetryAfterAndStatusCodeOfARetryableErrorFromTheHandler(): void
     {
         $reported = [];
         $invocation = $this->successfulInvocation([['content-type', 'application/vnd.restate.invocation.v6']]);
         $invocation->method('notifyError')->willReturnCallback(
-            static function (string $message, string $stacktrace = '', ?int $retryAfterMillis = null) use (&$reported): void {
-                $reported[] = [$message, $retryAfterMillis];
+            static function (string $message, string $stacktrace = '', ?int $retryAfterMillis = null, int $code = 500) use (&$reported): void {
+                $reported[] = [$message, $retryAfterMillis, $code];
             },
         );
         $endpoint = Endpoint::create($this->coreForInvocation($invocation), [
             Service::new('Greeter')
-                ->handler('rateLimited', static fn (Context $ctx, mixed $_): never => throw new RetryableError('rate limited', 2_000))
+                ->handler('rateLimited', static fn (Context $ctx, mixed $_): never => throw new RetryableError('rate limited', retryAfterMillis: 2_000))
+                ->handler('unavailable', static fn (Context $ctx, mixed $_): never => throw new RetryableError('unavailable', 503, ['reason' => 'maintenance']))
                 ->handler('explode', static fn (Context $ctx, mixed $_): never => throw new \RuntimeException('boom')),
         ]);
 
         $endpoint->handleRequest(['REQUEST_URI' => '/invoke/Greeter/rateLimited', 'CONTENT_TYPE' => 'application/vnd.restate.invocation.v6'], 'request-body');
+        $endpoint->handleRequest(['REQUEST_URI' => '/invoke/Greeter/unavailable', 'CONTENT_TYPE' => 'application/vnd.restate.invocation.v6'], 'request-body');
         $endpoint->handleRequest(['REQUEST_URI' => '/invoke/Greeter/explode', 'CONTENT_TYPE' => 'application/vnd.restate.invocation.v6'], 'request-body');
 
-        self::assertSame([['rate limited', 2_000], ['boom', null]], $reported);
+        self::assertSame([['rate limited', 2_000, 500], ['unavailable', null, 503], ['boom', null, 500]], $reported);
     }
 
     public function testHandleRequestReportsJsonExceptionFromHandlerCodeAsRetryableError(): void

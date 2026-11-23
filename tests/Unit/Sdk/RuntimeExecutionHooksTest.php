@@ -250,7 +250,7 @@ final class RuntimeExecutionHooksTest extends TestCase
         $invocation->expects(self::never())->method('writeOutputFailure');
         $invocation->expects(self::once())->method('notifyError')->with('slow down', self::anything(), 2000);
 
-        $this->invoke($invocation, $this->failing(new \OverflowException('rate limited')), '/invoke/Failing/fail', errorMapper: static fn (\Throwable $e): RetryableError => new RetryableError('slow down', 2000, $e));
+        $this->invoke($invocation, $this->failing(new \OverflowException('rate limited')), '/invoke/Failing/fail', errorMapper: static fn (\Throwable $e): RetryableError => new RetryableError('slow down', previous: $e, retryAfterMillis: 2000));
     }
 
     public function testErrorMapperReturningNullKeepsTheDefault(): void
@@ -277,7 +277,7 @@ final class RuntimeExecutionHooksTest extends TestCase
 
         $retryable = $this->invocation();
         $retryable->expects(self::once())->method('notifyError')->with('later', self::anything(), 10);
-        $this->invoke($retryable, $this->failing(new RetryableError('later', 10)), '/invoke/Failing/fail', errorMapper: $mapper);
+        $this->invoke($retryable, $this->failing(new RetryableError('later', retryAfterMillis: 10)), '/invoke/Failing/fail', errorMapper: $mapper);
 
         self::assertSame([], $mapped);
     }

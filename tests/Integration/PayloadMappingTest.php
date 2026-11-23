@@ -84,7 +84,7 @@ final class PayloadMappingTest extends IntegrationTestCase
                 self::payloads()->request($handler, $payload)->call();
                 self::fail("{$case}: expected a TerminalError.");
             } catch (TerminalError $e) {
-                self::assertSame(400, $e->code(), "{$case}: {$e->getMessage()}");
+                self::assertSame(400, $e->statusCode(), "{$case}: {$e->getMessage()}");
             }
         }
     }

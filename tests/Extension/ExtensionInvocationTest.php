@@ -124,6 +124,30 @@ final class ExtensionInvocationTest extends ExtensionTestCase
         );
     }
 
+    public function testRetryableErrorEndsTheAttemptWithItsStatusCode(): void
+    {
+        $invocation = self::running();
+
+        $invocation->notifyError('unavailable', '#0 handler()', 2_000, 503);
+
+        self::assertSame(
+            bin2hex(FrameCodec::errorFrame(503, 'unavailable', '#0 handler()', nextRetryDelayMillis: 2_000)),
+            bin2hex(self::written($invocation)),
+        );
+    }
+
+    /** 570 is a journal mismatch to Restate; the extension reports anything that is not a failure code as 500 too. */
+    public function testRetryableErrorWithACodeThatIsNotAFailureCodeEndsTheAttemptWith500(): void
+    {
+        foreach ([0, 200, 570, 600] as $code) {
+            $invocation = self::running();
+
+            $invocation->notifyError('unavailable', '', code: $code);
+
+            self::assertSame(bin2hex(FrameCodec::errorFrame(500, 'unavailable', '')), bin2hex(self::written($invocation)), (string) $code);
+        }
+    }
+
     public function testRunIsExecutedProposedAndAcknowledged(): void
     {
         $invocation = self::running(open: true);

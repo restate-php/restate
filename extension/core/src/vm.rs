@@ -152,19 +152,26 @@ impl Vm {
         )?)
     }
 
-    /// Reports a retryable failure of the attempt. `retry_after` asks Restate
-    /// to wait that long before the next attempt instead of following its
-    /// invocation retry policy (shared-core writes it to the error message as
-    /// given). Message and stack trace may be any bytes; see
-    /// [`validation::lossy_text`].
+    /// Reports a retryable failure of the attempt with status `code`, which
+    /// goes through [`validation::retryable_failure_code`] (anything that
+    /// cannot be a failure code, and 570, becomes 500). `retry_after` asks
+    /// Restate to wait that long before the next attempt instead of following
+    /// its invocation retry policy (shared-core writes it to the error message
+    /// as given). The protocol's error message has no metadata, so a
+    /// handler's retryable failure carries none. Message and stack trace may
+    /// be any bytes; see [`validation::lossy_text`].
     pub fn notify_error(
         &mut self,
+        code: i64,
         message: impl Into<Vec<u8>>,
         stacktrace: impl Into<Vec<u8>>,
         retry_after: Option<Duration>,
     ) {
-        let mut error = restate_sdk_shared_core::Error::internal(validation::lossy_text(message))
-            .with_stacktrace(validation::lossy_text(stacktrace));
+        let mut error = restate_sdk_shared_core::Error::new(
+            validation::retryable_failure_code(code),
+            validation::lossy_text(message),
+        )
+        .with_stacktrace(validation::lossy_text(stacktrace));
         if let Some(delay) = retry_after {
             error = error.with_next_retry_delay_override(delay);
         }

@@ -90,7 +90,7 @@ if (!$lock->tryAcquire()) {
 }
 ```
 
-From a handler, the delay replaces the delay of the [invocation retry policy](#retry-policies) for the next attempt. The handler then fails the attempt the same way as any other exception; its `code` and `metadata` are not reported to Restate.
+From a handler, the delay replaces the delay of the [invocation retry policy](#retry-policies) for the next attempt. The attempt fails with the error's status code (500 for any other exception); its `metadata` is not reported to Restate, since a failed attempt carries none.
 
 Inside a `$ctx->run()` callback, `RetryableError` fails that run attempt instead. Restate waits `retryAfterMillis` instead of the run retry policy's interval, while the policy's attempt and duration limits still apply. Once the policy gives up, the run fails terminally with the last `RetryableError`'s message, status code and metadata. See [Retry-after delays](durable-steps.md#retry-after-delays) for the details.
 
@@ -175,7 +175,7 @@ $endpoint = Endpoint::builder()
 | The mapper returns | Result |
 | --- | --- |
 | `TerminalError` | Fails the invocation (or the run, without retrying it) with its status code and metadata |
-| `RetryableError` | Retried, with its retry-after delay (and, in a run, its status code and metadata) |
+| `RetryableError` | Retried, with its retry-after delay and status code (and, in a run, its metadata) |
 | `PauseError` | Pauses the invocation |
 | `null` | No change: the exception is retried |
 

@@ -241,10 +241,12 @@ impl PhpVm {
         })
     }
 
-    /// Reports a retryable failure; `retry_after_millis` asks Restate to wait
-    /// that long before the next attempt.
+    /// Reports a retryable failure with `code` (500 unless 400–599 and not
+    /// 570); `retry_after_millis` asks Restate to wait that long before the
+    /// next attempt.
     pub fn notify_error(
         &mut self,
+        code: i64,
         message: Binary<u8>,
         stacktrace: Binary<u8>,
         retry_after_millis: Option<i64>,
@@ -253,7 +255,7 @@ impl PhpVm {
             let retry_after = retry_after_millis
                 .map(|millis| validation::non_negative_millis(millis, "Retry-after delay"))
                 .transpose()?;
-            vm.notify_error(Vec::from(message), Vec::from(stacktrace), retry_after);
+            vm.notify_error(code, Vec::from(message), Vec::from(stacktrace), retry_after);
             Ok(())
         })
     }

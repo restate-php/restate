@@ -361,7 +361,7 @@ final class IngressClientTest extends TestCase
             $this->client()->serviceClient('Payments')->request('charge', ['amount' => 1])->call();
             self::fail('Expected a TerminalError.');
         } catch (TerminalError $e) {
-            self::assertSame(402, $e->code());
+            self::assertSame(402, $e->statusCode());
             self::assertSame('Card reported lost', $e->getMessage());
             self::assertSame(['reason' => 'lost', '404' => 'x'], $e->metadata());
         }
@@ -379,7 +379,7 @@ final class IngressClientTest extends TestCase
                 $read();
                 self::fail('Expected a TerminalError.');
             } catch (TerminalError $e) {
-                self::assertSame(400, $e->code());
+                self::assertSame(400, $e->statusCode());
                 self::assertSame('Payment declined', $e->getMessage());
                 self::assertSame([], $e->metadata());
             }
