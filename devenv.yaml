@@ -8,7 +8,7 @@ inputs:
     overlays:
       - default
   # The extension flake's nixpkgs, which is ext-php-rs.nix's: one nixpkgs for the shell and every
-  # Nix build, and ext-php-rs.cachix.org has the PHP headers and cargo-zigbuild for it.
+  # Nix build.
   nixpkgs:
     follows: ext-restate/nixpkgs
   # languages.rust.toolchainFile builds the toolchain of extension/rust-toolchain.toml with it,

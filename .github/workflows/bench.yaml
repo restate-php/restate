@@ -12,7 +12,7 @@ on:
     paths:
       - '.github/workflows/bench.yaml'
       - 'bin/bench-compare.sh'
-      - 'bin/build-extension.sh'
+      - 'justfile'
       - 'composer.json'
       - 'composer.lock'
       - 'extension/**'

@@ -2,7 +2,7 @@
 # one gzipped tar per PHP minor x thread safety x CPU x libc, named as PIE looks for it.
 # docs/decisions/0030-prebuilt-extension-binaries.md has the design.
 #
-# One job cross-compiles all of them with Nix in the dev shell (`composer build:pie`, the
+# One job cross-compiles all of them with Nix in the dev shell (`just extension pie`, the
 # extension flake's packages.pie, extension/flake.nix), which also checks each module's
 # shared libraries and glibc floor, and checks the flake; then a job per CPU loads each archive
 # of that CPU into a clean PHP and runs extension/tests/*.phpt there, and a macOS job runs the
@@ -17,7 +17,6 @@ on:
     branches: [main]
     paths: &paths
       - '.github/workflows/extension.yaml'
-      - 'bin/build-pie.sh'
       - 'devenv.lock'
       - 'devenv.nix'
       - 'devenv.yaml'
@@ -93,11 +92,11 @@ jobs:
           cachix-cache: restate-php
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      # Every target on this one x86_64 runner. The dev shell pulls the PHP headers and
-      # cargo-zigbuild from ext-php-rs.cachix.org (devenv.nix `cachix.pull`); modules an earlier run
-      # built for the same sources come from restate-php.cachix.org, the rest are built here.
+      # Every target on this one x86_64 runner (just extension pie: nix build ./extension#pie). An
+      # earlier run's archives and modules for the same sources come from restate-php.cachix.org,
+      # the rest are built here and pushed there.
       - name: Build the archives
-        run: composer build:pie -- dist
+        run: just extension pie dist
 
       - name: Check the archives
         run: |

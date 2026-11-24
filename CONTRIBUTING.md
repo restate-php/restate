@@ -11,15 +11,17 @@ devenv shell
 composer install   # all packages at once, through the root restate/monorepo package (development only)
 ```
 
-Run everything inside the shell (`devenv shell`, or prefix a command with `devenv shell --`). Every task is a Composer script; `composer run --list` lists them.
+Run everything inside the shell (`devenv shell`, or prefix a command with `devenv shell --`). The tasks are Composer scripts (`composer run --list`) and, for building the extension, just recipes (`just --list`; the extension's are in `extension/justfile`, `just extension <recipe>`).
 
 ## Building the extension
 
 ```bash
-composer build:extension                 # debug build: extension/target/debug/restate.so
-composer build:extension -- --release    # release build: extension/target/release/restate.so
-bash bin/build-extension.sh --php-config /path/to/zts/bin/php-config   # for another PHP, e.g. a ZTS one for FrankenPHP
+just extension build                     # debug build: extension/target/debug/restate.so
+just extension build --release           # release build: extension/target/release/restate.so
+just extension build --php-config /path/to/zts/bin/php-config   # for another PHP, e.g. a ZTS one for FrankenPHP
 ```
+
+`composer build:extension` runs the same recipe (the test scripts call it). `just --list` lists the recipes.
 
 A module loads only into the PHP minor version and thread safety (NTS or ZTS) it was built for; `--php-config` builds into a target directory of its own per PHP (`extension/target/php8.4-zts/…`), so builds never overwrite each other. Outside the dev shell bindgen can fail with `'stdlib.h' file not found`: the shell sets the flags it needs.
 
