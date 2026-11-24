@@ -5,7 +5,7 @@
 //! setup, which gungraun does not count.
 //!
 //! Needs valgrind and the gungraun-runner binary of exactly the gungraun
-//! version in Cargo.toml: `bin/bench-extension.sh` installs it and runs this,
+//! version in Cargo.toml: `just extension bench` installs it and runs this,
 //! and checks from the results that replay cost grows linearly.
 
 #[path = "../tests/vm/protocol.rs"]
@@ -27,7 +27,7 @@ fn vm_start(request: Request) -> Vm {
     black_box(subjects::vm_start(&request))
 }
 
-// bin/bench-extension.sh checks that the instructions per replayed run stay
+// `just extension bench` checks that the instructions per replayed run stay
 // flat from 10 through 1000 runs (it reads these ids).
 #[library_benchmark]
 #[bench::runs_0(Request::replay_runs(0), 0)]
