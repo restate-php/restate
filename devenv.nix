@@ -113,6 +113,16 @@ let
     { config, ... }:
     let
       url = "http://127.0.0.1:${toString config.processes.frankenphp.ports.http.value}";
+      # nixpkgs' thread-safe tokenizer extension of PHP 8.6 does not link on Darwin: PHP 8.6 exports
+      # the scanner globals as a native thread-local variable, and the separately built extension
+      # fails on it ("illegal thread local variable reference to regular symbol
+      # _language_scanner_globals"). The endpoint does not tokenize PHP, so FrankenPHP goes without
+      # it there; the shell's PHP keeps its own (not thread-safe) tokenizer for the dev tools.
+      brokenTokenizer =
+        extension:
+        pkgs.stdenv.hostPlatform.isDarwin
+        && lib.versionAtLeast config.languages.php.package.version "8.6"
+        && (extension.extensionName or null) == "tokenizer";
     in
     {
       imports = [
@@ -125,7 +135,9 @@ let
       languages.php.frankenphp = {
         enable = true;
         package = pkgs.frankenphp.override {
-          php = config.languages.php.package.withExtensions ({ enabled, all }: enabled ++ [ all.restate ]);
+          php = config.languages.php.package.withExtensions (
+            { enabled, all }: lib.filter (extension: !brokenTokenizer extension) enabled ++ [ all.restate ]
+          );
         };
         serve = {
           enable = true;
