@@ -11,6 +11,20 @@ let
   extension = inputs.ext-restate;
   restate-bin = inputs.nix-restate.packages.${system}.restate-bin;
 
+  # The paths of the files a `cargo build` produced, from its JSON messages (just extension build).
+  # Not in nixpkgs.
+  cargo-artifacts = pkgs.rustPlatform.buildRustPackage rec {
+    pname = "cargo-artifacts";
+    version = "0.2.0";
+    src = pkgs.fetchFromGitHub {
+      owner = "sagikazarmark";
+      repo = "cargo-artifacts";
+      tag = "v${version}";
+      hash = "sha256-Nv2S/QVtydcOERZjNDSZawzuacTG6PDA9LlKsUFQgCI=";
+    };
+    cargoHash = "sha256-uWHWBNNSTCC/XVhkwASOy2z/r3gCdyKj0US6RZXV9wg=";
+  };
+
   # A profile that serves the integration suite's endpoint outside the test harness, with Restate
   # next to it (devenv-extras' services.restate): `devenv --profile <name> up` runs both, and
   # `devenv --profile <name> test` runs the suite against them (composer test:integration:external,
@@ -220,26 +234,18 @@ in
   outputs = {
     # Built against the dev shell's PHP (pkgs.php, or languages.php.version), through the
     # flake's overlay.
-    # Not loaded into the shell: the tests load the cargo build (composer build:extension).
+    # Not loaded into the shell: the tests load the cargo build (just extension build).
     extension = config.languages.php.package.extensions.restate;
-
-    # The 24 PIE archives of a release with SHA256SUMS, cross-compiled from any platform
-    # (composer build:pie).
-    inherit (extension.packages.${system}) pie;
 
     # The flake's checks: its .phpt tests with PHP 8.4, 8.5 and 8.6 (outputs.checks.<name>
     # for one).
     checks = extension.checks.${system};
   };
 
-  # ext-php-rs: what ext-php-rs.nix's CI builds for this nixpkgs, the PHP headers of each target
-  # and cargo-zigbuild, which the PIE archives would otherwise build first.
-  # restate-php: what this repository's CI builds (the Rust toolchain, the extension's Nix
-  # builds), pushed from every job with CACHIX_AUTH_TOKEN.
-  cachix.pull = [
-    "ext-php-rs"
-    "restate-php"
-  ];
+  # What this repository's CI builds (the Rust toolchain, the extension's Nix builds), pushed from
+  # every job with CACHIX_AUTH_TOKEN. ext-php-rs.cachix.org is not pulled: it had none of the
+  # paths the PIE archives need that cache.nixos.org lacks.
+  cachix.pull = [ "restate-php" ];
 
   env = {
     LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
@@ -250,6 +256,9 @@ in
     [
       curl
       git
+      # The task runner (justfile) and what its recipes use.
+      just
+      cargo-artifacts
       # The upstream SDK test suite (restatedev/e2e sdk-tests.jar) is built for Java 25.
       jdk25_headless
       # Only the library bindgen loads (LIBCLANG_PATH): the `libclang` package's bin/ would put an

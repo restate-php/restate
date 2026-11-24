@@ -6,7 +6,7 @@ members = [
     "extension",
 ]
 
-# `bin/build-extension.sh --release`. Keep `panic = "unwind"`: the extension's panic guard
+# `just extension build --release`. Keep `panic = "unwind"`: the extension's panic guard
 # (`restate_php_core::guard`) catches panics with `catch_unwind` and turns them into
 # `ExtensionException`s; with `abort` a panic would kill the PHP process.
 [profile.release]

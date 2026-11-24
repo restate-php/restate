@@ -13,7 +13,7 @@ repository = "https://github.com/restate-php/restate"
 publish = false
 
 [lib]
-# Cargo builds librestate.so; bin/build-extension.sh copies it to restate.so, the
+# Cargo builds librestate.so; `just extension build` copies it to restate.so, the
 # file name `extension=restate` looks for in PHP's extension_dir.
 name = "restate"
 crate-type = ["cdylib"]
