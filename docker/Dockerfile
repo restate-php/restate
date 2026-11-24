@@ -1,6 +1,6 @@
 # Test-service images for the upstream SDK test suite (bin/conformance-upstream-local.sh) and
 # the FrankenPHP and PHP-FPM endpoint images for the integration, load and soak suites
-# (bin/test-frankenphp.sh, bin/test-fpm.sh, just load run, bin/test-soak.sh).
+# (just test frankenphp, just test fpm, just load run, just test soak).
 #
 # PHP_IMAGE is the NTS PHP the extension is built against and the upstream images run on;
 # FRANKENPHP_IMAGE is the thread-safe (ZTS) runtime for the frankenphp-extension target;
@@ -111,7 +111,7 @@ RUN php -r 'exit(PHP_ZTS ? 0 : 1);' \
     && cp extension/target/debug/librestate.so "/out$extension_dir/restate.so"
 
 # FrankenPHP endpoint for the integration suite (RESTATE_PHP_TEST_SERVER=frankenphp, see
-# bin/test-frankenphp.sh). Only the ZTS extension and the Caddyfile are baked in: the harness
+# just test frankenphp). Only the ZTS extension and the Caddyfile are baked in: the harness
 # mounts the repository at /app, so the endpoint always runs the working-tree PHP code.
 FROM ${FRANKENPHP_IMAGE} AS frankenphp-extension
 
@@ -189,7 +189,7 @@ RUN case "$EXTENSION_PROFILE" in debug) profile=dev ;; release) profile=release 
     && cp "extension/target/$EXTENSION_PROFILE/librestate.so" "/out$extension_dir/restate.so"
 
 # PHP-FPM endpoint for the integration suite (RESTATE_PHP_TEST_SERVER=nginx-fpm, nginx-fpm-h2c,
-# caddy-fpm; see bin/test-fpm.sh): php-fpm behind nginx or Caddy php_fastcgi, chosen when the
+# caddy-fpm; see just test fpm): php-fpm behind nginx or Caddy php_fastcgi, chosen when the
 # container starts (docker/fpm/entrypoint.sh). php.ini-production with
 # docker/fpm/php.ini on top (display_errors Off, enable_post_data_reading 0, OPcache on).
 # Like the FrankenPHP image it bakes in only the extension and the configuration: the harness
@@ -249,7 +249,7 @@ ENV RESTATE_PHP_FPM_FRONT=nginx-h2c \
 EXPOSE 9080
 
 # The thread-safe extension with the `diagnostics` cargo feature (Restate\Extension\diagnostics():
-# live objects and a counting allocator) for the soak suite (tests/Soak, bin/test-soak.sh), each on
+# live objects and a counting allocator) for the soak suite (tests/Soak, just test soak), each on
 # top of a ZTS build stage above, so only the extension crate is compiled again. Release for the
 # resource soaks, debug for the panic and bailout probes (which release builds compile out).
 FROM extension-bridge-zts-release AS extension-bridge-zts-release-diagnostics

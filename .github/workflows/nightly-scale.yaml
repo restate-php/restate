@@ -96,7 +96,7 @@ jobs:
 
       # Builds the frankenphp-extension image, then runs the contention cases against it.
       - name: Test
-        run: bash bin/test-frankenphp.sh --group scale --filter ContentionTest
+        run: just test frankenphp --group scale --filter ContentionTest
         env:
           RESTATE_PHP_TEST_SCALE_REPORT: ${{ github.workspace }}/var/scale-report.jsonl
 

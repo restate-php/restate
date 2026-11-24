@@ -74,8 +74,8 @@ jobs:
             composer build:extension
             # Builds the frankenphp-extension image (the extension compiled against FrankenPHP's
             # thread-safe PHP), then runs the group against it.
-            bash bin/test-frankenphp.sh --group failure-nightly
+            just test frankenphp --group failure-nightly
           else
             composer build:extension
-            RESTATE_PHP_TEST_SERVER=$SERVER bash bin/test-fpm.sh --group failure-nightly
+            RESTATE_PHP_TEST_SERVER=$SERVER just test fpm --group failure-nightly
           fi

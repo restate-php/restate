@@ -86,20 +86,20 @@
     ],
     "test:frankenphp": [
       "Composer\\Config::disableProcessTimeout",
-      "bash bin/test-frankenphp.sh"
+      "just test frankenphp"
     ],
     "test:frankenphp-worker": [
       "Composer\\Config::disableProcessTimeout",
-      "bash bin/test-frankenphp.sh --worker"
+      "just test frankenphp-worker"
     ],
     "test:soak": [
       "Composer\\Config::disableProcessTimeout",
-      "bash bin/test-soak.sh"
+      "just test soak"
     ],
     "test:fpm": [
       "Composer\\Config::disableProcessTimeout",
       "@build:extension @no_additional_args",
-      "bash bin/test-fpm.sh"
+      "just test fpm"
     ],
     "test:large-bodies": [
       "Composer\\Config::disableProcessTimeout",
@@ -116,7 +116,7 @@
       "@putenv RESTATE_PHP_TEST_SERVER=nginx-fpm",
       "@putenv RESTATE_PHP_TEST_FPM_TARGET=fpm-extension-apache",
       "@putenv RESTATE_PHP_TEST_FPM_IMAGE=restate.local/restate-php-fpm:extension-apache",
-      "bash bin/test-fpm.sh --group serving-hazards"
+      "just test fpm --group serving-hazards"
     ],
     "check": [
       "@cs",
@@ -132,6 +132,7 @@
       "shellcheck bin/*.sh docker/*/*.sh examples/quickstart/scripts/*.sh",
       "just --fmt --check",
       "just --justfile extension/justfile --fmt --check",
+      "just --justfile tests/justfile --fmt --check",
       "just --justfile tests/load/justfile --fmt --check"
     ],
     "check:packages": [
@@ -191,11 +192,11 @@
     "test:integration:process": "The integration suite (tests/Integration) with Restate as a process of the harness (restate-server from the dev shell) instead of a container: no container runtime needed, macOS included. examples/testing shows the default, a container, so it is left out.",
     "test:integration:external": "The integration suite (tests/Integration) against a Restate and an endpoint that run outside the harness, which only connects to them: those of a devenv.nix profile (`devenv --profile frankenphp test`, or `devenv --profile frankenphp up` and this in its shell). The tests that start, stop or configure either themselves (group `managed`) and the groups test:integration excludes are left out.",
     "test:frankenphp": "Build the FrankenPHP image with the thread-safe extension, then run the integration suite against it.",
-    "test:soak": "Build the FrankenPHP worker images with the extension's diagnostics feature and run the soak suite (tests/Soak); arguments: [--quick] [nightly|frames|concurrency|bailout|restate|all], see bin/test-soak.sh.",
+    "test:soak": "Build the FrankenPHP worker images with the extension's diagnostics feature and run the soak suite (tests/Soak); arguments: [--quick] [nightly|frames|concurrency|bailout|restate|all] [-- <phpunit arguments>], see `just test soak` (tests/justfile).",
     "test:frankenphp-worker": "The same image in FrankenPHP worker mode (endpoints built once per worker): the integration suite, then the worker suite (tests/Worker).",
     "test:fpm": "Build the PHP-FPM image (nginx, Caddy), then run the integration suite against php-fpm behind each front door (RESTATE_PHP_TEST_SERVER: nginx-fpm, nginx-fpm-h2c, caddy-fpm; default all three).",
-    "test:large-bodies": "The nightly large-bodies group (31 MiB inputs and outputs, values over Restate's message limit) on php -S; for FPM: RESTATE_PHP_TEST_SERVER=<server> bash bin/test-fpm.sh --group large-bodies.",
-    "test:failure": "The nightly failure-nightly group (Restate restarts, graceful shutdowns, network faults, back-pressure, OOM kills, expired request identity, the full truncation sweep) on php -S; for FPM: RESTATE_PHP_TEST_SERVER=<server> bash bin/test-fpm.sh --group failure-nightly.",
+    "test:large-bodies": "The nightly large-bodies group (31 MiB inputs and outputs, values over Restate's message limit) on php -S; for FPM: RESTATE_PHP_TEST_SERVER=<server> just test fpm --group large-bodies.",
+    "test:failure": "The nightly failure-nightly group (Restate restarts, graceful shutdowns, network faults, back-pressure, OOM kills, expired request identity, the full truncation sweep) on php -S; for FPM: RESTATE_PHP_TEST_SERVER=<server> just test fpm --group failure-nightly.",
     "test:serving-hazards": "Build the PHP-FPM image with Apache, then run the nightly serving-hazards group: front doors at their defaults, front-door timeouts, clear_env.",
     "check": "Everything that must pass before a commit: cs, analyse, workflow and shell lint, unit tests, the packages' composer.json files, then fmt/clippy/test for the Cargo workspace.",
     "analyse": "PHPStan over the packages and the tests (phpstan.neon).",

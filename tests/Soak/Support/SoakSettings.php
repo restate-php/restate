@@ -7,7 +7,7 @@ namespace Restate\Tests\Soak\Support;
 use Restate\Tests\Support\Repository;
 
 /**
- * How big a soak run is and what it runs against, from the environment (bin/test-soak.sh sets them):
+ * How big a soak run is and what it runs against, from the environment (just test soak sets them):
  *
  * - RESTATE_PHP_SOAK_QUICK=1                 a short local run: a few percent of the requests; the RSS slope is
  *                                            reported, not gated (too noisy that short).

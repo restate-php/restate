@@ -74,7 +74,7 @@ jobs:
             composer test:large-bodies
           else
             composer build:extension
-            RESTATE_PHP_TEST_SERVER=$SERVER bash bin/test-fpm.sh --group large-bodies
+            RESTATE_PHP_TEST_SERVER=$SERVER just test fpm --group large-bodies
           fi
 
   serving-hazards:
