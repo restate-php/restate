@@ -15,14 +15,14 @@ let
   # Not in nixpkgs.
   cargo-artifacts = pkgs.rustPlatform.buildRustPackage rec {
     pname = "cargo-artifacts";
-    version = "0.2.0";
+    version = "0.3.0";
     src = pkgs.fetchFromGitHub {
       owner = "sagikazarmark";
       repo = "cargo-artifacts";
       tag = "v${version}";
-      hash = "sha256-Nv2S/QVtydcOERZjNDSZawzuacTG6PDA9LlKsUFQgCI=";
+      hash = "sha256-FrcIhlVueEHbHXylf7b/bszpjru6efkHGUWACA2a/Os=";
     };
-    cargoHash = "sha256-uWHWBNNSTCC/XVhkwASOy2z/r3gCdyKj0US6RZXV9wg=";
+    cargoHash = "sha256-KFfQaH4jbfzsi5B6X32MV9CMsIChVBURQ37/uOQYOck=";
   };
 
   # A profile that serves the integration suite's endpoint outside the test harness, with Restate
