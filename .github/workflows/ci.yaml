@@ -225,9 +225,6 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
 
-      - name: Build the extension
-        run: composer build:extension
-
       # Builds the frankenphp-extension image (the extension compiled against FrankenPHP's
       # thread-safe PHP) and runs the integration suite against it.
       - name: Test
@@ -272,9 +269,6 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
 
-      - name: Build the extension
-        run: composer build:extension
-
       # The frankenphp-extension image in worker mode (worker.Caddyfile, the endpoints built once
       # per worker): the integration suite, then the worker suite (tests/Worker).
       - name: Test
@@ -306,8 +300,8 @@ jobs:
       - name: Set up Composer cache
         uses: ./.github/actions/composer-cache
 
-      # The host's extension build (composer test:fpm runs build:extension) serves the suite's own
-      # php -S endpoints (examples/testing).
+      # The host's extension build (the test recipes build it) serves the suite's own php -S
+      # endpoints (examples/testing).
       - name: Set up Cargo cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

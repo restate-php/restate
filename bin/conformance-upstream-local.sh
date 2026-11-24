@@ -18,7 +18,7 @@
 #   RESTATE_PHP_UPSTREAM_EXCLUSIONS_FILE  exclusions YAML (default test-services/exclusions.yaml; empty: none)
 #   RESTATE_PHP_UPSTREAM_SEQUENTIAL=1     run test classes one at a time (default under podman)
 #   RESTATE_PHP_UPSTREAM_OUTPUT_DIR       artifacts root (default var/conformance/upstream)
-#   RESTATE_PHP_RESTATE_CONTAINER_IMAGE   Restate image (default Restate\Testing\RestateContainer::DEFAULT_IMAGE)
+#   RESTATE_PHP_RESTATE_IMAGE             Restate image, as for the test harness (default RestateContainer::DEFAULT_IMAGE)
 set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -62,9 +62,9 @@ OUTPUT_DIR=${RESTATE_PHP_UPSTREAM_OUTPUT_DIR:-"$ROOT_DIR/var/conformance/upstrea
 RUN_DIR="$OUTPUT_DIR/$TARGET/$MODE"
 IMAGE="restate.local/restate-php-test-services:$TARGET"
 EXCLUSIONS_FILE=${RESTATE_PHP_UPSTREAM_EXCLUSIONS_FILE-"$ROOT_DIR/test-services/exclusions.yaml"}
-RESTATE_IMAGE=${RESTATE_PHP_RESTATE_CONTAINER_IMAGE:-$(sed -n "s/.*DEFAULT_IMAGE = '\(.*\)';.*/\1/p" "$ROOT_DIR/packages/testing/src/RestateContainer.php")}
+RESTATE_IMAGE=${RESTATE_PHP_RESTATE_IMAGE:-$(sed -n "s/.*DEFAULT_IMAGE = '\(.*\)';.*/\1/p" "$ROOT_DIR/packages/testing/src/RestateContainer.php")}
 if [ -z "$RESTATE_IMAGE" ]; then
-  echo "Could not read RestateContainer::DEFAULT_IMAGE; set RESTATE_PHP_RESTATE_CONTAINER_IMAGE." >&2
+  echo "Could not read RestateContainer::DEFAULT_IMAGE; set RESTATE_PHP_RESTATE_IMAGE." >&2
   exit 1
 fi
 

@@ -23,7 +23,7 @@ Nothing measured the SDK's time, memory or capacity. The hot path spans PHP (rou
 - A hot-path regression shows in a pull request's job summary. It fails the job only once the thresholds are calibrated, and earliest for instruction counts.
 - A PR job costs about 5 min for PHP (four phpbench runs of about 45 s, callgrind about 30 s, plus the base's `composer install`, and a base extension build when `extension/` changed) and about 6-8 min for Rust.
 - `criterion` and `gungraun` are dev-dependencies of the core, so `cargo test` builds them although it never builds the benches.
-- Benchmarks rot silently unless something compiles them. phpbench files are under `tests/`, so PHPStan and php-cs-fixer check them. The Rust benches are linted with the feature on by `bin/bench-extension.sh`.
+- Benchmarks rot silently unless something compiles them. phpbench files are under `tests/`, so PHPStan and php-cs-fixer check them. The Rust benches are linted with the feature on by `just extension bench`.
 - The load tests need a self-hosted runner labelled `restate-php-load`. Until one exists they run by hand (`composer load`).
 - The reference measurements show costs worth following:
   - shared-core's all-of-N await tree is O(N²) in instructions;

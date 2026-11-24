@@ -73,7 +73,6 @@ jobs:
           if [ "$SERVER" = php-cli ]; then
             composer test:large-bodies
           else
-            composer build:extension
             RESTATE_PHP_TEST_SERVER=$SERVER just test fpm --group large-bodies
           fi
 
@@ -112,12 +111,13 @@ jobs:
     name: restatedev/e2e sdk-tests (upstream-fpm-nginx)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-    # The action publishes the JUnit results as a check run (as upstream.yaml does).
+    # The action publishes the JUnit results as a check run (as upstream.yaml does). It also looks
+    # for an open pull request of the commit to comment on (read), which a scheduled or manual run on
+    # main never has, so it needs no pull-requests write or issues permission.
     permissions:
       contents: read
-      issues: read
       checks: write
-      pull-requests: write
+      pull-requests: read
     env:
       SERVICE_IMAGE: restate.local/restate-php-test-services:upstream-fpm-nginx
 

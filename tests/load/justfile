@@ -22,10 +22,16 @@ up: build
 down:
     docker compose down --volumes
 
-# The endpoint image; LOAD_SKIP_BUILD=1 reuses it (or another one: LOAD_ENDPOINT_IMAGE)
+# The endpoint image; LOAD_SKIP_BUILD=1 reuses it (or another one: LOAD_ENDPOINT_IMAGE), and
+# RESTATE_PHP_FRANKENPHP_BASE_IMAGE replaces its FrankenPHP base, as for the test suites
 [private]
+[script('bash')]
 build:
-    [ "${LOAD_SKIP_BUILD:-0}" = 1 ] || docker compose build endpoint
+    set -euo pipefail
+    [ "${LOAD_SKIP_BUILD:-0}" != 1 ] || exit 0
+    # Only when set: an empty build argument would replace the Dockerfile's default.
+    if [ -n "${RESTATE_PHP_FRANKENPHP_BASE_IMAGE:-}" ]; then export FRANKENPHP_IMAGE=$RESTATE_PHP_FRANKENPHP_BASE_IMAGE; fi
+    docker compose build endpoint
 
 # One scenario with k6.js; the result and k6's log (a warning per timed-out call: thousands under overload) in var/load/results/<name>/
 [private]
@@ -39,7 +45,7 @@ scenario mode name:
         LOAD_NUM_THREADS=$(jq -r --arg name {{ quote(name) }} '.[$name].endpoint_threads // 0' scenarios.json) \
         docker compose up --detach --no-build
     commit=$(git rev-parse --short=12 HEAD)
-    result={{ quote(justfile_directory() / "var/load/results" / name) }}/$(date -u +%Y%m%dT%H%M%SZ)-$commit
+    result={{ quote(source_directory() / "../../var/load/results" / name) }}/$(date -u +%Y%m%dT%H%M%SZ)-$commit
     mkdir -p "$(dirname "$result")"
     k6 run --quiet --no-usage-report -e LOAD_SCENARIO={{ quote(name) }} -e LOAD_MODE={{ mode }} -e LOAD_COMMIT="$commit" \
         -e LOAD_SUMMARY="$result.json" k6.js 2>"$result.log" ||

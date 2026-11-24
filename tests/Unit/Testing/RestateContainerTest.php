@@ -41,7 +41,7 @@ final class RestateContainerTest extends TestCase
     {
         $compose = (string) file_get_contents(dirname(__DIR__, 2) . '/load/compose.yaml');
 
-        self::assertStringContainsString('image: ${LOAD_RESTATE_IMAGE:-' . RestateContainer::DEFAULT_IMAGE . '}', $compose);
+        self::assertStringContainsString('image: ${RESTATE_PHP_RESTATE_IMAGE:-' . RestateContainer::DEFAULT_IMAGE . '}', $compose);
     }
 
     public function testTheImageVariableReplacesTheDefaultImage(): void

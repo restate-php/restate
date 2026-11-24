@@ -1,10 +1,11 @@
 version: 2
 
+# Weekly: every update pull request runs the whole CI (about 25 jobs).
 updates:
   - package-ecosystem: cargo
     directory: /extension
     schedule:
-      interval: daily
+      interval: weekly
     groups:
       cargo:
         patterns:
@@ -13,7 +14,7 @@ updates:
   - package-ecosystem: composer
     directory: /
     schedule:
-      interval: daily
+      interval: weekly
     groups:
       composer:
         patterns:
@@ -24,8 +25,23 @@ updates:
       - /
       - /.github/actions/*
     schedule:
-      interval: daily
+      interval: weekly
     groups:
       github-actions:
+        patterns:
+          - "*"
+
+  # The base images of the endpoint, test-service and quickstart images. Not the compose files:
+  # their Restate image is RestateContainer::DEFAULT_IMAGE, which CI checks them against, so it
+  # moves with the harness. The FrankenPHP images that ci.yaml's matrix names per PHP minor are
+  # bumped by hand with the Dockerfile's.
+  - package-ecosystem: docker
+    directories:
+      - /docker
+      - /examples/quickstart
+    schedule:
+      interval: weekly
+    groups:
+      docker:
         patterns:
           - "*"
