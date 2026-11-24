@@ -346,6 +346,12 @@ jobs:
         os: [ubuntu-24.04, macos-15]
         profile: [frankenphp, frankenphp-worker]
         php: ['8.4', '8.5', '8.6']
+        exclude:
+          # nixpkgs' thread-safe PHP 8.6 does not build on aarch64-darwin: its tokenizer extension
+          # fails to link ("illegal thread local variable reference to regular symbol
+          # _language_scanner_globals").
+          - os: macos-15
+            php: '8.6'
     defaults:
       run:
         shell: devenv --profile ${{ matrix.profile }} -O languages.php.version:string ${{ matrix.php }} shell -- bash -e {0}

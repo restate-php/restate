@@ -33,7 +33,7 @@ The behaviour tests are the ones worth running on every server, PHP minor and OS
    - Its `enterTest` is `composer test:integration:external`. `frankenphp-worker` adds the worker suite (`tests/Worker`), whose `WorkerIsolationTest` is `managed`.
 
    FrankenPHP is `pkgs.frankenphp` built from the shell's PHP with the overlay's `restate` extension (`withExtensions … all.restate`). FrankenPHP rebuilds that PHP thread-safe, and the extension with it. The shell's own PHP does not load the extension: the harness and the unit tests load the cargo build, as before. The PHP minor comes from the shell, as for `composer check`: `devenv --profile frankenphp -O languages.php.version:string 8.4 test`.
-5. **CI: a matrix job, `external`** (`.github/workflows/ci.yaml`), runs `devenv --profile <profile> -O languages.php.version:string <php> test` for each profile and PHP minor, on Linux and macOS. The jobs that build the images keep running every test, the `managed` group included, against the servers users deploy: the official FrankenPHP and php-fpm images with the extension built the way users build it.
+5. **CI: a matrix job, `external`** (`.github/workflows/ci.yaml`), runs `devenv --profile <profile> -O languages.php.version:string <php> test` for each profile and PHP minor, on Linux and macOS. PHP 8.6 is left out on macOS for now: nixpkgs' thread-safe PHP 8.6 fails to build on aarch64-darwin (its tokenizer extension does not link). The jobs that build the images keep running every test, the `managed` group included, against the servers users deploy: the official FrankenPHP and php-fpm images with the extension built the way users build it.
 
 ### Rejected
 
@@ -51,3 +51,4 @@ The behaviour tests are the ones worth running on every server, PHP minor and OS
 - A new test that needs control of its environment must be marked `managed`, or it fails in the external jobs, which says so.
 - An external Restate keeps its state for as long as it runs, and the suite's tests use fixed keys (`Counter/alice`, workflow ids) that assume an empty Restate. So the profiles empty Restate's data and the endpoint's state directory whenever their processes start (`devenv up`, `devenv test`), not when a shell is entered: the suite runs once per start of the environment.
 - Each profile and PHP minor builds FrankenPHP and a thread-safe PHP with the extension in Nix. Cachix keeps them, so a job builds again only when the extension or the PHP changes.
+- On macOS, `max_execution_time` never fires in FrankenPHP: a thread-safe PHP there arms it with a process-wide `ITIMER_REAL`, not a per-thread timer. `ChaosServicesTest` asserts that behaviour there, and the time limit on Linux.

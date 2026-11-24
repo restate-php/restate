@@ -20,6 +20,9 @@ use Restate\Tests\Integration\Support\HttpClient;
  */
 final class LongJournalTest extends ScaleTestCase
 {
+    /** The CPU each step of LongJournal/slowReplay spins for: no attempt ends within 40 ms of the 1 s abort timeout. */
+    private const int SPIN_MS = 130;
+
     public function testFiftyRunsTakeFiftyOneAttempts(): void
     {
         $this->assertLongJournal(50, 16, timeout: 60.0);
@@ -54,7 +57,7 @@ final class LongJournalTest extends ScaleTestCase
 
     /**
      * The abort-timeout ceiling: Restate's abort timeout bounds a whole request/response attempt, replay included.
-     * Every step of LongJournal/slowReplay costs 100 ms of CPU, replayed or not, and its abort timeout is 1 s, so once about ten steps
+     * Every step of LongJournal/slowReplay costs 130 ms of CPU, replayed or not, and its abort timeout is 1 s, so once seven steps
      * are journaled no attempt can finish: Restate aborts each one (RT0001), the endpoint still runs it to the end (the
      * step after the ceiling executes again in every attempt), and the invocation never completes. Its retry policy
      * pauses it after three failed attempts in a row, which bounds the test.
@@ -62,7 +65,7 @@ final class LongJournalTest extends ScaleTestCase
     public function testAReplayLongerThanTheAbortTimeoutNeverCompletes(): void
     {
         $n = 40;
-        $id = self::sendInvocation('LongJournal/slowReplay', json_encode(['n' => $n, 'spinMs' => 100], JSON_THROW_ON_ERROR));
+        $id = self::sendInvocation('LongJournal/slowReplay', json_encode(['n' => $n, 'spinMs' => self::SPIN_MS], JSON_THROW_ON_ERROR));
 
         $row = self::restate()->waitForInvocationStatus($id, 'paused', 60.0);
         $recorder = self::recorder();
@@ -76,7 +79,8 @@ final class LongJournalTest extends ScaleTestCase
         $ceiling = max([0, ...array_keys(array_filter($executions, static fn (int $count): bool => $count > 0))]);
         $dump = json_encode(['row' => $row, 'executions' => $executions, 'attemptMillis' => self::attemptMillis($id)], JSON_THROW_ON_ERROR);
 
-        // Attempt k spins k x 100 ms before its new step: attempt 11 would need 1.1 s, attempt 1-5 at most 0.5 s.
+        // Attempt k spins k x 130 ms before its new step: attempt 7 needs 0.91 s, attempt 8 1.04 s. With 100 ms, attempt 10
+        // would land on the abort timeout itself, and whether its step got journaled was a race (it did on macOS).
         self::assertGreaterThanOrEqual(5, $ceiling, $dump);
         self::assertLessThanOrEqual(10, $ceiling, $dump);
         foreach ($executions as $step => $count) {
@@ -102,7 +106,7 @@ final class LongJournalTest extends ScaleTestCase
         }
         self::assertCount(1, self::journalEvents($id, 'Paused'), $dump);
 
-        self::report('long-journal-abort-timeout', ['n' => $n, 'spinMs' => 100, 'abortTimeoutMs' => 1000, 'ceiling' => $ceiling, 'attempts' => $attempts, 'attemptMillis' => self::attemptMillis($id)]);
+        self::report('long-journal-abort-timeout', ['n' => $n, 'spinMs' => self::SPIN_MS, 'abortTimeoutMs' => 1000, 'ceiling' => $ceiling, 'attempts' => $attempts, 'attemptMillis' => self::attemptMillis($id)]);
         HttpClient::patch(self::restate()->adminUrl() . "/invocations/{$id}/kill");
     }
 
