@@ -4,7 +4,7 @@
 //! subjects.
 //!
 //! `cargo bench -p restate-php-core --features bench --bench vm` (from
-//! `extension/`), or `bin/bench-extension.sh criterion`.
+//! `extension/`), or `just extension bench-criterion`.
 
 #[path = "../tests/vm/protocol.rs"]
 mod protocol;

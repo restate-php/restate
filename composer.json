@@ -177,7 +177,7 @@
     ],
     "bench:extension": [
       "Composer\\Config::disableProcessTimeout",
-      "bash bin/bench-extension.sh"
+      "just extension bench"
     ],
     "load": [
       "Composer\\Config::disableProcessTimeout",
@@ -213,7 +213,7 @@
     "test:upstream": "Build a test-services image and run the upstream Restate SDK test suite against it (Java 25: the dev shell); arguments: [target] [basic|full], see bin/conformance-upstream-local.sh.",
     "bench": "Build the release extension, then run the PHP micro-benchmarks (tests/Benchmark, phpbench.json: OPcache on, JIT off); arguments go to phpbench, e.g. -- --filter=benchReplay.",
     "bench:compare": "Compare the PHP benchmarks of this checkout against a base revision (default: the merge base with main) in two reversed pairs plus callgrind instruction counts; see bin/bench-compare.sh.",
-    "bench:extension": "Instruction counts (gungraun, callgrind) of the Rust core's benchmarks plus the replay linearity check; `-- criterion` for wall-clock times, `-- compare [<base>]` against a base commit (see bin/bench-extension.sh).",
+    "bench:extension": "Instruction counts (gungraun, callgrind) of the Rust core's benchmarks plus the replay linearity check; arguments go to gungraun's runner (`just extension bench`); `just extension bench-criterion` for wall-clock times, `just extension bench-compare [<base>]` against a base revision (extension/justfile).",
     "load": "Load tests against Restate with k6: `just load run` [--full] [--keep] [<scenario>...], all of them when none is named (tests/load/justfile; `just load down` removes the compose project; needs Docker with compose, k6 and jq; see TESTING.md, Load tests)."
   },
   "config": {

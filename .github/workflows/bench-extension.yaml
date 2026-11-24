@@ -1,5 +1,5 @@
 # Benchmarks of the extension's Rust core (TESTING.md, Performance), through
-# bin/bench-extension.sh in the dev shell:
+# the extension module's bench recipes (extension/justfile) in the dev shell:
 #
 # - On pull requests that touch the extension: instruction counts (gungraun, under callgrind)
 #   of the pull request against its base branch, built in a worktree in the same job, with a
@@ -13,7 +13,6 @@ on:
   pull_request:
     paths:
       - '.github/workflows/bench-extension.yaml'
-      - 'bin/bench-extension.sh'
       - 'extension/**'
   schedule:
     - cron: '17 3 * * *'
@@ -78,7 +77,7 @@ jobs:
         run: |
           base=$(git merge-base HEAD "origin/$BASE_REF")
           set +e
-          bash bin/bench-extension.sh compare "$base" 2>&1 | tee bench-extension.log
+          just extension bench-compare "$base" 2>&1 | tee bench-extension.log
           status=${PIPESTATUS[0]}
           set -e
           {
@@ -127,7 +126,7 @@ jobs:
       - name: Instruction counts
         run: |
           set -o pipefail
-          bash bin/bench-extension.sh instructions 2>&1 | tee bench-extension.log
+          just extension bench 2>&1 | tee bench-extension.log
           {
             echo '### Extension instruction counts'
             echo
@@ -137,7 +136,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Wall-clock times
-        run: bash bin/bench-extension.sh criterion
+        run: just extension bench-criterion
 
       - name: Upload the criterion report
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
