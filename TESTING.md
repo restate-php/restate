@@ -377,7 +377,7 @@ composer bench:compare -- --base HEAD   # A/A: the same code on both sides, i.e.
 composer bench:extension                # Rust core: gungraun instruction counts + replay linearity check
 bash bin/bench-extension.sh criterion   # Rust core: criterion wall clock (about 4 min)
 bash bin/bench-extension.sh compare     # Rust core: instruction counts vs the merge base, fails above +2%
-composer load -- <scenario>             # load test against Restate (bin/load-test.sh)
+composer load -- [<scenario>...]         # load tests against Restate (just load run; none named: all)
 ```
 
 ### PHP micro-benchmarks
@@ -404,7 +404,7 @@ composer load -- <scenario>             # load test against Restate (bin/load-te
 
 ### Load tests
 
-`composer load -- <scenario|all> [--full]` (`bin/load-test.sh`) runs k6 against the compose project `tests/load/compose.yaml`, and fails when a scenario's checks fail ([Load Tests in Compose](docs/decisions/0040-load-tests-in-compose.md)). The project has two services on fixed loopback ports:
+`just load run [--full] [<scenario>...]` (`tests/load/justfile`; `composer load --` takes the same arguments) runs k6, for the scenarios named or all of them, against the compose project `tests/load/compose.yaml`, and fails when a scenario's checks fail ([Load Tests in Compose](docs/decisions/0040-load-tests-in-compose.md)). The project has two services on fixed loopback ports:
 
 - **Restate** 1.8.1 (`RestateContainer::DEFAULT_IMAGE`, 4 partitions) on 18080 (ingress) and 19070 (admin). It signs its requests with a fixed test key, `tests/load/request-identity.pem`.
 - **The endpoint** on 18081: FrankenPHP with the release ZTS extension (the `frankenphp-extension-release` target of `docker/Dockerfile`), in classic mode with OPcache on, JIT off and `display_errors=0` (`tests/load/Caddyfile` and `php.ini`, mounted, so changing them needs a restart, not a rebuild). It serves `tests/load/endpoint.php` from the repository mounted at `/app`: the services of `tests/load/services.php` and `/load-stats`.
@@ -417,7 +417,7 @@ k6 run -e LOAD_SCENARIO=noop tests/load/k6.js
 docker compose -f tests/load/compose.yaml down -v
 ```
 
-`bin/load-test.sh` adds three things: the endpoint limits a scenario asks for (`overload`: 1 CPU, 4 PHP threads; compose recreates the endpoint when they change), the loop over `all`, and a result file per scenario in `var/load/results/<scenario>/`. The project is removed at the end unless `--keep` is given, and `bin/load-test.sh down` removes it.
+`just load run` adds three things: the endpoint limits a scenario asks for (`overload`: 1 CPU, 4 PHP threads; compose recreates the endpoint when they change), the loop over the scenarios, and a result file per scenario in `var/load/results/<scenario>/`. The scenarios run one after the other, as a mapped dependency (just's unstable lists). The first one that fails stops the run and leaves the project running. Otherwise the project is removed at the end unless `--keep` is given, and `just load down` removes it. `just load up` starts it and leaves it running, for k6 by hand.
 
 **Without Docker:** devenv's `load` profile (`devenv.nix`, `loadSuite`) runs the same two as devenv processes on loopback ports devenv allocates. Restate is `restate-bin` with the same key and partitions. The endpoint is FrankenPHP built with the Nix extension (a release build) for the shell's PHP, with `tests/load/Caddyfile` and `php.ini`. Its shell exports the URLs `k6.js` reads (`LOAD_INGRESS_URL`, `LOAD_ADMIN_URL`, `LOAD_ENDPOINT_URL`, and `LOAD_ENDPOINT_URI` for the registration), so the same command runs against it:
 
@@ -452,7 +452,7 @@ devenv --profile load test                                      # or: up, every 
   - the ports: `LOAD_INGRESS_PORT`, `LOAD_ADMIN_PORT` and `LOAD_ENDPOINT_PORT`, which k6 takes as `LOAD_INGRESS_URL`, `LOAD_ADMIN_URL` and `LOAD_ENDPOINT_URL`;
   - CPU pinning: `LOAD_CPUSET_ENDPOINT` and `LOAD_CPUSET_RESTATE`;
   - `LOAD_PARTITIONS`, which Restate reads when it first starts.
-- **CI:** `.github/workflows/load.yaml` runs `--full` on `workflow_dispatch` only (one scenario or `all`) and keeps the result files as an artifact. It needs a **self-hosted runner with the label `restate-php-load`** (declared in `.github/actionlint.yaml`), which has to be registered for the workflow to run. A nightly rotation (one scenario per night by day of year) is written in the workflow, commented out; enable it once the runner exists. Numbers from GitHub's shared runners would not be comparable.
+- **CI:** `.github/workflows/load.yaml` runs `--full` on `workflow_dispatch` only (the scenarios given, space-separated, or all of them) and keeps the result files as an artifact. It needs a **self-hosted runner with the label `restate-php-load`** (declared in `.github/actionlint.yaml`), which has to be registered for the workflow to run. A nightly rotation (one scenario per night by day of year) is written in the workflow, commented out; enable it once the runner exists. Numbers from GitHub's shared runners would not be comparable.
 - **Not implemented:** a direct-replay variant without Restate.
 
 ### Reference measurements
@@ -506,7 +506,7 @@ One machine, one run each, **not baselines**: an AMD Ryzen 5 5500 (6 cores, 12 t
 - `all()` and `allSettled()` await one tree, and their cost is shared-core's (about 1 s at n=2000 with the debug build). A tree await reports which of its handles completed ([Tree Awaits Report Their Completed Handles](docs/decisions/0036-tree-await-completed-handles.md)), so the SDK makes one extension call per await, not one per future.
 - Of the 351 ms a release `select()` loop over 2000 futures still takes, about 100 ms is the SDK's pass over the futures left in each call, 65 ms the extension converting each tree, and the rest shared-core reducing it ([Wide Fan-out](docs/serving.md#wide-fan-out-costs-quadratic-time-per-attempt)).
 
-**Load tests (`composer load -- all`, quick mode, rootless podman 5.8.6 on cgroup v2, k6 1.7.1; re-runs moved CPU per invocation by up to 27%; measured with the earlier PHP runner, which started a fresh Restate per scenario):**
+**Load tests (all scenarios in quick mode, rootless podman 5.8.6 on cgroup v2, k6 1.7.1; re-runs moved CPU per invocation by up to 27%; measured with the earlier PHP runner, which started a fresh Restate per scenario):**
 
 | Scenario | Invocations/s | Endpoint CPU µs per invocation (per attempt) | p50 / p99 ms (k6) | Attempts (minus retries) | 401s |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -564,7 +564,7 @@ GitHub Actions runs the same commands, in the same dev shell. Nothing in CI is C
 | `.github/workflows/extension.yaml` | `build`, `verify`, `flake-macos` | `build`: `just extension pie dist` in the dev shell on x86_64, all 24 archives as one artifact, then `nix flake check ./extension`. `verify`, per CPU (`ubuntu-24.04-arm` for arm64), with plain Nix: every checksum, then `nix run ./extension#load-test` (each archive in the clean `php:<minor>-{cli,zts}-{trixie,alpine}` of its PHP, running `extension/tests/*.phpt`; PHP 8.6's official images are ZTS only, `php:8.6-cli-*`), then the 8.6 NTS glibc archive with nixpkgs' PHP 8.6 (at `extension/flake.lock`'s nixpkgs, the same tests with its `run-tests.php`); 8.6 NTS musl has nothing to load into yet. `flake-macos`: `nix flake check ./extension` on `macos-15` (arm64) | `verify`: x86_64, arm64 |
 | `.github/workflows/bench.yaml` | `compare`, `calibrate` | `bash bin/bench-compare.sh --base <PR base>` on pull requests touching `packages/`, `extension/`, `tests/Benchmark/`, `tests/Support/`, the Composer files or the scripts; nightly and by hand `bash bin/bench-compare.sh --base HEAD` (A/A), reports kept 90 days. Both `continue-on-error` (see [Performance](#performance)) | — |
 | `.github/workflows/bench-extension.yaml` | `compare`, `nightly` | `bash bin/bench-extension.sh compare <merge base>` on pull requests touching `extension/`; nightly `bash bin/bench-extension.sh` and `criterion` (report artifact). `continue-on-error` | — |
-| `.github/workflows/load.yaml` | `load` | `bash bin/load-test.sh <scenario\|all> --full` on `workflow_dispatch` only, on a self-hosted runner labelled `restate-php-load` | — |
+| `.github/workflows/load.yaml` | `load` | `just load run --full [<scenario>...]` on `workflow_dispatch` only, on a self-hosted runner labelled `restate-php-load` | — |
 | `.github/workflows/release.yaml` | `version`, `ci`, `upstream`, `extension`, `attest`, `publish` | Checks the version and the tree, runs `ci.yaml`, `upstream.yaml` and `extension.yaml` on the release commit, then publishes ([Release](docs/decisions/0031-release.md)) | — |
 | `.github/workflows/split.yaml` | `split` | `bash bin/split.sh publish --remote <url>`: each published directory's history to its repository's `main`, no tags ([Release](docs/decisions/0031-release.md) decision 9) | — |
 

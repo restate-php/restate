@@ -131,7 +131,8 @@
       "actionlint",
       "shellcheck bin/*.sh docker/*/*.sh examples/quickstart/scripts/*.sh",
       "just --fmt --check",
-      "just --justfile extension/justfile --fmt --check"
+      "just --justfile extension/justfile --fmt --check",
+      "just --justfile tests/load/justfile --fmt --check"
     ],
     "check:packages": [
       "@build:extension @no_additional_args",
@@ -179,7 +180,7 @@
     ],
     "load": [
       "Composer\\Config::disableProcessTimeout",
-      "bash bin/load-test.sh"
+      "just load run"
     ]
   },
   "scripts-descriptions": {
@@ -212,7 +213,7 @@
     "bench": "Build the release extension, then run the PHP micro-benchmarks (tests/Benchmark, phpbench.json: OPcache on, JIT off); arguments go to phpbench, e.g. -- --filter=benchReplay.",
     "bench:compare": "Compare the PHP benchmarks of this checkout against a base revision (default: the merge base with main) in two reversed pairs plus callgrind instruction counts; see bin/bench-compare.sh.",
     "bench:extension": "Instruction counts (gungraun, callgrind) of the Rust core's benchmarks plus the replay linearity check; `-- criterion` for wall-clock times, `-- compare [<base>]` against a base commit (see bin/bench-extension.sh).",
-    "load": "Load tests against Restate with k6: bin/load-test.sh <scenario|all|down> [--full] [--keep] (needs Docker with compose, k6 and jq; see TESTING.md, Load tests)."
+    "load": "Load tests against Restate with k6: `just load run` [--full] [--keep] [<scenario>...], all of them when none is named (tests/load/justfile; `just load down` removes the compose project; needs Docker with compose, k6 and jq; see TESTING.md, Load tests)."
   },
   "config": {
     "sort-packages": true

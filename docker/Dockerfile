@@ -1,6 +1,6 @@
 # Test-service images for the upstream SDK test suite (bin/conformance-upstream-local.sh) and
 # the FrankenPHP and PHP-FPM endpoint images for the integration, load and soak suites
-# (bin/test-frankenphp.sh, bin/test-fpm.sh, bin/load-test.sh, bin/test-soak.sh).
+# (bin/test-frankenphp.sh, bin/test-fpm.sh, just load run, bin/test-soak.sh).
 #
 # PHP_IMAGE is the NTS PHP the extension is built against and the upstream images run on;
 # FRANKENPHP_IMAGE is the thread-safe (ZTS) runtime for the frankenphp-extension target;
@@ -123,7 +123,7 @@ RUN echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
 
 CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]
 
-# The ZTS extension as a release build: the load tests' endpoint (bin/load-test.sh). The same
+# The ZTS extension as a release build: the load tests' endpoint (just load run). The same
 # setup as extension-bridge-zts (identical instructions, so the toolchain layers are shared from
 # the build cache), with --release, so building this target never compiles the debug module.
 FROM ${FRANKENPHP_IMAGE} AS extension-bridge-zts-release
@@ -151,7 +151,7 @@ RUN php -r 'exit(PHP_ZTS ? 0 : 1);' \
 # configuration: tests/load/compose.yaml mounts the repository at /app, and tests/load/Caddyfile
 # and php.ini over the image's Caddyfile and into its PHP configuration (classic mode, OPcache on,
 # JIT off). Another endpoint image (FrankenPHP worker mode, php-fpm behind nginx) plugs in with
-# `LOAD_ENDPOINT_IMAGE=<tag> LOAD_SKIP_BUILD=1 bin/load-test.sh` when it serves
+# `LOAD_ENDPOINT_IMAGE=<tag> LOAD_SKIP_BUILD=1 just load run` when it serves
 # tests/load/endpoint.php on port 8080 with the repository at /app.
 FROM ${FRANKENPHP_IMAGE} AS frankenphp-extension-release
 
@@ -270,7 +270,7 @@ RUN (cd extension && cargo build -p restate --features diagnostics) \
 # (tests/Integration/Support/worker.php, from the repository mounted at /app, as for
 # frankenphp-extension) under docker/frankenphp/worker.Caddyfile on port 8080, with the
 # diagnostics build. It serves the integration services and the /__worker probe, not the load
-# router, so it is no drop-in for bin/load-test.sh's LOAD_ENDPOINT_IMAGE. GODEBUG=madvdontneed=1 makes Go return
+# router, so it is no drop-in for the load tests' LOAD_ENDPOINT_IMAGE. GODEBUG=madvdontneed=1 makes Go return
 # freed memory at once, so RSS follows the heaps.
 FROM ${FRANKENPHP_IMAGE} AS frankenphp-worker-release
 

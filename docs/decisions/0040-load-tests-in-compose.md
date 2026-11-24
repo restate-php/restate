@@ -39,7 +39,7 @@ The gate never gated. It needs the dedicated `restate-php-load` runner, which is
      - no completed invocation;
      - outside `overload`, more than 0.1% failed calls or more than 1% dropped arrivals.
    - **The result** is k6's metrics as JSON.
-5. **`bin/load-test.sh`** is the small wrapper around it. It builds the endpoint image. For each scenario, it applies the endpoint limits the scenario asks for (compose recreates the endpoint when they change), then runs k6. It loops over `all`. At the end it removes the project, unless `--keep` is given.
+5. **`just load run`** (`tests/load/justfile`, a module of the root justfile) is the small wrapper around it. It builds the endpoint image. For each scenario, it applies the endpoint limits the scenario asks for (compose recreates the endpoint when they change), then runs k6. It runs the scenarios named, or all of them, one after the other: a mapped dependency, with just's unstable lists (`set unstable`, `set lists`). The first failing scenario stops the run and leaves the project running, since just has no step that runs after a failure. At the end it removes the project, unless `--keep` is given.
 6. **No comparison, no repetitions.** A run is one window per scenario. Nothing compares it with earlier runs, and there is no `--gate` or baselines. To repeat a scenario, run it again.
 7. **The same environment without Docker: devenv's `load` profile.** It runs Restate (`restate-bin`, with the same key and partitions) and the endpoint (FrankenPHP built with the Nix extension for the shell's PHP, with the same Caddyfile and `php.ini`) as devenv processes on loopback. Its shell exports the URLs k6 reads, including `LOAD_ENDPOINT_URI` for the registration. `devenv --profile load test` runs every scenario but `overload`, which needs a container's CPU cap. The Caddyfile takes the repository and the address from the same placeholders as the integration Caddyfiles (`RESTATE_PHP_TEST_APP_DIR`, `RESTATE_PHP_TEST_LISTEN`).
 
@@ -60,4 +60,4 @@ The gate never gated. It needs the dedicated `restate-php-load` runner, which is
 - Comparing runs is by hand, from the result files, until there is a runner stable enough for a gate. A gate then needs designing again.
 - The fixed ports can collide with something else on the machine. They are overridable for compose and k6 alike.
 - The Restate pin is in two places, `RestateContainer` and `compose.yaml`, and a unit test keeps them equal.
-- Restate's data grows over a long-lived project (`--keep`): journals are kept for an hour. It moves Restate's own costs, not the endpoint's CPU. `bin/load-test.sh down` clears it.
+- Restate's data grows over a long-lived project (`--keep`): journals are kept for an hour. It moves Restate's own costs, not the endpoint's CPU. `just load down` clears it.

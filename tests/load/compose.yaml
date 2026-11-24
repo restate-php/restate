@@ -5,8 +5,8 @@
 #   k6 run -e LOAD_SCENARIO=noop tests/load/k6.js
 #   docker compose -f tests/load/compose.yaml down -v
 #
-# bin/load-test.sh does the same for one scenario or all of them, with the endpoint limits a
-# scenario asks for. The signing key is a fixed test key (request-identity.pem and .pub next to
+# `just load run [<scenario>...]` (justfile next to this file) does the same for the scenarios named,
+# or all of them, with the endpoint limits a scenario asks for. The signing key is a fixed test key (request-identity.pem and .pub next to
 # this file): Restate and the endpoint only ever run here, on loopback ports. devenv's load
 # profile runs the same two without Docker (TESTING.md, Load tests).
 name: restate-php-load
@@ -50,6 +50,6 @@ services:
       - ./php.ini:/usr/local/etc/php/conf.d/zz-load.ini:ro
     ports:
       - 127.0.0.1:${LOAD_ENDPOINT_PORT:-18081}:8080
-    # 0: no limit. bin/load-test.sh sets these two for the overload scenario.
+    # 0: no limit. `just load run` sets these two for the overload scenario.
     cpus: ${LOAD_ENDPOINT_CPUS:-0}
     cpuset: ${LOAD_CPUSET_ENDPOINT:-}

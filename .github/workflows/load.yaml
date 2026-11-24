@@ -1,4 +1,4 @@
-# Load tests (TESTING.md, Load tests): bin/load-test.sh --full runs the compose project
+# Load tests (TESTING.md, Load tests): `just load run --full` runs the compose project
 # tests/load/compose.yaml (Restate signing its requests and the release FrankenPHP endpoint) and k6
 # against it, at open-model arrival rates.
 #
@@ -18,10 +18,10 @@ name: Load tests
 on:
   workflow_dispatch:
     inputs:
-      scenario:
-        description: 'Scenario (noop, state, runs, fanout, long-journal, overload) or "all"'
-        required: true
-        default: all
+      scenarios:
+        description: 'Scenarios, space-separated (noop, state, runs, fanout, long-journal, overload); empty: all'
+        required: false
+        default: ''
   # schedule:
   #   - cron: '17 2 * * *'
 
@@ -39,7 +39,7 @@ defaults:
 
 jobs:
   load:
-    name: bin/load-test.sh ${{ inputs.scenario || 'rotation' }}
+    name: just load run ${{ github.event_name == 'schedule' && '(rotation)' || inputs.scenarios || '(all)' }}
     runs-on: [self-hosted, restate-php-load]
     timeout-minutes: 60
 
@@ -64,18 +64,19 @@ jobs:
       - name: Run
         env:
           EVENT: ${{ github.event_name }}
-          SCENARIO: ${{ inputs.scenario }}
+          SCENARIOS: ${{ inputs.scenarios }}
         run: |
-          scenarios=(noop state runs fanout long-journal overload)
+          read -ra scenarios <<<"$SCENARIOS"
           if [ "$EVENT" = schedule ]; then
-            SCENARIO=${scenarios[$((10#$(date -u +%j) % ${#scenarios[@]}))]}
+            all=(noop state runs fanout long-journal overload)
+            scenarios=("${all[$((10#$(date -u +%j) % ${#all[@]}))]}")
           fi
-          bash bin/load-test.sh "$SCENARIO" --full
+          just load run --full "${scenarios[@]}"
 
       # The project outlives a cancelled run otherwise, on a runner that keeps its Docker state.
       - name: Remove the compose project
         if: always()
-        run: bash bin/load-test.sh down
+        run: just load down
 
       - name: Keep the results
         if: always()
