@@ -76,13 +76,11 @@ let
           ];
         };
         # The scratch directory the endpoint shares with the tests (RESTATE_PHP_TEST_STATE_DIR), for
-        # a shell whose processes run elsewhere.
+        # a shell whose processes run elsewhere. Not before the processes: fresh-state creates it
+        # then, and a mkdir while it is being removed fails ("File exists" on macOS).
         "restate-php:state-dir" = {
           exec = "mkdir -p ${lib.escapeShellArg stateDir}";
-          before = [
-            "devenv:enterShell"
-            "devenv:processes:${process}"
-          ];
+          before = [ "devenv:enterShell" ];
         };
       };
       processes.${process}.env.RESTATE_PHP_TEST_STATE_DIR = stateDir;
