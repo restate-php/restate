@@ -6,6 +6,8 @@ namespace Restate\Tests\Integration\Support;
 
 use PHPUnit\Framework\TestCase;
 use Restate\Testing\EndpointContainer;
+use Restate\Testing\ExternalEndpoint;
+use Restate\Testing\ExternalRestate;
 use Restate\Testing\PHPUnit\InteractsWithRestate;
 use Restate\Testing\PhpCliServer;
 use Restate\Testing\RestateContainer;
@@ -21,13 +23,13 @@ abstract class IntegrationTestCase extends TestCase
     use InteractsWithRestate;
 
     #[\Override]
-    protected static function restateEndpoint(): PhpCliServer|EndpointContainer
+    protected static function restateEndpoint(): PhpCliServer|EndpointContainer|ExternalEndpoint
     {
         return IntegrationEndpoint::get();
     }
 
     /** Replaces the trait's RestateContainer::default() (so no #[\Override]: a trait method is not a parent's). */
-    protected static function restateContainer(): RestateContainer|RestateProcess
+    protected static function restateContainer(): RestateContainer|RestateProcess|ExternalRestate
     {
         return IntegrationRestate::get();
     }

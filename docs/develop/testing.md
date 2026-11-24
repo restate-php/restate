@@ -92,8 +92,8 @@ The trait has two methods you can override:
 
 | Method | Default | Override it to |
 | --- | --- | --- |
-| `restateEndpoint(): PhpCliServer\|EndpointContainer` | (abstract) | Say what to serve: a script under `php -S`, or [your own image](#serving-from-your-own-image) |
-| `restateContainer(): RestateContainer\|RestateProcess` | `RestateContainer::default()` | Pin another Restate image, configure it, or [run Restate as a process](#running-restate-without-containers) |
+| `restateEndpoint(): PhpCliServer\|EndpointContainer\|ExternalEndpoint` | (abstract) | Say what to serve: a script under `php -S`, [your own image](#serving-from-your-own-image), or [an endpoint that already runs](#testing-against-a-running-environment) |
+| `restateContainer(): RestateContainer\|RestateProcess\|ExternalRestate` | `RestateContainer::default()` | Pin another Restate image, configure it, [run Restate as a process](#running-restate-without-containers), or [connect to one that already runs](#testing-against-a-running-environment) |
 
 ## Without PHPUnit
 
@@ -256,6 +256,63 @@ final class GreeterTest extends TestCase
 
 Every [failure-testing control](#failure-testing) works with a process too: a restart is SIGTERM (or SIGKILL) followed by a start on the same data directory and ports, and a pause is SIGSTOP.
 
+## Testing against a running environment
+
+The harness can also connect to a Restate server and an endpoint that already run, such as the ones `devenv up` starts or a Restate service container in CI, instead of starting its own. It waits until they are ready, registers the endpoint, and reads their log files if you name them. It never starts, stops or signals them.
+
+`ExternalRestate` is the Restate server:
+
+| Method | What it sets |
+| --- | --- |
+| `ExternalRestate::at(string $adminUrl, string $ingressUrl)` | The admin API and the ingress, as your tests reach them |
+| `ExternalRestate::fromEnvironment()` | The same from `RESTATE_ADMIN_URL` and `RESTATE_INGRESS_URL`, which the `restate` CLI reads and devenv-extras' `services.restate` exports |
+| `withTestHost(string $host)` | Where Restate reaches your machine, for an endpoint the harness serves (default `127.0.0.1`; `host.docker.internal` for a Restate in a container) |
+| `withLogFile(string $path)` | A file the server logs to, printed when a test fails |
+| `withStartupTimeout(int $seconds)` | How long Restate and the endpoint may take to become ready (default 60) |
+
+`ExternalEndpoint` is the endpoint:
+
+| Method | What it sets |
+| --- | --- |
+| `ExternalEndpoint::at(string $url)` | The endpoint as your tests reach it, with the path it is served under |
+| `withRestateUri(string $uri)` | Where Restate reaches it, when that is not the same URL |
+| `withHttp2()` | Register it for cleartext HTTP/2 (h2c) instead of HTTP/1.1 |
+| `withLogFile(string $path)` | A file the endpoint logs to, for `endpointLog()` and failed tests |
+
+Use either one, or both, in place of the kinds the harness runs:
+
+```php
+<?php
+
+use PHPUnit\Framework\TestCase;
+use Restate\Testing\ExternalEndpoint;
+use Restate\Testing\ExternalRestate;
+use Restate\Testing\PHPUnit\InteractsWithRestate;
+
+final class GreeterTest extends TestCase
+{
+    use InteractsWithRestate;
+
+    protected static function restateEndpoint(): ExternalEndpoint
+    {
+        return ExternalEndpoint::at('http://127.0.0.1:8000');
+    }
+
+    protected static function restateContainer(): ExternalRestate
+    {
+        return ExternalRestate::fromEnvironment();
+    }
+}
+```
+
+The harness only connects when you tell it to. It does not switch to a running Restate because `RESTATE_ADMIN_URL` is set.
+
+There are a few differences from an environment the harness starts:
+
+- The [failure-testing controls](#failure-testing) throw a `TestEnvironmentException`: `restartRestate()`, `pauseRestate()`, `unpauseRestate()`, `killEndpoint()`, `startEndpoint()`, `restartEndpoint()` and `signalEndpoint()`.
+- The endpoint runs with its own configuration. The harness does not load the extension into it or set its environment variables.
+- State outlives the run. Invocations, state and deployments of earlier runs are still there, so use fresh keys in every test, as you would anyway, and expect deployments the tests did not register.
+
 ## Network exposure
 
 > [!WARNING]
@@ -367,3 +424,4 @@ The harness cleans up when the PHP process exits. A process killed with SIGKILL 
 ## Design notes
 
 - [Test Harness](../decisions/0023-test-harness.md)
+- [External Test Environments](../decisions/0039-external-test-environments.md)

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Restate\Tests\Worker;
 
+use PHPUnit\Framework\Attributes\Group;
 use Restate\Testing\EndpointContainer;
 use Restate\Tests\Integration\Support\HttpClient;
 use Restate\Tests\Integration\Support\IntegrationEndpoint;
@@ -18,6 +19,7 @@ use Restate\Tests\Support\Workload\Workload;
  * really reach the same PHP thread and the same worker script run (each test checks the run did not change under it,
  * except the last, which restarts it on purpose).
  */
+#[Group('managed')]
 final class WorkerIsolationTest extends WorkerTestCase
 {
     #[\Override]

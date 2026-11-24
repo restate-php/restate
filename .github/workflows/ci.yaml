@@ -330,3 +330,54 @@ jobs:
         run: composer test:fpm
         env:
           RESTATE_PHP_TEST_SERVER: ${{ matrix.server }}
+
+  # The integration suite against an endpoint and a Restate that devenv runs, the harness only
+  # connecting to them (composer test:integration:external): a devenv.nix profile serves the
+  # endpoint with FrankenPHP built from the matrix PHP, with Restate next to it, on Linux and on
+  # macOS, without Docker (docs/decisions/0039-external-test-environments.md). The tests that
+  # start, stop or configure their environment (group `managed`) run in the jobs above.
+  external:
+    name: devenv test (${{ matrix.profile }}, PHP ${{ matrix.php }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+        profile: [frankenphp, frankenphp-worker]
+        php: ['8.4', '8.5', '8.6']
+        exclude:
+          # nixpkgs' thread-safe PHP 8.6 does not build on aarch64-darwin: its tokenizer extension
+          # fails to link ("illegal thread local variable reference to regular symbol
+          # _language_scanner_globals").
+          - os: macos-15
+            php: '8.6'
+    defaults:
+      run:
+        shell: devenv --profile ${{ matrix.profile }} -O languages.php.version:string ${{ matrix.php }} shell -- bash -e {0}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up devenv
+        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+        with:
+          cachix-cache: restate-php
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          # The action builds the default shell; the first step builds the profile's.
+          build-shell: false
+
+      - name: Set up Composer cache
+        uses: ./.github/actions/composer-cache
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      # Starts the profile's processes (FrankenPHP, Restate) on a fresh state directory, waits
+      # until they are ready, then runs its enterTest; their output is in the step's log.
+      - name: Test
+        shell: bash
+        run: devenv --profile "${{ matrix.profile }}" -O languages.php.version:string "${{ matrix.php }}" test

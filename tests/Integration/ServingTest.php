@@ -7,6 +7,7 @@ namespace Restate\Tests\Integration;
 use Restate\Tests\Integration\Support\IntegrationEndpoint;
 use Restate\Tests\Integration\Support\IntegrationTestCase;
 use Restate\Testing\EndpointContainer;
+use Restate\Testing\ExternalEndpoint;
 
 /**
  * How the server under test (RESTATE_PHP_TEST_SERVER) serves the endpoint: Restate reaches it over the HTTP version it
@@ -19,7 +20,7 @@ final class ServingTest extends IntegrationTestCase
     public function testRestateReachesTheEndpointOverTheRegisteredProtocol(): void
     {
         $endpoint = IntegrationEndpoint::get();
-        $http2 = $endpoint instanceof EndpointContainer && $endpoint->http2;
+        $http2 = ($endpoint instanceof EndpointContainer || $endpoint instanceof ExternalEndpoint) && $endpoint->http2;
 
         $settings = json_decode(self::invoke('LargeBodies/settings', null), true, flags: JSON_THROW_ON_ERROR);
         self::assertIsArray($settings);

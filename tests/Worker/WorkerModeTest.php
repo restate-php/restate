@@ -36,6 +36,7 @@ final class WorkerModeTest extends WorkerTestCase
     {
         $driver = new HttpDriver(self::restate()->endpointUrl());
         $last = [];
+        $pid = null;
         for ($i = 0; $i < 40; ++$i) {
             $request = Workload::start(invocationId: 'inv_1workload' . bin2hex(random_bytes(8)));
             $response = $driver->send($request);
@@ -44,7 +45,10 @@ final class WorkerModeTest extends WorkerTestCase
             $instance = $response->header(WorkerProbe::HEADER_INSTANCE);
             $requests = (int) $response->header(WorkerProbe::HEADER_REQUESTS);
             self::assertIsString($instance, 'The response does not name its worker.');
-            self::assertSame('1', $response->header(WorkerProbe::HEADER_PID), 'FrankenPHP is the container\'s first process.');
+            // One FrankenPHP process (the container's first, or the devenv process), whichever worker thread answers.
+            $pid ??= $response->header(WorkerProbe::HEADER_PID);
+            self::assertIsString($pid, 'The response does not name its process.');
+            self::assertSame($pid, $response->header(WorkerProbe::HEADER_PID), 'Every worker thread runs in the one FrankenPHP process.');
             self::assertGreaterThan($last[$instance] ?? 0, $requests, "Worker {$instance}'s request counter did not grow.");
             $last[$instance] = $requests;
         }

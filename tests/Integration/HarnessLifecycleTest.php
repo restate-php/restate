@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Restate\Tests\Integration;
 
+use PHPUnit\Framework\Attributes\Group;
 use Restate\Tests\Integration\Support\FaultInjectionTestCase;
 use Restate\Tests\Integration\Support\HttpClient;
 use Restate\Tests\Integration\Support\HttpTransportException;
@@ -13,6 +14,7 @@ use Restate\Tests\Integration\Support\HttpTransportException;
  * SIGKILL), pausing it, and killing, signalling and restarting the endpoint. Runs in the fault-injection environment,
  * so the one every other test shares is never restarted.
  */
+#[Group('managed')]
 final class HarnessLifecycleTest extends FaultInjectionTestCase
 {
     /** A test that failed half-way must not leave the next one without an endpoint. */

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Restate\Tests\Integration;
 
 use Restate\Tests\Integration\Services\ChaosRecorder;
+use Restate\Tests\Integration\Support\IntegrationEndpoint;
 use Restate\Tests\Integration\Support\IntegrationTestCase;
+use Restate\Testing\PhpCliServer;
 
 /**
  * The chaos services (tests/Integration/Services/chaos.php) do what they say, each armed for one execution so the
@@ -20,7 +22,7 @@ final class ChaosServicesTest extends IntegrationTestCase
         $offset = self::restate()->endpointLogSize();
 
         self::assertInvocationReturns('["deprecated","warning"]', 'Chaos/noisy', '{"kinds":["deprecated","warning"]}');
-        if (self::restate()->endpointContainerName() === null) {
+        if (IntegrationEndpoint::get() instanceof PhpCliServer) {
             self::assertLogEventually($offset, 'Calling current() on an object is deprecated');
             self::assertLogEventually($offset, 'Chaos/noisy warns');
         }
@@ -45,10 +47,17 @@ final class ChaosServicesTest extends IntegrationTestCase
         $handler = self::sendInvocation('Chaos/exhaustMemoryInHandler', '{"times":1}');
         self::assertSame('2', self::attachInvocation($handler)->body);
         $busy = self::sendInvocation('Chaos/busyRun', '{"ms":3000,"timeLimit":1,"times":1}');
-        // Attempt 1 dies of the time limit, attempt 2 runs the busy step again, attempt 3 completes.
-        self::assertSame('{"attempt":3,"execution":2}', self::attachInvocation($busy)->body);
+        if (PHP_OS_FAMILY === 'Darwin' && str_starts_with(IntegrationEndpoint::server(), 'frankenphp')) {
+            // max_execution_time never fires in FrankenPHP on macOS: a thread-safe PHP there arms it with a
+            // process-wide ITIMER_REAL (no per-thread timers), whose SIGALRM the Go runtime receives. The busy step
+            // completes in its first execution, and attempt 2 replays it to the end.
+            self::assertSame('{"attempt":2,"execution":1}', self::attachInvocation($busy)->body);
+        } else {
+            // Attempt 1 dies of the time limit, attempt 2 runs the busy step again, attempt 3 completes.
+            self::assertSame('{"attempt":3,"execution":2}', self::attachInvocation($busy)->body);
+        }
 
-        if (self::restate()->endpointContainerName() === null) {
+        if (IntegrationEndpoint::get() instanceof PhpCliServer) {
             self::assertLogEventually($offset, 'Allowed memory size of');
             self::assertLogEventually($offset, 'Maximum execution time of 1 second exceeded');
         }

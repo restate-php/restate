@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Restate\Tests\Integration;
 
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use Restate\Tests\Integration\Support\FaultInjectionTestCase;
 use Restate\Tests\Integration\Support\IntegrationEndpoint;
 
@@ -22,6 +23,7 @@ use Restate\Tests\Integration\Support\IntegrationEndpoint;
  * pauses the invocation. Under FrankenPHP (classic and worker mode; RESTATE_PHP_TEST_SERVER=frankenphp,
  * frankenphp-worker), whose image has no php.ini, a fatal error is a `200` HTML page: the same RT0012 as an `exit`.
  */
+#[Group('managed')]
 final class AbruptEndTest extends FaultInjectionTestCase
 {
     /** Restate's `last_failure` after an `exit()`: an empty `200 text/html` (`php -S`, and php-fpm behind nginx or Caddy). */

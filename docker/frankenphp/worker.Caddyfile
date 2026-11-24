@@ -10,15 +10,20 @@
 #                                  default, STDOUT)
 # RESTATE_PHP_TEST_POST_DATA_READING  enable_post_data_reading (default 0, as docs/serving.md recommends:
 #                                  a body over post_max_size makes PHP print a warning otherwise)
+# RESTATE_PHP_TEST_APP_DIR         the repository (default /app, where the images mount it)
+# RESTATE_PHP_TEST_LISTEN          the site address (default :8080)
+# CADDY_GLOBAL_OPTIONS             more global options (the images set it empty; devenv.nix's
+#                                  frankenphp-worker profile binds loopback)
 {
 	admin off
 	auto_https off
+	{$CADDY_GLOBAL_OPTIONS}
 	frankenphp {
 		php_ini display_errors {$RESTATE_PHP_TEST_DISPLAY_ERRORS:1}
 		php_ini enable_post_data_reading {$RESTATE_PHP_TEST_POST_DATA_READING:0}
 		worker {
 			name integration
-			file /app/tests/Integration/Support/worker.php
+			file {$RESTATE_PHP_TEST_APP_DIR:/app}/tests/Integration/Support/worker.php
 			num {$RESTATE_PHP_TEST_WORKER_NUM:4}
 			max_consecutive_failures {$RESTATE_PHP_TEST_WORKER_FAILURES:6}
 			env MAX_REQUESTS {$MAX_REQUESTS:0}
@@ -26,8 +31,8 @@
 	}
 }
 
-:8080 {
-	root * /app/tests/Integration/Support
+{$RESTATE_PHP_TEST_LISTEN::8080} {
+	root * {$RESTATE_PHP_TEST_APP_DIR:/app}/tests/Integration/Support
 	rewrite * /worker.php
 	php
 }

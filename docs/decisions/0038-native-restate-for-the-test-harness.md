@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Amends decision 1 of [Test Harness](0023-test-harness.md): Restate runs in a container or as a process of the harness.
+Accepted. Amends decision 1 of [Test Harness](0023-test-harness.md): Restate runs in a container or as a process of the harness. Decisions 5 and 6 are amended by [External Test Environments](0039-external-test-environments.md).
 
 ## Context
 

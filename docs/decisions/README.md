@@ -53,6 +53,7 @@ Why the SDK works the way it does: one record per decision, with its context, th
 | [0034](0034-php-fpm-serving.md) | PHP-FPM Serving |
 | [0035](0035-worker-soak-testing.md) | Worker-Mode and Soak Testing |
 | [0038](0038-native-restate-for-the-test-harness.md) | Native Restate for the Test Harness |
+| [0039](0039-external-test-environments.md) | External Test Environments |
 
 ## Packaging, releases and development
 

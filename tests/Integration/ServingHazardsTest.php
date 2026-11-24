@@ -37,6 +37,7 @@ use Restate\Testing\RestateTestEnvironment;
  * images (bin/test-fpm.sh builds them) and waits out real timeouts.
  */
 #[Group('serving-hazards')]
+#[Group('managed')]
 final class ServingHazardsTest extends TestCase
 {
     public const string DEFAULT_APACHE_IMAGE = 'restate.local/restate-php-fpm:extension-apache';
