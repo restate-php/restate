@@ -48,6 +48,7 @@
       },
       "locked": {
         "dir": "extension",
+        "ref": "refs/heads/main",
         "type": "git",
         "url": "file:."
       },
