@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Restate\Tests\Integration;
 
+use PHPUnit\Framework\Attributes\Group;
 use Restate\Tests\Integration\Support\FaultInjectionTestCase;
 use Restate\Tests\Support\Faults\Fault;
 use Restate\Tests\Support\Faults\FaultOutcome;
@@ -16,6 +17,7 @@ use Restate\Tests\Support\Protocol\FrameCodec;
  * Restate commits every frame it decoded before the response broke off, so a run executes again exactly when its
  * proposed completion did not arrive whole. The full failure-injection scenarios build on this.
  */
+#[Group('managed')]
 final class FaultInjectionTest extends FaultInjectionTestCase
 {
     public function testAResponseCutAfterTheRunCommandMakesTheRunExecuteAgain(): void

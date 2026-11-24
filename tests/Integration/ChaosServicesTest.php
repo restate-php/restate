@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Restate\Tests\Integration;
 
 use Restate\Tests\Integration\Services\ChaosRecorder;
+use Restate\Tests\Integration\Support\IntegrationEndpoint;
 use Restate\Tests\Integration\Support\IntegrationTestCase;
+use Restate\Testing\PhpCliServer;
 
 /**
  * The chaos services (tests/Integration/Services/chaos.php) do what they say, each armed for one execution so the
@@ -20,7 +22,7 @@ final class ChaosServicesTest extends IntegrationTestCase
         $offset = self::restate()->endpointLogSize();
 
         self::assertInvocationReturns('["deprecated","warning"]', 'Chaos/noisy', '{"kinds":["deprecated","warning"]}');
-        if (self::restate()->endpointContainerName() === null) {
+        if (IntegrationEndpoint::get() instanceof PhpCliServer) {
             self::assertLogEventually($offset, 'Calling current() on an object is deprecated');
             self::assertLogEventually($offset, 'Chaos/noisy warns');
         }
@@ -48,7 +50,7 @@ final class ChaosServicesTest extends IntegrationTestCase
         // Attempt 1 dies of the time limit, attempt 2 runs the busy step again, attempt 3 completes.
         self::assertSame('{"attempt":3,"execution":2}', self::attachInvocation($busy)->body);
 
-        if (self::restate()->endpointContainerName() === null) {
+        if (IntegrationEndpoint::get() instanceof PhpCliServer) {
             self::assertLogEventually($offset, 'Allowed memory size of');
             self::assertLogEventually($offset, 'Maximum execution time of 1 second exceeded');
         }

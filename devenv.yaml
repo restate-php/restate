@@ -23,3 +23,11 @@ inputs:
     inputs:
       nixpkgs:
         follows: nixpkgs
+  # devenv modules, for the profiles that serve the integration suite's endpoint outside the test
+  # harness (devenv.nix `profiles`, docs/decisions/0039-external-test-environments.md):
+  # languages.php.frankenphp and services.restate. Its modules need no overlay, so no flake.
+  extras:
+    url: github:sagikazarmark/devenv-extras
+    flake: false
+imports:
+  - extras/modules

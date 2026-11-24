@@ -126,6 +126,7 @@ The `integration` PHPUnit suite (`tests/Integration` and `examples/testing`) sta
 ```bash
 composer test:integration  # PHP extension under php -S
 composer test:integration:process # the same with Restate as a process: no Docker (macOS too)
+devenv --profile frankenphp test  # the behaviour tests against FrankenPHP and Restate run by devenv
 composer test:frankenphp   # extension, thread-safe build, under FrankenPHP
 composer test:frankenphp-worker # the same in FrankenPHP worker mode, then the worker suite
 ```
@@ -139,6 +140,7 @@ How it works:
 - With `RESTATE_PHP_TEST_SERVER=frankenphp` the endpoint is an `EndpointContainer` instead (see [FrankenPHP](#frankenphp-thread-safe-build)), serving the same router script from the repository mounted at `/app`. Its port is published on the bind address, so Restate reaches it the same way. The PHP-FPM values (`nginx-fpm`, `nginx-fpm-h2c`, `caddy-fpm`) do the same with the PHP-FPM image ([Serving](#serving-large-bodies-php-fpm-and-front-door-hazards)).
 - Restate runs in a container by default (`RESTATE_PHP_TEST_RESTATE=container`), with plain `docker run` (no Compose, no `socat`, no Testcontainers), `--add-host host.docker.internal:host-gateway`, and its ports published on `127.0.0.1` ports the harness chose (free ones, retried with new ones if another process takes one before the container binds it; explicit mappings survive a restart). It works unchanged with Docker and with rootless podman (through `docker`, else `podman`, on `PATH`). Without either the suite fails; it never skips. The harness waits for Restate's health endpoints and for an admin SQL query to succeed (the partition is running) before it registers the endpoint.
 - With `RESTATE_PHP_TEST_RESTATE=process` (`composer test:integration:process`), Restate is a `RestateProcess` instead: `restate-server` from the dev shell (nix-restate's `restate-bin`, at the version of `RestateContainer::DEFAULT_IMAGE`) as a process of the harness, with a fresh data directory, three free loopback ports and the same defaults, and none of the shell's `RESTATE_…` variables ([Native Restate for the Test Harness](docs/decisions/0038-native-restate-for-the-test-harness.md)). Nothing needs Docker, and Restate reaches the endpoint on loopback, so `php -S` listens on `127.0.0.1`. Every test runs against either kind, the lifecycle controls and the tests that start a Restate of their own (`IntegrationRestate`) included. `examples/testing` shows the default, a container, so `test:integration:process` runs `tests/Integration` without it. CI runs it on macOS, whose runners have no Docker.
+- With `RESTATE_PHP_TEST_RESTATE=external` (`composer test:integration:external`), the harness starts nothing: it connects to a Restate and an endpoint that run outside it, those of a devenv profile (see [External environments](#external-environments)).
 - The endpoint is registered through the admin API (`POST /deployments`). `StatePreloadTest` registers a second deployment, the part of `endpoint.php` served under `/state-preload`, with `registerEndpoint('/state-preload')`. When a test fails, the Restate log (the container's, or the process's output) and the endpoint log written during that test are printed to stderr. The containers, the servers, and the run's scratch directories are always removed at exit, including after a fatal error or Ctrl-C.
 - `examples/testing/GreeterTest.php` uses the harness exactly as [Testing](docs/develop/testing.md) shows a user doing it: its own entrypoint, a second Restate container, Guzzle through `ingressClient()`.
 
@@ -151,7 +153,9 @@ How it works:
 | `RESTATE_PHP_TEST_FPM_IMAGE` | `restate.local/restate-php-fpm:extension` | PHP-FPM endpoint image (built by `bin/test-fpm.sh`). |
 | `RESTATE_PHP_TEST_FPM_APACHE_IMAGE` | `restate.local/restate-php-fpm:extension-apache` | The same with Apache, for `ServingHazardsTest` (built by `composer test:serving-hazards`). |
 | `RESTATE_PHP_TEST_REPORT_MEMORY` | unset | `1` prints the peak memory (RSS and PHP's) of `LargeBodyTest`'s large cases to stderr. |
-| `RESTATE_PHP_TEST_RESTATE` | `container` | Restate server: `container` (`RestateContainer::default()`) or `process` (`RestateProcess::default()`, `restate-server` from the dev shell; `composer test:integration:process`). |
+| `RESTATE_PHP_TEST_RESTATE` | `container` | Restate server: `container` (`RestateContainer::default()`), `process` (`RestateProcess::default()`, `restate-server` from the dev shell; `composer test:integration:process`) or `external` (Restate and the endpoint run outside the harness; `composer test:integration:external`, see [External environments](#external-environments)). |
+| `RESTATE_PHP_TEST_ENDPOINT_URL`, `RESTATE_PHP_TEST_ENDPOINT_SERVER`, `RESTATE_PHP_TEST_STATE_DIR` | set by a devenv profile | With `external`: the endpoint, what serves it (a `RESTATE_PHP_TEST_SERVER` value) and the scratch directory it shares with the tests. `RESTATE_ADMIN_URL` and `RESTATE_INGRESS_URL` (devenv-extras' `services.restate`) are Restate. `RESTATE_PHP_TEST_ENDPOINT_LOG` and `RESTATE_PHP_TEST_RESTATE_LOG` name log files for the log tails, if any. |
+| `RESTATE_PHP_TEST_APP_DIR`, `RESTATE_PHP_TEST_LISTEN` | `/app`, `:8080` | The repository and the site address in the FrankenPHP Caddyfiles (`docker/frankenphp/`): the images' defaults, which the devenv profiles replace. |
 | `RESTATE_PHP_TEST_BIND` | `0.0.0.0` (`127.0.0.1` with a Restate process) | Address the PHP endpoint binds to (harness setting). |
 | `RESTATE_PHP_RESTATE_IMAGE` | `docker.restate.dev/restatedev/restate:1.8.1` | Restate server image (harness setting). `composer test:integration:restate-1.7` runs the suite against 1.7.14 (see [Server versions](#server-versions)). |
 | `RESTATE_PHP_EXTENSION_PATH` | `extension/target/debug/restate.so` | Extension the endpoint loads (`php -d extension=…`; harness setting). |
@@ -163,6 +167,19 @@ How it works:
 | `RESTATE_PHP_TEST_SCALE_REPORT` | unset | File the [scale tests](#scale-tests) append their measurements to, one JSON object per line. |
 
 If a run is killed with `SIGKILL`, remove leftover containers with `docker rm -f $(docker ps -aq --filter label=restate-php-test-environment)`.
+
+### External environments
+
+```bash
+devenv --profile frankenphp test                                     # FrankenPHP, classic mode
+devenv --profile frankenphp-worker -O languages.php.version:string 8.4 test # worker mode, PHP 8.4
+devenv --profile frankenphp up                                       # the environment on its own…
+composer test:integration:external --filter VirtualObjectTest        # …and the suite against it, in its shell
+```
+
+A devenv profile runs the integration endpoint and a Restate server as devenv processes, and the harness only connects to them ([External Test Environments](docs/decisions/0039-external-test-environments.md)). `frankenphp` serves `endpoint.php` from `docker/frankenphp/integration.Caddyfile` and `frankenphp-worker` serves `worker.php` from `worker.Caddyfile`, the files the images use. Both use devenv-extras' `languages.php.frankenphp`, which builds FrankenPHP from the shell's PHP (`languages.php.version`) with the overlay's `restate` extension rebuilt thread-safe. They also run its `services.restate` with nix-restate's `restate-bin`. Each profile exports the endpoint's URL, its server name, its state directory and the processes' log files, and its `enterTest` runs `composer test:integration:external` (`frankenphp-worker` adds `tests/Worker`). That runs `tests/Integration` with `RESTATE_PHP_TEST_RESTATE=external`, without the groups `test:integration` excludes and without the `managed` group. So nothing needs Docker, on Linux or macOS, for any PHP minor. The extension is the Nix build of the working tree, not the cargo build, so Rust changes rebuild it on the next `devenv` command.
+
+The `managed` group holds the tests that start, stop or configure their environment: the fault-injection and failure tests, the tests with request identity keys, the serving hazards, the wide-state tests that configure Restate, and the worker suite's single-thread endpoint. They run in the jobs that start their own environment. In external mode the suite's factories (`IntegrationRestate`, `IntegrationEndpoint::managed()`, `withFaults()`, `phpCli()`, `fpm()`) and the harness's lifecycle methods throw, naming the group, so a test that needs control but is not in it fails the external run instead of skipping. The suite's tests use fixed keys (`Counter/alice`, workflow ids) and expect an empty Restate, so the profiles empty Restate's data and the state directory whenever their processes start (`devenv up`, `devenv test`; not when a shell is entered): run the suite once per `devenv up`, then restart it.
 
 The harness's configuration and command lines are unit-tested without a container runtime in `tests/Unit/Testing/` (`ProcessTest` ends a real `php -S` with its workers, by killing, stopping and signalling it, on Linux and macOS, and pauses a process with SIGSTOP); `TestingWithoutPhpUnitTest` checks that only the PHPUnit trait needs PHPUnit. `HarnessLifecycleTest` exercises the lifecycle controls against a real Restate once each, in a container or as a process.
 
@@ -494,6 +511,7 @@ GitHub Actions runs the same commands, in the same dev shell. Nothing in CI is C
 | | `frankenphp` | `devenv shell -- composer build:extension`, then `composer test:frankenphp` (the examples in the integration suite serve with `php -S` and the host's extension) | PHP 8.4 ZTS (the Dockerfile default), 8.5 ZTS (`RESTATE_PHP_FRANKENPHP_BASE_IMAGE=docker.io/dunglas/frankenphp:1.13.5-php8.5-bookworm`), 8.6 ZTS (`…:1.13.6-php8.6-bookworm`; 1.13.5 has no 8.6 image) |
 | | `frankenphp-worker` | `devenv shell -- composer build:extension`, then `composer test:frankenphp-worker` | PHP 8.4 ZTS |
 | | `fpm` | `devenv shell -- composer test:fpm` | `RESTATE_PHP_TEST_SERVER`: `nginx-fpm`, `nginx-fpm-h2c`, `caddy-fpm` (PHP 8.4 NTS php-fpm) |
+| | `external` | `devenv --profile <profile> -O languages.php.version:string <php> test` ([External environments](#external-environments)) | `ubuntu-24.04`, `macos-15` × `frankenphp`, `frankenphp-worker` × PHP 8.4, 8.5, 8.6 |
 | `.github/workflows/nightly-soak.yaml` | `soak` | `bash bin/test-soak.sh nightly` nightly, `bash bin/test-soak.sh restate` on Sundays, any suite by hand; reports as an artifact ([Soak suite](#soak-suite)) | — |
 | `.github/workflows/nightly-scale.yaml` | `scale`, `contention-frankenphp` | `composer test:scale`; `bin/test-frankenphp.sh --group scale --filter ContentionTest` ([Scale tests](#scale-tests)), each uploading its measurements | — (nightly and manual runs) |
 | `.github/workflows/upstream.yaml` | `sdk-tests` | `docker build --target upstream-extension-caddy …`, then the [`restatedev/e2e/sdk-tests@v2.3`](https://github.com/restatedev/e2e/blob/main/sdk-tests/action.yml) action | — |

@@ -23,6 +23,7 @@ use Restate\Tests\Integration\Support\FaultInjectionTestCase;
  * completes (`failure-nightly`: paused by its retry policy). Orderings of recorded events are asserted, never
  * durations (4 s against 1 s leaves a margin of 4x).
  */
+#[Group('managed')]
 final class AbortTimeoutTest extends FaultInjectionTestCase
 {
     public function testAnAttemptSlowerThanItsAbortTimeoutRunsToTheEndAndIsDiscarded(): void

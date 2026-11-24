@@ -19,6 +19,7 @@ use Restate\Tests\Integration\Support\FaultInjectionTestCase;
  * StopRuntime tests cover a restart with nothing in flight.
  */
 #[Group('failure-nightly')]
+#[Group('managed')]
 final class RestateRestartTest extends FaultInjectionTestCase
 {
     /** @return iterable<string, array{bool}> */

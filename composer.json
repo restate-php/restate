@@ -79,6 +79,11 @@
       "@build:extension @no_additional_args",
       "phpunit tests/Integration"
     ],
+    "test:integration:external": [
+      "Composer\\Config::disableProcessTimeout",
+      "@putenv RESTATE_PHP_TEST_RESTATE=external",
+      "phpunit tests/Integration --exclude-group managed --exclude-group large-bodies --exclude-group serving-hazards --exclude-group failure-nightly --exclude-group scale --exclude-group release"
+    ],
     "test:frankenphp": [
       "Composer\\Config::disableProcessTimeout",
       "bash bin/test-frankenphp.sh"
@@ -181,6 +186,7 @@
     "test:scale": "Build the extension, then run the scale tests' large cases (PHPUnit group `scale`, excluded from test:integration; nightly): long journals, wide fan-out, wide state, contention. RESTATE_PHP_TEST_SCALE_REPORT=<file> appends the measurements as JSON lines.",
     "test:integration:restate-1.7": "The integration suite against Restate 1.7.14 (best-effort server version, protocol v6).",
     "test:integration:process": "The integration suite (tests/Integration) with Restate as a process of the harness (restate-server from the dev shell) instead of a container: no container runtime needed, macOS included. examples/testing shows the default, a container, so it is left out.",
+    "test:integration:external": "The integration suite (tests/Integration) against a Restate and an endpoint that run outside the harness, which only connects to them: those of a devenv.nix profile (`devenv --profile frankenphp test`, or `devenv --profile frankenphp up` and this in its shell). The tests that start, stop or configure either themselves (group `managed`) and the groups test:integration excludes are left out.",
     "test:frankenphp": "Build the FrankenPHP image with the thread-safe extension, then run the integration suite against it.",
     "test:soak": "Build the FrankenPHP worker images with the extension's diagnostics feature and run the soak suite (tests/Soak); arguments: [--quick] [nightly|frames|concurrency|bailout|restate|all], see bin/test-soak.sh.",
     "test:frankenphp-worker": "The same image in FrankenPHP worker mode (endpoints built once per worker): the integration suite, then the worker suite (tests/Worker).",

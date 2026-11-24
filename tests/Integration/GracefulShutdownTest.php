@@ -24,6 +24,7 @@ use Restate\Tests\Integration\Support\ShutdownScenarios;
  * reached Restate.
  */
 #[Group('failure-nightly')]
+#[Group('managed')]
 final class GracefulShutdownTest extends FaultInjectionTestCase
 {
     use ShutdownScenarios;

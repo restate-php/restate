@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Restate\Tests\Integration;
 
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Restate\Testing\DeploymentRegistrationException;
 use Restate\Testing\RestateTestEnvironment;
@@ -19,6 +20,7 @@ use Restate\Tests\Integration\Support\IntegrationEndpoint;
  * (`RESTATE_PHP_TEST_IDENTITY_KEYS`, read by `Support/endpoint.php`). Each test starts its own environment, because
  * the shared one runs an unsigned Restate and an open endpoint.
  */
+#[Group('managed')]
 final class RequestIdentityTest extends TestCase
 {
     private ?RestateTestEnvironment $environment = null;
@@ -80,7 +82,7 @@ final class RequestIdentityTest extends TestCase
         chmod($this->pemFile, 0o644);
 
         return RestateTestEnvironment::start(
-            IntegrationEndpoint::get()->withEnvironment(['RESTATE_PHP_TEST_IDENTITY_KEYS' => $identityKey]),
+            IntegrationEndpoint::managed('starts an endpoint with a request identity key')->withEnvironment(['RESTATE_PHP_TEST_IDENTITY_KEYS' => $identityKey]),
             IdentityKeys::restate($this->pemFile),
         );
     }
