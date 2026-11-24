@@ -1,0 +1,46 @@
+set lazy
+set default-list
+set ignore-comments
+# Lists, for `run`'s scenarios: one `scenario` per name, as a mapped dependency.
+set unstable
+set lists
+
+# Every scenario of scenarios.json, in its order.
+scenarios := split(`jq -r 'keys_unsorted[]' scenarios.json`)
+
+# Run scenarios of scenarios.json (none named: all of them) against compose.yaml, one after the other, then remove it; a failing one stops the run and leaves the project running
+[arg('mode', long='full', value='full', help="90 s windows after a 30 s warm-up, instead of about 20 s after 5 s")]
+[arg('keep', long='keep', value='keep', help="leave the project running afterwards, so later runs reuse Restate")]
+run mode='quick' keep='' *names=scenarios: build *(scenario mode *names)
+    [ -n {{ quote(keep) }} ] || docker compose down --volumes
+
+# Build and start compose.yaml and leave it running, for k6 by hand (k6 run -e LOAD_SCENARIO=noop tests/load/k6.js)
+up: build
+    docker compose up --detach --no-build
+
+# Remove compose.yaml's project, Restate's data included
+down:
+    docker compose down --volumes
+
+# The endpoint image; LOAD_SKIP_BUILD=1 reuses it (or another one: LOAD_ENDPOINT_IMAGE)
+[private]
+build:
+    [ "${LOAD_SKIP_BUILD:-0}" = 1 ] || docker compose build endpoint
+
+# One scenario with k6.js; the result and k6's log (a warning per timed-out call: thousands under overload) in var/load/results/<name>/
+[private]
+[script('bash')]
+scenario mode name:
+    set -euo pipefail
+    jq -e --arg name {{ quote(name) }} 'has($name)' scenarios.json >/dev/null ||
+        { echo "load: no scenario {{ name }} in scenarios.json (just --evaluate load::scenarios)" >&2; exit 1; }
+    # The endpoint is recreated when the limits change (overload: 1 CPU, 4 PHP threads).
+    LOAD_ENDPOINT_CPUS=$(jq -r --arg name {{ quote(name) }} '.[$name].endpoint_cpus // 0' scenarios.json) \
+        LOAD_NUM_THREADS=$(jq -r --arg name {{ quote(name) }} '.[$name].endpoint_threads // 0' scenarios.json) \
+        docker compose up --detach --no-build
+    commit=$(git rev-parse --short=12 HEAD)
+    result={{ quote(justfile_directory() / "var/load/results" / name) }}/$(date -u +%Y%m%dT%H%M%SZ)-$commit
+    mkdir -p "$(dirname "$result")"
+    k6 run --quiet --no-usage-report -e LOAD_SCENARIO={{ quote(name) }} -e LOAD_MODE={{ mode }} -e LOAD_COMMIT="$commit" \
+        -e LOAD_SUMMARY="$result.json" k6.js 2>"$result.log" ||
+        { grep -v 'level=warning' "$result.log" | tail -n 5 >&2; exit 1; }

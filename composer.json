@@ -86,20 +86,20 @@
     ],
     "test:frankenphp": [
       "Composer\\Config::disableProcessTimeout",
-      "bash bin/test-frankenphp.sh"
+      "just test frankenphp"
     ],
     "test:frankenphp-worker": [
       "Composer\\Config::disableProcessTimeout",
-      "bash bin/test-frankenphp.sh --worker"
+      "just test frankenphp-worker"
     ],
     "test:soak": [
       "Composer\\Config::disableProcessTimeout",
-      "bash bin/test-soak.sh"
+      "just test soak"
     ],
     "test:fpm": [
       "Composer\\Config::disableProcessTimeout",
       "@build:extension @no_additional_args",
-      "bash bin/test-fpm.sh"
+      "just test fpm"
     ],
     "test:large-bodies": [
       "Composer\\Config::disableProcessTimeout",
@@ -116,7 +116,7 @@
       "@putenv RESTATE_PHP_TEST_SERVER=nginx-fpm",
       "@putenv RESTATE_PHP_TEST_FPM_TARGET=fpm-extension-apache",
       "@putenv RESTATE_PHP_TEST_FPM_IMAGE=restate.local/restate-php-fpm:extension-apache",
-      "bash bin/test-fpm.sh --group serving-hazards"
+      "just test fpm --group serving-hazards"
     ],
     "check": [
       "@cs",
@@ -129,7 +129,11 @@
     ],
     "check:scripts": [
       "actionlint",
-      "shellcheck bin/*.sh docker/*/*.sh examples/quickstart/scripts/*.sh"
+      "shellcheck bin/*.sh docker/*/*.sh examples/quickstart/scripts/*.sh",
+      "just --fmt --check",
+      "just --justfile extension/justfile --fmt --check",
+      "just --justfile tests/justfile --fmt --check",
+      "just --justfile tests/load/justfile --fmt --check"
     ],
     "check:packages": [
       "@build:extension @no_additional_args",
@@ -144,10 +148,10 @@
     "analyse": "phpstan analyse --memory-limit=512M",
     "cs": "php-cs-fixer fix --dry-run --diff",
     "cs:fix": "php-cs-fixer fix",
-    "build:extension": "bash bin/build-extension.sh",
+    "build:extension": "just extension build",
     "build:pie": [
       "Composer\\Config::disableProcessTimeout",
-      "bash bin/build-pie.sh"
+      "just extension pie"
     ],
     "release:split": [
       "Composer\\Config::disableProcessTimeout",
@@ -165,7 +169,7 @@
     ],
     "bench": [
       "Composer\\Config::disableProcessTimeout",
-      "bash -c 'bash bin/build-extension.sh --release >/dev/null && vendor/bin/phpbench run --report=aggregate \"$@\"' bench"
+      "bash -c 'just extension build --release >/dev/null && vendor/bin/phpbench run --report=aggregate \"$@\"' bench"
     ],
     "bench:compare": [
       "Composer\\Config::disableProcessTimeout",
@@ -177,7 +181,7 @@
     ],
     "load": [
       "Composer\\Config::disableProcessTimeout",
-      "bash bin/load-test.sh"
+      "just load run"
     ]
   },
   "scripts-descriptions": {
@@ -188,29 +192,29 @@
     "test:integration:process": "The integration suite (tests/Integration) with Restate as a process of the harness (restate-server from the dev shell) instead of a container: no container runtime needed, macOS included. examples/testing shows the default, a container, so it is left out.",
     "test:integration:external": "The integration suite (tests/Integration) against a Restate and an endpoint that run outside the harness, which only connects to them: those of a devenv.nix profile (`devenv --profile frankenphp test`, or `devenv --profile frankenphp up` and this in its shell). The tests that start, stop or configure either themselves (group `managed`) and the groups test:integration excludes are left out.",
     "test:frankenphp": "Build the FrankenPHP image with the thread-safe extension, then run the integration suite against it.",
-    "test:soak": "Build the FrankenPHP worker images with the extension's diagnostics feature and run the soak suite (tests/Soak); arguments: [--quick] [nightly|frames|concurrency|bailout|restate|all], see bin/test-soak.sh.",
+    "test:soak": "Build the FrankenPHP worker images with the extension's diagnostics feature and run the soak suite (tests/Soak); arguments: [--quick] [nightly|frames|concurrency|bailout|restate|all] [-- <phpunit arguments>], see `just test soak` (tests/justfile).",
     "test:frankenphp-worker": "The same image in FrankenPHP worker mode (endpoints built once per worker): the integration suite, then the worker suite (tests/Worker).",
     "test:fpm": "Build the PHP-FPM image (nginx, Caddy), then run the integration suite against php-fpm behind each front door (RESTATE_PHP_TEST_SERVER: nginx-fpm, nginx-fpm-h2c, caddy-fpm; default all three).",
-    "test:large-bodies": "The nightly large-bodies group (31 MiB inputs and outputs, values over Restate's message limit) on php -S; for FPM: RESTATE_PHP_TEST_SERVER=<server> bash bin/test-fpm.sh --group large-bodies.",
-    "test:failure": "The nightly failure-nightly group (Restate restarts, graceful shutdowns, network faults, back-pressure, OOM kills, expired request identity, the full truncation sweep) on php -S; for FPM: RESTATE_PHP_TEST_SERVER=<server> bash bin/test-fpm.sh --group failure-nightly.",
+    "test:large-bodies": "The nightly large-bodies group (31 MiB inputs and outputs, values over Restate's message limit) on php -S; for FPM: RESTATE_PHP_TEST_SERVER=<server> just test fpm --group large-bodies.",
+    "test:failure": "The nightly failure-nightly group (Restate restarts, graceful shutdowns, network faults, back-pressure, OOM kills, expired request identity, the full truncation sweep) on php -S; for FPM: RESTATE_PHP_TEST_SERVER=<server> just test fpm --group failure-nightly.",
     "test:serving-hazards": "Build the PHP-FPM image with Apache, then run the nightly serving-hazards group: front doors at their defaults, front-door timeouts, clear_env.",
     "check": "Everything that must pass before a commit: cs, analyse, workflow and shell lint, unit tests, the packages' composer.json files, then fmt/clippy/test for the Cargo workspace.",
     "analyse": "PHPStan over the packages and the tests (phpstan.neon).",
     "cs": "Check the coding style with php-cs-fixer (.php-cs-fixer.dist.php) and show the diff; changes nothing.",
     "cs:fix": "Fix the coding style with php-cs-fixer (.php-cs-fixer.dist.php).",
-    "check:scripts": "actionlint on .github/workflows and shellcheck on the shell scripts (both from the dev shell).",
+    "check:scripts": "actionlint on .github/workflows, shellcheck on the shell scripts and just --fmt --check on the justfiles (all from the dev shell).",
     "check:packages": "composer validate --strict for each package in packages/, its code against its requirements (shipmonk/composer-dependency-analyser, with the extension loaded), the root composer.json against the packages, and that no package declares anything in the extension's Restate\\Extension\\ namespace (bin/check-packages.php).",
-    "build:extension": "Build the PHP extension (debug) into extension/target/debug/; pass `--release` or `--php-config <path>` after `--` (see bin/build-extension.sh).",
+    "build:extension": "Build the PHP extension (debug) into extension/target/debug/; pass `--release` or `--php-config <path>` after `--` (`just extension build`, see extension/justfile).",
     "release:split": "Split the published directories into their repositories as a release does (see bin/split.sh): `list`, `split [<directory>...]` (the split commits of HEAD), or `publish [--version X.Y.Z] --remote <url with {repository}> [--dry-run]` (without a version: main only, as every push to main does), e.g. a dry run against https://github.com/restate-php/{repository}.git, or a rehearsal against local bare repositories.",
     "test:release": "bin/split.sh on a throwaway monorepo pushing to local bare repositories: a release, a re-run, the next release, a push to main, a release of a commit later pushes passed, and the runs that must stop (tests/Unit/Release; part of composer check).",
-    "build:pie": "Cross-compile the 24 prebuilt binaries of a release with Nix (devenv.nix outputs.pie, from extension/flake.nix) and copy the PIE archives, their .sha256 files and SHA256SUMS into dist/, or the directory given after `--` (see bin/build-pie.sh).",
+    "build:pie": "Cross-compile the 24 prebuilt binaries of a release with Nix (the packages.pie of extension/flake.nix) and copy the PIE archives, their .sha256 files and SHA256SUMS into dist/, or the directory given after `--` (`just extension pie [<dir>]`, see extension/justfile).",
     "check:extension": "cargo fmt --check, clippy -D warnings and cargo test for every crate in extension/ (needs the dev shell for the extension build).",
     "serve": "Build the extension, then serve test-services/index.php (every test service) on 0.0.0.0:9080 with it loaded.",
     "test:upstream": "Build a test-services image and run the upstream Restate SDK test suite against it (Java 25: the dev shell); arguments: [target] [basic|full], see bin/conformance-upstream-local.sh.",
     "bench": "Build the release extension, then run the PHP micro-benchmarks (tests/Benchmark, phpbench.json: OPcache on, JIT off); arguments go to phpbench, e.g. -- --filter=benchReplay.",
     "bench:compare": "Compare the PHP benchmarks of this checkout against a base revision (default: the merge base with main) in two reversed pairs plus callgrind instruction counts; see bin/bench-compare.sh.",
     "bench:extension": "Instruction counts (gungraun, callgrind) of the Rust core's benchmarks plus the replay linearity check; `-- criterion` for wall-clock times, `-- compare [<base>]` against a base commit (see bin/bench-extension.sh).",
-    "load": "Load tests against Restate with k6: bin/load-test.sh <scenario|all|--list> [--quick] [--repetitions N] [--gate] (needs Docker or podman and k6; see TESTING.md, Performance)."
+    "load": "Load tests against Restate with k6: `just load run` [--full] [--keep] [<scenario>...], all of them when none is named (tests/load/justfile; `just load down` removes the compose project; needs Docker with compose, k6 and jq; see TESTING.md, Load tests)."
   },
   "config": {
     "sort-packages": true

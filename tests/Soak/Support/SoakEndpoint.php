@@ -10,7 +10,7 @@ use Restate\Tests\Support\Repository;
 
 /**
  * A FrankenPHP worker-mode endpoint for a soak run, without Restate: one of the soak images (`frankenphp-worker-release`
- * or `frankenphp-worker-debug`, built by bin/test-soak.sh) serving the integration endpoint's worker script from the
+ * or `frankenphp-worker-debug`, built by just test soak) serving the integration endpoint's worker script from the
  * repository mounted at /app, on a free 127.0.0.1 port. The driver sends it protocol bodies straight away
  * ({@see \Restate\Tests\Support\Workload\ConcurrentHttpDriver}) and reads its state from `/__worker`
  * ({@see WorkerProbe}). Stopped and removed when the process exits.
@@ -56,7 +56,7 @@ final class SoakEndpoint
         // The repository's worker.Caddyfile rather than the copy baked into the image: changing it needs no rebuild.
         [$exitCode, $stdout, $stderr] = Process::run([...$command, ...$runArguments, $image, 'frankenphp', 'run', '--config', '/app/docker/frankenphp/worker.Caddyfile']);
         if ($exitCode !== 0) {
-            throw new \RuntimeException("Could not start {$image} (build it with bin/test-soak.sh): " . trim($stdout . $stderr));
+            throw new \RuntimeException("Could not start {$image} (build it with just test soak): " . trim($stdout . $stderr));
         }
 
         $endpoint = null;

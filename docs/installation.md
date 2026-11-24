@@ -103,25 +103,25 @@ You need:
 In a checkout of this repository:
 
 ```bash
-bash bin/build-extension.sh --release   # prints the module's path: extension/target/release/restate.so
+cd extension
+cargo build -p restate --release   # builds extension/target/release/librestate.so (librestate.dylib on macOS)
 ```
 
-That builds for the PHP whose `php-config` is on `PATH`. To build for another PHP, for example a ZTS one for FrankenPHP, pass its `php-config`:
+That builds for the PHP whose `php-config` and `php` are on `PATH`. To build for another PHP, for example a ZTS one for FrankenPHP, point `PHP_CONFIG` and `PHP` at it:
 
 ```bash
-bash bin/build-extension.sh --release --php-config /path/to/zts/bin/php-config
-# builds into extension/target/php<minor>-<nts|zts>/release/restate.so
+PHP_CONFIG=/path/to/zts/bin/php-config PHP=/path/to/zts/bin/php cargo build -p restate --release
 ```
 
-A module loads only into the PHP minor version and thread safety (NTS or ZTS) it was built for.
+A module loads only into the PHP minor version and thread safety (NTS or ZTS) it was built for. In the repository's dev shell, `just extension build --release [--php-config <path>]` does the same and prints the module's path (see [CONTRIBUTING.md](../CONTRIBUTING.md)).
 
 Then install it:
 
-1. Copy `restate.so` into PHP's extension directory: `php -r 'echo ini_get("extension_dir");'` prints it.
+1. Copy `librestate.so` into PHP's extension directory as `restate.so`: `php -r 'echo ini_get("extension_dir");'` prints it.
 2. Add `extension=restate` to php.ini or to a file in its scan directory (`php --ini` shows both).
 3. Check that `php -m` lists `restate`.
 
-Or skip both steps and load it per command: `php -d extension=/path/to/restate.so …`.
+Or skip both steps and load it per command: `php -d extension=/path/to/librestate.so …`.
 
 Serve with a release build (`--release`, about 3 MB). A debug build (about 42 MB, with debug assertions) is for developing the extension.
 

@@ -28,7 +28,7 @@ final class Checkpoints
     public function take(SoakEndpoint $endpoint, string $phase, int $requests): void
     {
         $stats = $endpoint->stats();
-        $diagnostics = $stats['diagnostics'] ?? throw new \RuntimeException('The soak image has no diagnostics() (build it with the diagnostics feature: bin/test-soak.sh).');
+        $diagnostics = $stats['diagnostics'] ?? throw new \RuntimeException('The soak image has no diagnostics() (build it with the diagnostics feature: just test soak).');
         $this->samples[] = [
             'phase' => $phase,
             'requests' => $requests,

@@ -1,5 +1,5 @@
 # Integration-suite endpoint in FrankenPHP worker mode (RESTATE_PHP_TEST_SERVER=frankenphp-worker,
-# bin/test-frankenphp.sh --worker; the soak images bake it in): every request goes to the
+# just test frankenphp-worker; the soak images bake it in): every request goes to the
 # long-lived worker script tests/Integration/Support/worker.php, which builds the endpoints once.
 #
 # RESTATE_PHP_TEST_WORKER_NUM      worker threads (default 4)

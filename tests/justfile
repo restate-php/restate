@@ -1,0 +1,105 @@
+set lazy
+set default-list
+set ignore-comments
+# The suites run from the repository root, as phpunit.xml.dist expects.
+set working-directory := '..'
+
+# RESTATE_PHP_TEST_SERVER lists the servers, space-separated: nginx-fpm (HTTP/1.1), nginx-fpm-h2c,
+# caddy-fpm (both h2c); all three by default. The container mounts the repository, so PHP
+# changes need no rebuild; Rust changes (extension/) and changes under docker/fpm/ do.
+# RESTATE_PHP_FPM_BASE_IMAGE (Dockerfile PHP_FPM_IMAGE), RESTATE_PHP_FPM_EXTENSION_PROFILE
+# (debug or release), RESTATE_PHP_TEST_FPM_IMAGE (the tag), RESTATE_PHP_TEST_FPM_TARGET
+# (fpm-extension-apache adds Apache, for the serving-hazards group), RESTATE_PHP_TEST_SKIP_BUILD=1.
+[doc("Integration suite on PHP-FPM behind nginx and Caddy (fpm-extension image), once per server; arguments go to phpunit")]
+[positional-arguments]
+[script('bash')]
+fpm *phpunit:
+    set -euo pipefail
+    image=${RESTATE_PHP_TEST_FPM_IMAGE:-restate.local/restate-php-fpm:extension}
+    read -r -a servers <<<"${RESTATE_PHP_TEST_SERVER:-nginx-fpm nginx-fpm-h2c caddy-fpm}"
+    for server in "${servers[@]}"; do
+        case $server in
+            nginx-fpm | nginx-fpm-h2c | caddy-fpm) ;;
+            *) echo "RESTATE_PHP_TEST_SERVER must list nginx-fpm, nginx-fpm-h2c or caddy-fpm, got '$server'" >&2 && exit 64 ;;
+        esac
+    done
+    if [ "${RESTATE_PHP_TEST_SKIP_BUILD:-0}" != 1 ]; then
+        build_args=(--build-arg "EXTENSION_PROFILE=${RESTATE_PHP_FPM_EXTENSION_PROFILE:-debug}")
+        if [ -n "${RESTATE_PHP_FPM_BASE_IMAGE:-}" ]; then build_args+=(--build-arg "PHP_FPM_IMAGE=$RESTATE_PHP_FPM_BASE_IMAGE"); fi
+        docker build "${build_args[@]}" --target "${RESTATE_PHP_TEST_FPM_TARGET:-fpm-extension}" -f docker/Dockerfile -t "$image" .
+    fi
+    status=0
+    for server in "${servers[@]}"; do
+        echo "== integration suite on $server ($image)" >&2
+        RESTATE_PHP_TEST_SERVER=$server RESTATE_PHP_TEST_FPM_IMAGE=$image \
+            vendor/bin/phpunit --testsuite integration "$@" || status=$?
+    done
+    exit "$status"
+
+# The router script runs per request (RESTATE_PHP_TEST_SERVER=frankenphp). The container mounts
+# the repository, so PHP changes need no rebuild; Rust changes (extension/) do.
+# RESTATE_PHP_FRANKENPHP_BASE_IMAGE (Dockerfile FRANKENPHP_IMAGE), RESTATE_PHP_TEST_FRANKENPHP_IMAGE
+# (the tag), RESTATE_PHP_TEST_SKIP_BUILD=1.
+[doc("Integration suite on FrankenPHP classic mode (frankenphp-extension image, the ZTS extension); arguments go to phpunit")]
+[positional-arguments]
+frankenphp *phpunit: frankenphp-image
+    RESTATE_PHP_TEST_SERVER=frankenphp RESTATE_PHP_TEST_FRANKENPHP_IMAGE={{ frankenphp_image }} \
+        vendor/bin/phpunit --testsuite integration "$@"
+
+# docker/frankenphp/worker.Caddyfile, with tests/Integration/Support/worker.php building the
+# endpoints once per worker (RESTATE_PHP_TEST_SERVER=frankenphp-worker); the worker suite
+# (tests/Worker) runs after the integration suite. Settings as for `frankenphp`.
+[doc("Integration and worker suites on FrankenPHP worker mode (frankenphp-extension image); arguments go to phpunit")]
+[positional-arguments]
+frankenphp-worker *phpunit: frankenphp-image
+    RESTATE_PHP_TEST_SERVER=frankenphp-worker RESTATE_PHP_TEST_FRANKENPHP_IMAGE={{ frankenphp_image }} \
+        vendor/bin/phpunit --testsuite integration,worker "$@"
+
+# nightly: frames, concurrency and bailout (the default); frames: FrameReplaySoakTest, about a
+# million requests; concurrency: ConcurrencySoakTest, many PHP threads in one process; bailout:
+# BailoutSoakTest, fatal errors and worker restarts; restate: RestateSoakTest, about 300,000
+# invocations through Restate (RESTATE_PHP_SOAK_INVOCATIONS); all: everything. --quick runs a few
+# percent of the requests (RSS reported, not gated). Builds the frankenphp-worker-release and
+# -debug images the tests need; reports go to var/soak/. RESTATE_PHP_SOAK_RELEASE_IMAGE,
+# RESTATE_PHP_SOAK_DEBUG_IMAGE (the tags), RESTATE_PHP_SOAK_SKIP_BUILD=1,
+# RESTATE_PHP_FRANKENPHP_BASE_IMAGE.
+[arg('quick', long='quick', value='1', help="a few percent of the requests, for a local run")]
+[doc("Soak suite (tests/Soak) on FrankenPHP worker images with the diagnostics build: nightly (default), frames, concurrency, bailout, restate or all; phpunit arguments after --")]
+[positional-arguments]
+[script('bash')]
+soak quick='0' suite='nightly' *phpunit:
+    set -euo pipefail
+    shift 2
+    release=${RESTATE_PHP_SOAK_RELEASE_IMAGE:-restate.local/restate-php-frankenphp:worker-release}
+    debug=${RESTATE_PHP_SOAK_DEBUG_IMAGE:-restate.local/restate-php-frankenphp:worker-debug}
+    case {{ quote(suite) }} in
+        nightly) filter='FrameReplaySoakTest|ConcurrencySoakTest|BailoutSoakTest' images=(release debug) ;;
+        frames) filter=FrameReplaySoakTest images=(release) ;;
+        concurrency) filter=ConcurrencySoakTest images=(release debug) ;;
+        bailout) filter=BailoutSoakTest images=(debug) ;;
+        restate) filter=RestateSoakTest images=(release) ;;
+        all) filter=SoakTest images=(release debug) ;;
+        *) echo "soak: the suite is nightly, frames, concurrency, bailout, restate or all, not {{ suite }}" >&2 && exit 64 ;;
+    esac
+    if [ "${RESTATE_PHP_SOAK_SKIP_BUILD:-0}" != 1 ]; then
+        build_args=()
+        if [ -n "${RESTATE_PHP_FRANKENPHP_BASE_IMAGE:-}" ]; then build_args+=(--build-arg "FRANKENPHP_IMAGE=$RESTATE_PHP_FRANKENPHP_BASE_IMAGE"); fi
+        for image in "${images[@]}"; do
+            if [ "$image" = release ]; then tag=$release; else tag=$debug; fi
+            docker build "${build_args[@]}" --target "frankenphp-worker-$image" -f docker/Dockerfile -t "$tag" .
+        done
+    fi
+    RESTATE_PHP_SOAK_QUICK={{ quick }} RESTATE_PHP_SOAK_RELEASE_IMAGE=$release RESTATE_PHP_SOAK_DEBUG_IMAGE=$debug \
+        exec vendor/bin/phpunit --testsuite soak --filter "$filter" "$@"
+
+frankenphp_image := env('RESTATE_PHP_TEST_FRANKENPHP_IMAGE', 'restate.local/restate-php-frankenphp:extension-zts')
+
+# The frankenphp-extension image (the ZTS extension compiled inside the FrankenPHP image)
+[private]
+[script('bash')]
+frankenphp-image:
+    set -euo pipefail
+    [ "${RESTATE_PHP_TEST_SKIP_BUILD:-0}" != 1 ] || exit 0
+    build_args=()
+    if [ -n "${RESTATE_PHP_FRANKENPHP_BASE_IMAGE:-}" ]; then build_args+=(--build-arg "FRANKENPHP_IMAGE=$RESTATE_PHP_FRANKENPHP_BASE_IMAGE"); fi
+    docker build "${build_args[@]}" --target frankenphp-extension -f docker/Dockerfile -t {{ quote(frankenphp_image) }} .

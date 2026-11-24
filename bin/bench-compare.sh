@@ -71,7 +71,7 @@ fi
 git worktree add --detach --quiet "$base_tree" "$base_sha"
 trap 'git -C "$ROOT" worktree remove --force "$base_tree" 2>/dev/null || true' EXIT
 
-head_module=$(bash bin/build-extension.sh --release)
+head_module=$(just extension build --release)
 
 if [ ! -f "$base_tree/phpbench.json" ]; then
   echo "bench-compare: the base has no benchmarks (no phpbench.json); running head once, nothing to compare" >&2
@@ -86,7 +86,11 @@ if git diff --quiet "$base_sha" -- extension/; then
   cp "$head_module" "$base_tree/extension/target/release/restate.so"
 else
   echo "bench-compare: extension/ differs, building the base's release module" >&2
-  (cd "$base_tree" && bash bin/build-extension.sh --release >/dev/null)
+  # With cargo itself rather than the base's own build task, which an older base names
+  # differently (bin/build-extension.sh before the justfile).
+  base_built=$(cd "$base_tree/extension" && cargo build -p restate --release \
+    --message-format=json-render-diagnostics | cargo artifacts list)
+  cp "$base_built" "$base_tree/extension/target/release/restate.so"
 fi
 
 run_bench() { # <tree> <dump file>

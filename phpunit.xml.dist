@@ -28,11 +28,11 @@
             <directory>examples/testing</directory>
         </testsuite>
         <!-- Only against the integration endpoint in FrankenPHP's worker mode, after the integration suite:
-             bin/test-frankenphp.sh with the worker option (RESTATE_PHP_TEST_SERVER=frankenphp-worker). -->
+             just test frankenphp-worker (RESTATE_PHP_TEST_SERVER=frankenphp-worker). -->
         <testsuite name="worker">
             <directory>tests/Worker</directory>
         </testsuite>
-        <!-- Long runs against FrankenPHP worker images (and Restate): bin/test-soak.sh, nightly and weekly. -->
+        <!-- Long runs against FrankenPHP worker images (and Restate): just test soak, nightly and weekly. -->
         <testsuite name="soak">
             <directory>tests/Soak</directory>
         </testsuite>

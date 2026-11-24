@@ -16,7 +16,7 @@ One file, so the targets share the stages that compile the extension inside each
 | `upstream-extension-caddy` | `test-services/index.php` under `php -S`, behind Caddy over h2c (the repository baked in) | `composer test:upstream`, `upstream.yaml` |
 | `upstream-fpm-nginx` | `test-services/index.php` under php-fpm behind nginx (the repository baked in) | `composer test:upstream -- upstream-fpm-nginx`, `nightly-serving.yaml` |
 | `frankenphp-extension` | the integration router, FrankenPHP classic mode (repository mounted at `/app`) | `composer test:frankenphp` |
-| `frankenphp-extension-release` | the load-test router, release build with OPcache | `composer load` |
+| `frankenphp-extension-release` | nothing: FrankenPHP with the release ZTS extension, for the load tests, which mount their router, Caddyfile and PHP settings (`tests/load/compose.yaml`) | `composer load` |
 | `fpm-extension`, `fpm-extension-apache` | any router script under php-fpm behind nginx, Caddy or Apache | `composer test:fpm`, `composer test:serving-hazards` |
 | `frankenphp-worker-release`, `frankenphp-worker-debug` | the integration worker script with the `diagnostics` build | `composer test:soak` |
 | `quickstart-php-restate` | nothing: the PHP base of [`examples/quickstart`](../examples/quickstart/README.md) with the extension and packages from this checkout | `examples/quickstart/scripts/smoke-test.sh --local`, `quickstart.yaml` |

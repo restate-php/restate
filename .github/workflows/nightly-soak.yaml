@@ -1,9 +1,9 @@
-# The soak suite (TESTING.md, "Soak suite"): bin/test-soak.sh in the dev shell, as a developer
+# The soak suite (TESTING.md, "Soak suite"): just test soak in the dev shell, as a developer
 # runs it, against FrankenPHP worker-mode images built with the extension's diagnostics feature.
 #
 # - Nightly: frame replay (about a million requests), concurrency and bailouts
-#   (`bin/test-soak.sh nightly`, about 30 minutes).
-# - Weekly (Sunday): about 300,000 invocations through Restate (`bin/test-soak.sh restate`).
+#   (`just test soak nightly`, about 30 minutes).
+# - Weekly (Sunday): about 300,000 invocations through Restate (`just test soak restate`).
 # - By hand: any of them, optionally --quick.
 #
 # The checkpoints, latency windows and summaries (var/soak/) are uploaded as an artifact either
@@ -39,7 +39,7 @@ defaults:
 
 jobs:
   soak:
-    name: bin/test-soak.sh ${{ inputs.suite || (github.event.schedule == '11 4 * * 0' && 'restate' || 'nightly') }}
+    name: just test soak ${{ inputs.suite || (github.event.schedule == '11 4 * * 0' && 'restate' || 'nightly') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120
 
@@ -65,7 +65,7 @@ jobs:
         env:
           SUITE: ${{ inputs.suite || (github.event.schedule == '11 4 * * 0' && 'restate' || 'nightly') }}
           QUICK: ${{ inputs.quick && 'yes' || '' }}
-        run: bash bin/test-soak.sh ${QUICK:+--quick} "$SUITE"
+        run: just test soak ${QUICK:+--quick} "$SUITE"
 
       - name: Keep the soak reports
         if: always()

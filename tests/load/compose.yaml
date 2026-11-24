@@ -1,0 +1,55 @@
+# The load tests' environment (TESTING.md, Load tests): Restate, signing its requests, and the load
+# endpoint, on fixed loopback ports that k6 (tests/load/k6.js) reaches from the host:
+#
+#   docker compose -f tests/load/compose.yaml up -d --build
+#   k6 run -e LOAD_SCENARIO=noop tests/load/k6.js
+#   docker compose -f tests/load/compose.yaml down -v
+#
+# `just load run [<scenario>...]` (justfile next to this file) does the same for the scenarios named,
+# or all of them, with the endpoint limits a scenario asks for. The signing key is a fixed test key (request-identity.pem and .pub next to
+# this file): Restate and the endpoint only ever run here, on loopback ports. devenv's load
+# profile runs the same two without Docker (TESTING.md, Load tests).
+name: restate-php-load
+
+services:
+  restate:
+    # RestateContainer::DEFAULT_IMAGE (tests/Unit/Testing/RestateContainerTest.php checks it).
+    image: ${LOAD_RESTATE_IMAGE:-docker.restate.dev/restatedev/restate:1.8.1}
+    environment:
+      # Read when Restate first starts: a running project keeps its partitions.
+      RESTATE_DEFAULT_NUM_PARTITIONS: ${LOAD_PARTITIONS:-4}
+      RESTATE_WORKER__INVOKER__REQUEST_IDENTITY_PRIVATE_KEY_PEM_FILE: /etc/restate/request-identity.pem
+      RESTATE_LOG_FORMAT: compact
+      RESTATE_LOG_DISABLE_ANSI_CODES: 'true'
+    volumes:
+      - ./request-identity.pem:/etc/restate/request-identity.pem:ro
+    ports:
+      - 127.0.0.1:${LOAD_INGRESS_PORT:-18080}:8080
+      - 127.0.0.1:${LOAD_ADMIN_PORT:-19070}:9070
+    cpuset: ${LOAD_CPUSET_RESTATE:-}
+
+  # FrankenPHP with the release ZTS extension (the Dockerfile's frankenphp-extension-release
+  # target), in classic mode with OPcache on (Caddyfile and php.ini next to this file), serving
+  # endpoint.php from the repository. Restate reaches it as http://endpoint:8080, k6 its
+  # /load-stats on the host port. Changing either file needs a restart, not a rebuild.
+  endpoint:
+    image: ${LOAD_ENDPOINT_IMAGE:-restate.local/restate-php-frankenphp:extension-zts-release}
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile
+      target: frankenphp-extension-release
+      args:
+        # The FrankenPHP base image when set.
+        - FRANKENPHP_IMAGE
+    environment:
+      # FrankenPHP's PHP threads; 0: its default, twice the CPUs it sees.
+      LOAD_NUM_THREADS: ${LOAD_NUM_THREADS:-0}
+    volumes:
+      - ../..:/app:ro
+      - ./Caddyfile:/etc/frankenphp/Caddyfile:ro
+      - ./php.ini:/usr/local/etc/php/conf.d/zz-load.ini:ro
+    ports:
+      - 127.0.0.1:${LOAD_ENDPOINT_PORT:-18081}:8080
+    # 0: no limit. `just load run` sets these two for the overload scenario.
+    cpus: ${LOAD_ENDPOINT_CPUS:-0}
+    cpuset: ${LOAD_CPUSET_ENDPOINT:-}

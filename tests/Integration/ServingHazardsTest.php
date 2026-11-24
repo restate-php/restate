@@ -34,7 +34,7 @@ use Restate\Testing\RestateTestEnvironment;
  *   instead of serving unsigned requests.
  *
  * Nightly (group serving-hazards, `composer test:serving-hazards`): it needs the fpm-extension and fpm-extension-apache
- * images (bin/test-fpm.sh builds them) and waits out real timeouts.
+ * images (just test fpm builds them) and waits out real timeouts.
  */
 #[Group('serving-hazards')]
 #[Group('managed')]

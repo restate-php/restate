@@ -11,7 +11,7 @@ use Restate\Tests\Support\Workload\Workload;
 
 /**
  * Guards against a silent fallback to classic mode: the worker suite runs after the integration suite on the same
- * shared endpoint (`bin/test-frankenphp.sh --worker`), and these tests check that it really was served by long-lived
+ * shared endpoint (`just test frankenphp-worker`), and these tests check that it really was served by long-lived
  * worker script runs, each answering many requests from endpoints it built once, in one FrankenPHP process.
  */
 final class WorkerModeTest extends WorkerTestCase

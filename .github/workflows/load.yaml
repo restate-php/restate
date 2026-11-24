@@ -1,32 +1,27 @@
-# Load tests (TESTING.md, Performance): bin/load-test.sh against a fresh Restate that signs its
-# requests and the release FrankenPHP endpoint, driven by k6 with open-model arrival rates.
+# Load tests (TESTING.md, Load tests): `just load run --full` runs the compose project
+# tests/load/compose.yaml (Restate signing its requests and the release FrankenPHP endpoint) and k6
+# against it, at open-model arrival rates.
 #
 # Needs a dedicated self-hosted runner with the label `restate-php-load`: shared GitHub runners
 # are too noisy for CPU-per-invocation numbers, and results only compare with earlier results
-# from the same machine. The runner needs Docker (or podman) on cgroup v2, Nix is installed by the
-# setup-devenv action, and nothing else may run on it during a job (turbo boost off and the performance
-# governor make the numbers steadier). Results accumulate in $LOAD_RESULTS_DIR on the runner
-# (repository variable LOAD_RESULTS_DIR, default ~/restate-php-load-results): the rolling median
-# compares with the last 5 results there. A result is also compared with a pinned baseline,
-# tests/Load/baselines/<scenario>.json, when that file exists (a result file copied there by
-# hand); none is committed, so by default only the rolling median gates.
+# from the same machine. The runner needs Docker with compose on cgroup v2, Nix is installed by the
+# setup-devenv action, and nothing else may run on it during a job (turbo boost off and the
+# performance governor make the numbers steadier). A run fails only on its checks (a 401,
+# unexpected attempts, failed calls); its result files are kept as the job's artifact, for
+# comparing by hand.
 #
-# The workflow runs only by hand (workflow_dispatch; the full matrix takes about 6 × 7 min). With
-# the commented-out schedule enabled, a scheduled run picks one scenario per night by day of year
-# (6 scenarios, so each one every 6 nights) with 3 repetitions.
+# The workflow runs only by hand (workflow_dispatch; all scenarios take about 20 min). With the
+# commented-out schedule enabled, a scheduled run picks one scenario per night by day of year
+# (6 scenarios, so each one every 6 nights).
 name: Load tests
 
 on:
   workflow_dispatch:
     inputs:
-      scenario:
-        description: 'Scenario (noop, state, runs, fanout, long-journal, overload) or "all"'
-        required: true
-        default: all
-      repetitions:
-        description: Repetitions per scenario
-        required: true
-        default: '3'
+      scenarios:
+        description: 'Scenarios, space-separated (noop, state, runs, fanout, long-journal, overload); empty: all'
+        required: false
+        default: ''
   # schedule:
   #   - cron: '17 2 * * *'
 
@@ -44,11 +39,9 @@ defaults:
 
 jobs:
   load:
-    name: bin/load-test.sh ${{ inputs.scenario || 'rotation' }}
+    name: just load run ${{ github.event_name == 'schedule' && '(rotation)' || inputs.scenarios || '(all)' }}
     runs-on: [self-hosted, restate-php-load]
-    timeout-minutes: 120
-    env:
-      LOAD_RESULTS_DIR: ${{ vars.LOAD_RESULTS_DIR }}
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
@@ -68,42 +61,27 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
 
-      - name: Choose the scenario
-        id: scenario
-        env:
-          EVENT: ${{ github.event_name }}
-          SCENARIO: ${{ inputs.scenario }}
-        run: |
-          scenarios=(noop state runs fanout long-journal overload)
-          if [ "$EVENT" = schedule ]; then
-            day=$((10#$(date -u +%j)))
-            SCENARIO=${scenarios[$((day % ${#scenarios[@]}))]}
-          fi
-          echo "scenario=$SCENARIO" >> "$GITHUB_OUTPUT"
-          echo "LOAD_RESULTS_DIR=${LOAD_RESULTS_DIR:-$HOME/restate-php-load-results}" >> "$GITHUB_ENV"
-          mkdir -p var/load
-          touch var/load/started
-
       - name: Run
         env:
-          SCENARIO: ${{ steps.scenario.outputs.scenario }}
-          REPETITIONS: ${{ inputs.repetitions || '3' }}
-        run: bash bin/load-test.sh "$SCENARIO" --repetitions "$REPETITIONS" --gate
-
-      - name: Collect this run's results
-        if: always()
+          EVENT: ${{ github.event_name }}
+          SCENARIOS: ${{ inputs.scenarios }}
         run: |
-          mkdir -p var/load/results-run
-          find "$LOAD_RESULTS_DIR" -name '*.json' -newer var/load/started -exec cp {} var/load/results-run/ \;
+          read -ra scenarios <<<"$SCENARIOS"
+          if [ "$EVENT" = schedule ]; then
+            all=(noop state runs fanout long-journal overload)
+            scenarios=("${all[$((10#$(date -u +%j) % ${#all[@]}))]}")
+          fi
+          just load run --full "${scenarios[@]}"
+
+      # The project outlives a cancelled run otherwise, on a runner that keeps its Docker state.
+      - name: Remove the compose project
+        if: always()
+        run: just load down
 
       - name: Keep the results
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: load-results
-          # Result files, k6 summaries and the endpoint's request logs (not the throwaway signing key).
-          path: |
-            var/load/results-run/
-            var/load/work/*/k6-*
-            var/load/work/*/*.log
+          path: var/load/results/
           if-no-files-found: ignore

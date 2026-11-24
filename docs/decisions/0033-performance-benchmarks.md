@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Covers PHP micro-benchmarks compared between a pull request and its base, Rust micro-benchmarks, and load tests. [TESTING.md](../../TESTING.md#performance) has the commands and reference measurements.
+Accepted. Covers PHP micro-benchmarks compared between a pull request and its base, Rust micro-benchmarks, and load tests. Decision 6 is amended by [Load Tests in Compose](0040-load-tests-in-compose.md): the load tests no longer compare runs or gate. [TESTING.md](../../TESTING.md#performance) has the commands and reference measurements.
 
 ## Context
 

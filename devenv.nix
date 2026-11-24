@@ -11,6 +11,20 @@ let
   extension = inputs.ext-restate;
   restate-bin = inputs.nix-restate.packages.${system}.restate-bin;
 
+  # The paths of the files a `cargo build` produced, from its JSON messages (just extension build).
+  # Not in nixpkgs.
+  cargo-artifacts = pkgs.rustPlatform.buildRustPackage rec {
+    pname = "cargo-artifacts";
+    version = "0.3.0";
+    src = pkgs.fetchFromGitHub {
+      owner = "sagikazarmark";
+      repo = "cargo-artifacts";
+      tag = "v${version}";
+      hash = "sha256-FrcIhlVueEHbHXylf7b/bszpjru6efkHGUWACA2a/Os=";
+    };
+    cargoHash = "sha256-KFfQaH4jbfzsi5B6X32MV9CMsIChVBURQ37/uOQYOck=";
+  };
+
   # A profile that serves the integration suite's endpoint outside the test harness, with Restate
   # next to it (devenv-extras' services.restate): `devenv --profile <name> up` runs both, and
   # `devenv --profile <name> test` runs the suite against them (composer test:integration:external,
@@ -101,18 +115,14 @@ let
     };
 
   # FrankenPHP with the extension, rebuilt for its thread-safe PHP from the shell's PHP
-  # (languages.php.version), serving docker/frankenphp/<caddyfile> from the working tree, as the
-  # frankenphp-extension image serves it from /app. The extension is the Nix build (the overlay's),
-  # not the cargo build the harness loads; the shell's PHP does not load it.
-  frankenphpSuite =
-    {
-      server,
-      caddyfile,
-      tests ? [ ],
-    }:
+  # (languages.php.version), serving a Caddyfile from the working tree, as the images serve the
+  # same file from /app (RESTATE_PHP_TEST_APP_DIR, RESTATE_PHP_TEST_LISTEN). The extension is the
+  # Nix build (the overlay's, a release build), not the cargo build the harness loads; the shell's
+  # PHP does not load it.
+  frankenphpServing =
+    { root, caddyfile }:
     { config, ... }:
     let
-      url = "http://127.0.0.1:${toString config.processes.frankenphp.ports.http.value}";
       # nixpkgs' thread-safe tokenizer extension of PHP 8.6 does not link on Darwin: PHP 8.6 exports
       # the scanner globals as a native thread-local variable, and the separately built extension
       # fails on it ("illegal thread local variable reference to regular symbol
@@ -125,13 +135,6 @@ let
         && (extension.extensionName or null) == "tokenizer";
     in
     {
-      imports = [
-        (externalSuite {
-          inherit server url tests;
-          process = "frankenphp";
-        })
-      ];
-
       languages.php.frankenphp = {
         enable = true;
         package = pkgs.frankenphp.override {
@@ -141,8 +144,7 @@ let
         };
         serve = {
           enable = true;
-          root = "tests/Integration/Support";
-          caddyfile = "docker/frankenphp/${caddyfile}";
+          inherit root caddyfile;
         };
       };
 
@@ -151,6 +153,80 @@ let
         RESTATE_PHP_TEST_LISTEN = "http://:${toString config.processes.frankenphp.ports.http.value}";
       };
     };
+
+  # The integration suite's endpoint (docker/frankenphp/<caddyfile>), as the frankenphp-extension
+  # image serves it, with Restate next to it (externalSuite).
+  frankenphpSuite =
+    {
+      server,
+      caddyfile,
+      tests ? [ ],
+    }:
+    { config, ... }:
+    {
+      imports = [
+        (frankenphpServing {
+          root = "tests/Integration/Support";
+          caddyfile = "docker/frankenphp/${caddyfile}";
+        })
+        (externalSuite {
+          inherit server tests;
+          process = "frankenphp";
+          url = "http://127.0.0.1:${toString config.processes.frankenphp.ports.http.value}";
+        })
+      ];
+    };
+
+  # The load tests (tests/load, TESTING.md) without Docker: Restate and the load endpoint as devenv
+  # processes on loopback, with the settings tests/load/compose.yaml gives them (the fixed signing
+  # key, 4 partitions, tests/load/Caddyfile and php.ini). `devenv --profile load up` runs both, and
+  # the profile's shell exports the URLs k6 reads, so `k6 run -e LOAD_SCENARIO=noop
+  # tests/load/k6.js` runs against them; `devenv --profile load test` runs every scenario but
+  # overload, whose CPU cap only a container gives.
+  loadSuite =
+    { config, ... }:
+    let
+      url = "http://127.0.0.1:${toString config.processes.frankenphp.ports.http.value}";
+    in
+    {
+      imports = [
+        (frankenphpServing {
+          root = "tests/load";
+          caddyfile = "tests/load/Caddyfile";
+        })
+      ];
+
+      languages.php.frankenphp.serve.ini = builtins.readFile ./tests/load/php.ini;
+      # The request log, the effects ledger and where /load-stats counts from.
+      processes.frankenphp.env.LOAD_STATE_DIR = config.devenv.runtime;
+
+      services.restate = {
+        enable = true;
+        package = restate-bin;
+        settings = {
+          default-num-partitions = 4;
+          log-format = "compact";
+          log-disable-ansi-codes = true;
+          worker.invoker.request-identity-private-key-pem-file = "${config.devenv.root}/tests/load/request-identity.pem";
+        };
+      };
+
+      env = {
+        LOAD_INGRESS_URL = config.env.RESTATE_INGRESS_URL;
+        LOAD_ADMIN_URL = config.env.RESTATE_ADMIN_URL;
+        LOAD_ENDPOINT_URL = url;
+        # Restate runs next to it, on loopback too.
+        LOAD_ENDPOINT_URI = url;
+      };
+
+      enterTest = ''
+        status=0
+        for name in $(jq -r 'to_entries[] | select(.value.overload | not) | .key' tests/load/scenarios.json); do
+          k6 run --quiet --no-usage-report -e LOAD_SCENARIO="$name" tests/load/k6.js 2>/dev/null || status=1
+        done
+        exit $status
+      '';
+    };
 in
 {
   # The extension's Nix builds, from its flake (extension/flake.nix, the ext-restate input in
@@ -158,26 +234,18 @@ in
   outputs = {
     # Built against the dev shell's PHP (pkgs.php, or languages.php.version), through the
     # flake's overlay.
-    # Not loaded into the shell: the tests load the cargo build (composer build:extension).
+    # Not loaded into the shell: the tests load the cargo build (just extension build).
     extension = config.languages.php.package.extensions.restate;
-
-    # The 24 PIE archives of a release with SHA256SUMS, cross-compiled from any platform
-    # (composer build:pie).
-    inherit (extension.packages.${system}) pie;
 
     # The flake's checks: its .phpt tests with PHP 8.4, 8.5 and 8.6 (outputs.checks.<name>
     # for one).
     checks = extension.checks.${system};
   };
 
-  # ext-php-rs: what ext-php-rs.nix's CI builds for this nixpkgs, the PHP headers of each target
-  # and cargo-zigbuild, which the PIE archives would otherwise build first.
-  # restate-php: what this repository's CI builds (the Rust toolchain, the extension's Nix
-  # builds), pushed from every job with CACHIX_AUTH_TOKEN.
-  cachix.pull = [
-    "ext-php-rs"
-    "restate-php"
-  ];
+  # What this repository's CI builds (the Rust toolchain, the extension's Nix builds), pushed from
+  # every job with CACHIX_AUTH_TOKEN. ext-php-rs.cachix.org is not pulled: it had none of the
+  # paths the PIE archives need that cache.nixos.org lacks.
+  cachix.pull = [ "restate-php" ];
 
   env = {
     LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
@@ -188,6 +256,9 @@ in
     [
       curl
       git
+      # The task runner (justfile) and what its recipes use.
+      just
+      cargo-artifacts
       # The upstream SDK test suite (restatedev/e2e sdk-tests.jar) is built for Java 25.
       jdk25_headless
       # Only the library bindgen loads (LIBCLANG_PATH): the `libclang` package's bin/ would put an
@@ -198,8 +269,9 @@ in
       # composer check:scripts
       actionlint
       shellcheck
-      # k6 for the load tests (composer load).
+      # k6 and jq for the load tests (composer load).
       k6
+      jq
       # restate-server, for the integration suite with RESTATE_PHP_TEST_RESTATE=process (TESTING.md). Its version
       # must be RestateContainer::DEFAULT_IMAGE's; .github/workflows/ci.yaml checks it.
       restate-bin
@@ -231,6 +303,8 @@ in
       caddyfile = "worker.Caddyfile";
       tests = [ "tests/Worker" ];
     };
+    # The load tests: Restate and the load endpoint, without Docker (loadSuite above).
+    load.module = loadSuite;
   };
 
   languages = {

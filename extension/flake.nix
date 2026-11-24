@@ -1,11 +1,20 @@
 {
   description = "The Restate PHP extension (module restate): for every PHP of nixpkgs, and PIE's prebuilt binaries";
 
+  # What restate-php/restate's CI builds: the PIE archives, the modules for each PHP, the Rust
+  # toolchain. Nix uses it for trusted users who accept the flake's configuration (prompted, or
+  # `accept-flake-config = true`); CI configures the cache itself.
+  nixConfig = {
+    extra-substituters = [ "https://restate-php.cachix.org" ];
+    extra-trusted-public-keys = [
+      "restate-php.cachix.org-1:qNXDDSIntOQKSr5gaRZpwUAQDOKdC2nuOr5Z6TBOUec="
+    ];
+  };
+
   inputs = {
     ext-php-rs.url = "github:sagikazarmark/ext-php-rs.nix/v0.2.0";
-    # ext-php-rs's nixpkgs, so its binary cache (ext-php-rs.cachix.org) has the expensive parts of
-    # the portable builds: the PHP headers for each target and cargo-zigbuild. The dev shell of
-    # restate-php/restate follows this one too (its devenv.yaml).
+    # ext-php-rs's nixpkgs, as its template recommends. The dev shell of restate-php/restate
+    # follows this one too (its devenv.yaml), so the shell and every Nix build share one nixpkgs.
     nixpkgs.follows = "ext-php-rs/nixpkgs";
     # The toolchain rust-toolchain.toml pins, which portable builds add each target's standard
     # library to.
