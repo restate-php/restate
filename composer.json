@@ -210,7 +210,7 @@
     "bench": "Build the release extension, then run the PHP micro-benchmarks (tests/Benchmark, phpbench.json: OPcache on, JIT off); arguments go to phpbench, e.g. -- --filter=benchReplay.",
     "bench:compare": "Compare the PHP benchmarks of this checkout against a base revision (default: the merge base with main) in two reversed pairs plus callgrind instruction counts; see bin/bench-compare.sh.",
     "bench:extension": "Instruction counts (gungraun, callgrind) of the Rust core's benchmarks plus the replay linearity check; `-- criterion` for wall-clock times, `-- compare [<base>]` against a base commit (see bin/bench-extension.sh).",
-    "load": "Load tests against Restate with k6: bin/load-test.sh <scenario|all|--list> [--quick] [--repetitions N] [--gate] (needs Docker or podman and k6; see TESTING.md, Performance)."
+    "load": "Load tests against Restate with k6: bin/load-test.sh <scenario|all|down> [--full] [--keep] (needs Docker with compose, k6 and jq; see TESTING.md, Load tests)."
   },
   "config": {
     "sort-packages": true

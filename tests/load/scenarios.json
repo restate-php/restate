@@ -1,0 +1,76 @@
+{
+  "noop": {
+    "description": "LoadNoop/noop: one attempt, nothing journaled; the per-request floor (bootstrap, VM, HTTP hop)",
+    "path": "/LoadNoop/noop",
+    "body": "\"load\"",
+    "service": "LoadNoop",
+    "services": ["LoadNoop"],
+    "expected_attempts": 1,
+    "quick": [{ "name": "steady", "rate": 100, "duration": 20 }],
+    "full": [{ "name": "steady", "rate": 400, "duration": 90 }]
+  },
+  "state": {
+    "description": "LoadState/update on 200 keys: reads and writes 50 state keys of 256 bytes (eager state); one attempt",
+    "path": "/LoadState/{key}/update",
+    "body": "{\"keys\":50,\"bytes\":256}",
+    "keys": 200,
+    "service": "LoadState",
+    "services": ["LoadState"],
+    "expected_attempts": 1,
+    "quick": [{ "name": "steady", "rate": 50, "duration": 20 }],
+    "full": [{ "name": "steady", "rate": 200, "duration": 90 }]
+  },
+  "runs": {
+    "description": "LoadRuns/runs with 5 runs of 16 bytes: 6 attempts per invocation, short journals",
+    "path": "/LoadRuns/runs",
+    "body": "{\"runs\":5,\"bytes\":16}",
+    "service": "LoadRuns",
+    "services": ["LoadRuns"],
+    "expected_attempts": 6,
+    "quick": [{ "name": "steady", "rate": 30, "duration": 20 }],
+    "full": [{ "name": "steady", "rate": 100, "duration": 90 }]
+  },
+  "fanout": {
+    "description": "LoadFanOut/fanOut(10): 10 LoadNoop/noop calls awaited with all(); attempts depend on completion timing",
+    "path": "/LoadFanOut/fanOut",
+    "body": "10",
+    "service": "LoadFanOut",
+    "services": ["LoadFanOut", "LoadNoop"],
+    "expected_attempts": null,
+    "quick": [{ "name": "steady", "rate": 10, "duration": 20 }],
+    "full": [{ "name": "steady", "rate": 40, "duration": 90 }]
+  },
+  "long-journal": {
+    "description": "LoadRuns/runs with 50 runs of 1 KiB: 51 attempts, the last replaying ~100 entries and 50 KiB (O(n²) replay)",
+    "path": "/LoadRuns/runs",
+    "body": "{\"runs\":50,\"bytes\":1024}",
+    "service": "LoadRuns",
+    "services": ["LoadRuns"],
+    "expected_attempts": 51,
+    "timeout": 60,
+    "quick": [{ "name": "steady", "rate": 2, "duration": 20 }],
+    "full": [{ "name": "steady", "rate": 5, "duration": 90 }]
+  },
+  "overload": {
+    "description": "LoadRuns/runs(3) on an endpoint capped at 1 CPU and 4 PHP threads: nominal rate, then far above capacity, then nominal again; counts calls that time out while queued, duplicated run effects, and how long the backlog takes to drain",
+    "path": "/LoadRuns/runs",
+    "body": "{\"runs\":3,\"bytes\":16}",
+    "service": "LoadRuns",
+    "services": ["LoadRuns"],
+    "expected_attempts": null,
+    "timeout": 5,
+    "endpoint_cpus": "1",
+    "endpoint_threads": 4,
+    "overload": true,
+    "quick": [
+      { "name": "nominal", "rate": 20, "duration": 10 },
+      { "name": "overload", "rate": 400, "duration": 15 },
+      { "name": "recovery", "rate": 20, "duration": 20 }
+    ],
+    "full": [
+      { "name": "nominal", "rate": 50, "duration": 60 },
+      { "name": "overload", "rate": 1000, "duration": 60 },
+      { "name": "recovery", "rate": 50, "duration": 120 }
+    ]
+  }
+}

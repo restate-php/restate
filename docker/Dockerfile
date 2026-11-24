@@ -149,17 +149,15 @@ RUN php -r 'exit(PHP_ZTS ? 0 : 1);' \
     && mkdir -p "/out$extension_dir" \
     && cp "$module" "/out$extension_dir/restate.so"
 
-# FrankenPHP classic mode with the release ZTS extension, OPcache on and JIT off
-# (docker/frankenphp/load.ini): the default load-test endpoint. Like frankenphp-extension
-# it bakes in no PHP code: the runner mounts the repository at /app, and the Caddyfile sends every
-# request to tests/Load/Support/endpoint.php. Another endpoint image (FrankenPHP worker mode,
-# php-fpm behind nginx) plugs in with `bin/load-test.sh --image <tag>` when it serves that router
-# on port 8080 with the repository at /app.
+# FrankenPHP with the release ZTS extension: the load-test endpoint. It bakes in no PHP code and no
+# configuration: tests/load/compose.yaml mounts the repository at /app, and tests/load/Caddyfile
+# and php.ini over the image's Caddyfile and into its PHP configuration (classic mode, OPcache on,
+# JIT off). Another endpoint image (FrankenPHP worker mode, php-fpm behind nginx) plugs in with
+# `LOAD_ENDPOINT_IMAGE=<tag> LOAD_SKIP_BUILD=1 bin/load-test.sh` when it serves
+# tests/load/endpoint.php on port 8080 with the repository at /app.
 FROM ${FRANKENPHP_IMAGE} AS frankenphp-extension-release
 
 COPY --from=extension-bridge-zts-release /out/ /
-COPY docker/frankenphp/load.Caddyfile /etc/frankenphp/Caddyfile
-COPY docker/frankenphp/load.ini /usr/local/etc/php/conf.d/zz-load.ini
 
 RUN echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
     && php -r 'if (!PHP_ZTS || !extension_loaded("restate") || !function_exists("opcache_get_status")) { fwrite(STDERR, "ZTS Restate extension or OPcache did not load\n"); exit(1); }'
@@ -275,7 +273,7 @@ RUN module=$(bash bin/build-extension.sh --php-config "$(command -v php-config)"
 # (tests/Integration/Support/worker.php, from the repository mounted at /app, as for
 # frankenphp-extension) under docker/frankenphp/worker.Caddyfile on port 8080, with the
 # diagnostics build. It serves the integration services and the /__worker probe, not the load
-# router, so it is no drop-in for bin/load-test.sh --image. GODEBUG=madvdontneed=1 makes Go return
+# router, so it is no drop-in for bin/load-test.sh's LOAD_ENDPOINT_IMAGE. GODEBUG=madvdontneed=1 makes Go return
 # freed memory at once, so RSS follows the heaps.
 FROM ${FRANKENPHP_IMAGE} AS frankenphp-worker-release
 

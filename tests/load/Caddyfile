@@ -1,0 +1,26 @@
+# The load-test endpoint's FrankenPHP configuration: every request goes to the router script
+# endpoint.php next to this file. The same file serves both ways of running it:
+#
+# - compose.yaml mounts it over the image's Caddyfile, with the repository at /app, on :8080: the
+#   defaults below.
+# - devenv's load profile (devenv.nix, loadSuite) serves the working tree with it:
+#   RESTATE_PHP_TEST_APP_DIR     the repository (default /app)
+#   RESTATE_PHP_TEST_LISTEN      the site address (default :8080)
+#   CADDY_GLOBAL_OPTIONS         more global options (devenv binds loopback)
+#
+# LOAD_NUM_THREADS sets FrankenPHP's PHP thread count (default: twice the CPUs it sees), so an
+# overload run can cap the endpoint's capacity.
+{
+	admin off
+	auto_https off
+	{$CADDY_GLOBAL_OPTIONS}
+	frankenphp {
+		num_threads {$LOAD_NUM_THREADS:0}
+	}
+}
+
+{$RESTATE_PHP_TEST_LISTEN::8080} {
+	root * {$RESTATE_PHP_TEST_APP_DIR:/app}/tests/load
+	rewrite * /endpoint.php
+	php
+}

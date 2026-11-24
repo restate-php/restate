@@ -54,6 +54,7 @@ Why the SDK works the way it does: one record per decision, with its context, th
 | [0035](0035-worker-soak-testing.md) | Worker-Mode and Soak Testing |
 | [0038](0038-native-restate-for-the-test-harness.md) | Native Restate for the Test Harness |
 | [0039](0039-external-test-environments.md) | External Test Environments |
+| [0040](0040-load-tests-in-compose.md) | Load Tests in Compose |
 
 ## Packaging, releases and development
 

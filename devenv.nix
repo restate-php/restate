@@ -101,18 +101,14 @@ let
     };
 
   # FrankenPHP with the extension, rebuilt for its thread-safe PHP from the shell's PHP
-  # (languages.php.version), serving docker/frankenphp/<caddyfile> from the working tree, as the
-  # frankenphp-extension image serves it from /app. The extension is the Nix build (the overlay's),
-  # not the cargo build the harness loads; the shell's PHP does not load it.
-  frankenphpSuite =
-    {
-      server,
-      caddyfile,
-      tests ? [ ],
-    }:
+  # (languages.php.version), serving a Caddyfile from the working tree, as the images serve the
+  # same file from /app (RESTATE_PHP_TEST_APP_DIR, RESTATE_PHP_TEST_LISTEN). The extension is the
+  # Nix build (the overlay's, a release build), not the cargo build the harness loads; the shell's
+  # PHP does not load it.
+  frankenphpServing =
+    { root, caddyfile }:
     { config, ... }:
     let
-      url = "http://127.0.0.1:${toString config.processes.frankenphp.ports.http.value}";
       # nixpkgs' thread-safe tokenizer extension of PHP 8.6 does not link on Darwin: PHP 8.6 exports
       # the scanner globals as a native thread-local variable, and the separately built extension
       # fails on it ("illegal thread local variable reference to regular symbol
@@ -125,13 +121,6 @@ let
         && (extension.extensionName or null) == "tokenizer";
     in
     {
-      imports = [
-        (externalSuite {
-          inherit server url tests;
-          process = "frankenphp";
-        })
-      ];
-
       languages.php.frankenphp = {
         enable = true;
         package = pkgs.frankenphp.override {
@@ -141,8 +130,7 @@ let
         };
         serve = {
           enable = true;
-          root = "tests/Integration/Support";
-          caddyfile = "docker/frankenphp/${caddyfile}";
+          inherit root caddyfile;
         };
       };
 
@@ -150,6 +138,80 @@ let
         RESTATE_PHP_TEST_APP_DIR = config.devenv.root;
         RESTATE_PHP_TEST_LISTEN = "http://:${toString config.processes.frankenphp.ports.http.value}";
       };
+    };
+
+  # The integration suite's endpoint (docker/frankenphp/<caddyfile>), as the frankenphp-extension
+  # image serves it, with Restate next to it (externalSuite).
+  frankenphpSuite =
+    {
+      server,
+      caddyfile,
+      tests ? [ ],
+    }:
+    { config, ... }:
+    {
+      imports = [
+        (frankenphpServing {
+          root = "tests/Integration/Support";
+          caddyfile = "docker/frankenphp/${caddyfile}";
+        })
+        (externalSuite {
+          inherit server tests;
+          process = "frankenphp";
+          url = "http://127.0.0.1:${toString config.processes.frankenphp.ports.http.value}";
+        })
+      ];
+    };
+
+  # The load tests (tests/load, TESTING.md) without Docker: Restate and the load endpoint as devenv
+  # processes on loopback, with the settings tests/load/compose.yaml gives them (the fixed signing
+  # key, 4 partitions, tests/load/Caddyfile and php.ini). `devenv --profile load up` runs both, and
+  # the profile's shell exports the URLs k6 reads, so `k6 run -e LOAD_SCENARIO=noop
+  # tests/load/k6.js` runs against them; `devenv --profile load test` runs every scenario but
+  # overload, whose CPU cap only a container gives.
+  loadSuite =
+    { config, ... }:
+    let
+      url = "http://127.0.0.1:${toString config.processes.frankenphp.ports.http.value}";
+    in
+    {
+      imports = [
+        (frankenphpServing {
+          root = "tests/load";
+          caddyfile = "tests/load/Caddyfile";
+        })
+      ];
+
+      languages.php.frankenphp.serve.ini = builtins.readFile ./tests/load/php.ini;
+      # The request log, the effects ledger and where /load-stats counts from.
+      processes.frankenphp.env.LOAD_STATE_DIR = config.devenv.runtime;
+
+      services.restate = {
+        enable = true;
+        package = restate-bin;
+        settings = {
+          default-num-partitions = 4;
+          log-format = "compact";
+          log-disable-ansi-codes = true;
+          worker.invoker.request-identity-private-key-pem-file = "${config.devenv.root}/tests/load/request-identity.pem";
+        };
+      };
+
+      env = {
+        LOAD_INGRESS_URL = config.env.RESTATE_INGRESS_URL;
+        LOAD_ADMIN_URL = config.env.RESTATE_ADMIN_URL;
+        LOAD_ENDPOINT_URL = url;
+        # Restate runs next to it, on loopback too.
+        LOAD_ENDPOINT_URI = url;
+      };
+
+      enterTest = ''
+        status=0
+        for name in $(jq -r 'to_entries[] | select(.value.overload | not) | .key' tests/load/scenarios.json); do
+          k6 run --quiet --no-usage-report -e LOAD_SCENARIO="$name" tests/load/k6.js 2>/dev/null || status=1
+        done
+        exit $status
+      '';
     };
 in
 {
@@ -198,8 +260,9 @@ in
       # composer check:scripts
       actionlint
       shellcheck
-      # k6 for the load tests (composer load).
+      # k6 and jq for the load tests (composer load).
       k6
+      jq
       # restate-server, for the integration suite with RESTATE_PHP_TEST_RESTATE=process (TESTING.md). Its version
       # must be RestateContainer::DEFAULT_IMAGE's; .github/workflows/ci.yaml checks it.
       restate-bin
@@ -231,6 +294,8 @@ in
       caddyfile = "worker.Caddyfile";
       tests = [ "tests/Worker" ];
     };
+    # The load tests: Restate and the load endpoint, without Docker (loadSuite above).
+    load.module = loadSuite;
   };
 
   languages = {
