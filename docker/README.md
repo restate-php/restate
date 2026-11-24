@@ -25,4 +25,4 @@ One file, so the targets share the stages that compile the extension inside each
 
 - **`caddy/`**: the Caddyfile and entrypoint of `upstream-extension-caddy` (Caddy `reverse_proxy` over h2c in front of `php -S`).
 - **`fpm/`**: the php-fpm images. `entrypoint.sh` renders the `*.template` files from `RESTATE_PHP_FPM_*` variables and runs php-fpm behind nginx, Caddy `php_fastcgi` or Apache `mod_proxy_fcgi`, with the settings [docs/serving.md](../docs/serving.md#php-fpm-and-fastcgi) recommends or the front door's defaults ([TESTING.md](../TESTING.md#serving-large-bodies-php-fpm-and-front-door-hazards)). `php.ini` goes on top of `php.ini-production`.
-- **`frankenphp/`**: the FrankenPHP Caddyfiles (`integration`, `worker`, `load`) and the load tests' ini settings. `worker.Caddyfile` is also read from the mounted repository at run time, so changing it needs no rebuild.
+- **`frankenphp/`**: the FrankenPHP Caddyfiles of the integration suite (`integration`, `worker`). The load tests' Caddyfile and PHP settings are in `tests/load/`, which mounts them. `worker.Caddyfile` is also read from the mounted repository at run time, so changing it needs no rebuild.

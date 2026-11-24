@@ -98,7 +98,6 @@
     ],
     "test:fpm": [
       "Composer\\Config::disableProcessTimeout",
-      "@build:extension @no_additional_args",
       "just test fpm"
     ],
     "test:large-bodies": [
@@ -113,10 +112,7 @@
     ],
     "test:serving-hazards": [
       "Composer\\Config::disableProcessTimeout",
-      "@putenv RESTATE_PHP_TEST_SERVER=nginx-fpm",
-      "@putenv RESTATE_PHP_TEST_FPM_TARGET=fpm-extension-apache",
-      "@putenv RESTATE_PHP_TEST_FPM_IMAGE=restate.local/restate-php-fpm:extension-apache",
-      "just test fpm --group serving-hazards"
+      "just test serving-hazards"
     ],
     "check": [
       "@cs",

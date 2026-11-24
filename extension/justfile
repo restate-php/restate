@@ -2,7 +2,7 @@ set lazy
 set default-list
 set ignore-comments
 
-# Build the Restate PHP extension (module `restate`) and print the absolute path of the module,
+# Build the Restate PHP extension (module `restate`) and print the absolute path of its restate.so
 [arg('php_config', long='php-config', help="php-config of the PHP to build for, into target/php<minor>-<nts|zts>/")]
 [arg('profile', long='release', value='release', help="release build (the workspace's [profile.release])")]
 [script('bash')]
@@ -31,10 +31,10 @@ build php_config='' profile='dev' *cargo_args:
 
     echo "$module"
 
-# Cross-compile the PIE archives of a release (the flake's packages.pie) and copy them into <dir>
+# Cross-compile the PIE archives of a release (the flake's packages.pie) and copy them into <dir> (relative to where just runs; default: the repository's dist/)
 [no-cd]
 [script('bash')]
-pie dir='dist':
+pie dir=(source_directory() / ".." / "dist"):
     set -euo pipefail
     # The flake sees git-tracked files only: `git add` new files under extension/ first.
     result=$(nix build {{ quote(source_directory()) }}#pie --no-link --print-out-paths)

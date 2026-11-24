@@ -71,11 +71,9 @@ jobs:
           if [ "$SERVER" = php-cli ]; then
             composer test:failure
           elif [ "$SERVER" = frankenphp ]; then
-            composer build:extension
             # Builds the frankenphp-extension image (the extension compiled against FrankenPHP's
             # thread-safe PHP), then runs the group against it.
             just test frankenphp --group failure-nightly
           else
-            composer build:extension
             RESTATE_PHP_TEST_SERVER=$SERVER just test fpm --group failure-nightly
           fi

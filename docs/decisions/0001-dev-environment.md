@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. Decision 2 is amended by [Just Recipes](0041-just-recipes.md): tasks that take arguments or run in several steps are just recipes, and the Composer scripts of the common tasks call them.
 
 ## Context
 

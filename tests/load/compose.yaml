@@ -13,8 +13,9 @@ name: restate-php-load
 
 services:
   restate:
-    # RestateContainer::DEFAULT_IMAGE (tests/Unit/Testing/RestateContainerTest.php checks it).
-    image: ${LOAD_RESTATE_IMAGE:-docker.restate.dev/restatedev/restate:1.8.1}
+    # RestateContainer::DEFAULT_IMAGE (tests/Unit/Testing/RestateContainerTest.php checks it), or
+    # RESTATE_PHP_RESTATE_IMAGE, as for the test harness.
+    image: ${RESTATE_PHP_RESTATE_IMAGE:-docker.restate.dev/restatedev/restate:1.8.1}
     environment:
       # Read when Restate first starts: a running project keeps its partitions.
       RESTATE_DEFAULT_NUM_PARTITIONS: ${LOAD_PARTITIONS:-4}
@@ -39,7 +40,7 @@ services:
       dockerfile: docker/Dockerfile
       target: frankenphp-extension-release
       args:
-        # The FrankenPHP base image when set.
+        # The FrankenPHP base image when set: the build recipe passes RESTATE_PHP_FRANKENPHP_BASE_IMAGE.
         - FRANKENPHP_IMAGE
     environment:
       # FrankenPHP's PHP threads; 0: its default, twice the CPUs it sees.

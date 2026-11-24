@@ -11,7 +11,7 @@ devenv shell
 composer install   # all packages at once, through the root restate/monorepo package (development only)
 ```
 
-Run everything inside the shell (`devenv shell`, or prefix a command with `devenv shell --`). The tasks are Composer scripts (`composer run --list`) and, for building the extension, just recipes (`just --list`; the extension's are in `extension/justfile`, `just extension <recipe>`).
+Run everything inside the shell (`devenv shell`, or prefix a command with `devenv shell --`). The tasks are Composer scripts (`composer run --list`) and just recipes (`just --list`): the extension's build, PIE archives and benchmarks (`just extension <recipe>`, `extension/justfile`), the suites that build an image (`just test <recipe>`, `tests/justfile`) and the load tests (`just load <recipe>`, `tests/load/justfile`). Several Composer scripts call a recipe ([Just Recipes](docs/decisions/0041-just-recipes.md)).
 
 ## Building the extension
 

@@ -26,15 +26,8 @@ concurrency:
   group: upstream-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event_name }}
   cancel-in-progress: true
 
-# contents: read checks out the repository. The action publishes the JUnit results as a check
-# run and a pull request comment (EnricoMi/publish-unit-test-result-action), hence checks and
-# pull-requests write; issues: read lets it find its earlier comment when the repository is
-# private and is harmless in a public one.
 permissions:
   contents: read
-  issues: read
-  checks: write
-  pull-requests: write
 
 env:
   SERVICE_IMAGE: restate.local/restate-php-test-services:upstream-extension-caddy
@@ -47,6 +40,15 @@ jobs:
     name: restatedev/e2e sdk-tests
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    # contents: read checks out the repository. The action publishes the JUnit results as a check
+    # run and a pull request comment (EnricoMi/publish-unit-test-result-action), hence checks and
+    # pull-requests write; issues: read lets it find its earlier comment when the repository is
+    # private and is harmless in a public one.
+    permissions:
+      contents: read
+      issues: read
+      checks: write
+      pull-requests: write
 
     steps:
       - name: Checkout repository

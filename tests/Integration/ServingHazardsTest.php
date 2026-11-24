@@ -33,8 +33,9 @@ use Restate\Testing\RestateTestEnvironment;
  * - `clear_env = yes`: an identity key read from the environment is missing, and the endpoint refuses to build
  *   instead of serving unsigned requests.
  *
- * Nightly (group serving-hazards, `composer test:serving-hazards`): it needs the fpm-extension and fpm-extension-apache
- * images (just test fpm builds them) and waits out real timeouts.
+ * Nightly (group serving-hazards, `just test serving-hazards` or `composer test:serving-hazards`): it needs the
+ * fpm-extension-apache image as RESTATE_PHP_TEST_FPM_IMAGE (the recipe builds it; it has nginx and Caddy too) and waits
+ * out real timeouts.
  */
 #[Group('serving-hazards')]
 #[Group('managed')]
@@ -254,7 +255,7 @@ final class ServingHazardsTest extends TestCase
 
     private static function apacheImage(): string
     {
-        $image = getenv('RESTATE_PHP_TEST_FPM_APACHE_IMAGE');
+        $image = getenv('RESTATE_PHP_TEST_FPM_IMAGE');
 
         return is_string($image) && $image !== '' ? $image : self::DEFAULT_APACHE_IMAGE;
     }

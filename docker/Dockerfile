@@ -86,9 +86,10 @@ RUN chmod +x /usr/local/bin/upstream-extension-caddy-entrypoint.sh \
 
 CMD ["/usr/local/bin/upstream-extension-caddy-entrypoint.sh"]
 
-# The extension built against the thread-safe (ZTS) PHP inside the FrankenPHP image. An NTS
-# module does not load into a ZTS runtime, so FrankenPHP needs its own build.
-FROM ${FRANKENPHP_IMAGE} AS extension-bridge-zts
+# The Rust toolchain and the extension's sources inside the FrankenPHP image, for the builds
+# against its thread-safe (ZTS) PHP below: an NTS module does not load into a ZTS runtime, so
+# FrankenPHP needs builds of its own.
+FROM ${FRANKENPHP_IMAGE} AS zts-toolchain
 
 WORKDIR /app
 
@@ -103,7 +104,9 @@ RUN cd extension && rustup toolchain install && rustc --version
 
 COPY extension extension
 
-# Built and staged under /out like the NTS module above.
+# The ZTS extension, built and staged under /out like the NTS module above.
+FROM zts-toolchain AS extension-bridge-zts
+
 RUN php -r 'exit(PHP_ZTS ? 0 : 1);' \
     && (cd extension && cargo build -p restate) \
     && extension_dir=$(php -r 'echo ini_get("extension_dir");') \
@@ -123,23 +126,9 @@ RUN echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
 
 CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]
 
-# The ZTS extension as a release build: the load tests' endpoint (just load run). The same
-# setup as extension-bridge-zts (identical instructions, so the toolchain layers are shared from
-# the build cache), with --release, so building this target never compiles the debug module.
-FROM ${FRANKENPHP_IMAGE} AS extension-bridge-zts-release
-
-WORKDIR /app
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential ca-certificates clang curl libclang-dev pkg-config \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
-ENV PATH="/root/.cargo/bin:${PATH}"
-COPY extension/rust-toolchain.toml extension/rust-toolchain.toml
-RUN cd extension && rustup toolchain install && rustc --version
-
-COPY extension extension
+# The ZTS extension as a release build: the load tests' endpoint (just load run), and the soak
+# images' base. Its own stage, so building this target never compiles the debug module.
+FROM zts-toolchain AS extension-bridge-zts-release
 
 RUN php -r 'exit(PHP_ZTS ? 0 : 1);' \
     && (cd extension && cargo build -p restate --release) \
@@ -163,8 +152,8 @@ RUN echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
 CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]
 
 # The extension built against the NTS PHP inside the php-fpm image, as the stages above do for
-# theirs. --build-arg EXTENSION_PROFILE=release builds the release module (production-like runs,
-# load tests); debug, the default, keeps the debug assertions the integration suite runs with.
+# theirs. --build-arg EXTENSION_PROFILE=release builds the release module (production-like runs);
+# debug, the default, keeps the debug assertions the integration suite runs with.
 FROM ${PHP_FPM_IMAGE} AS extension-bridge-fpm
 
 ARG EXTENSION_PROFILE=debug
