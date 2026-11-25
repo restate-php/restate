@@ -9,3 +9,7 @@ dist/
 extension/target/
 var/
 vendor/
+**/*.log
+# nix build
+result
+result-*

@@ -47,29 +47,11 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Set up devenv
-        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+      - name: Set up the dev shell
+        uses: ./.github/actions/setup
         with:
-          cachix-cache: restate-php
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
-      - name: Set up Composer cache
-        uses: ./.github/actions/composer-cache
-
-      - name: Set up Cargo cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          # extension/target/ holds both builds (the base in target/bench-base/) and the
-          # gungraun-runner binary.
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            extension/target/
-          key: cargo-bench-extension-${{ hashFiles('extension/Cargo.lock', 'extension/rust-toolchain.toml') }}
-          restore-keys: |
-            cargo-bench-extension-
-            cargo-check-php8.5-
+          cargo-cache: bench-extension
 
       - name: Compare with the base branch
         env:
@@ -101,27 +83,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up devenv
-        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+      - name: Set up the dev shell
+        uses: ./.github/actions/setup
         with:
-          cachix-cache: restate-php
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
-      - name: Set up Composer cache
-        uses: ./.github/actions/composer-cache
-
-      - name: Set up Cargo cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            extension/target/
-          key: cargo-bench-extension-${{ hashFiles('extension/Cargo.lock', 'extension/rust-toolchain.toml') }}
-          restore-keys: |
-            cargo-bench-extension-
-            cargo-check-php8.5-
+          cargo-cache: bench-extension
 
       - name: Instruction counts
         run: |

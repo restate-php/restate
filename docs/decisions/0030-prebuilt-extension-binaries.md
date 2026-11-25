@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Nothing is published yet: no split repository, Packagist entry, tag or GitHub release exists, and the extension build workflow has not passed on GitHub yet.
+Accepted. Nothing is published yet: no split repository, Packagist entry, tag or GitHub release exists, and the extension build workflow has not passed on GitHub yet. The extension builds with `just extension build` and the archives with `just extension pie` ([Just Recipes](0041-just-recipes.md)), not the `bin/` scripts named below.
 
 ## Context
 

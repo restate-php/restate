@@ -168,6 +168,7 @@ final class RestateSoakTest extends TestCase
                 'RESTATE_PHP_TEST_WORKER_NUM' => (string) $threads,
                 'RESTATE_PHP_TEST_DISPLAY_ERRORS' => '0',
                 IntegrationEndpoints::LOGGER_VARIABLE => '/dev/null',
+                ...SoakSettings::ENDPOINT_ENVIRONMENT,
             ]);
 
         return RestateTestEnvironment::start(

@@ -31,10 +31,11 @@ updates:
         patterns:
           - "*"
 
-  # The base images of the endpoint, test-service and quickstart images. Not the compose files:
-  # their Restate image is RestateContainer::DEFAULT_IMAGE, which CI checks them against, so it
-  # moves with the harness. The FrankenPHP images that ci.yaml's matrix names per PHP minor are
-  # bumped by hand with the Dockerfile's.
+  # The base images of the endpoint, test-service and quickstart images: Dependabot reads FROM lines
+  # only, so docker/Dockerfile names its default bases in *-default stages. Not the compose files:
+  # their Restate image is RestateContainer::DEFAULT_IMAGE, which the unit suite checks them
+  # against, so it moves with the harness. The FrankenPHP images that ci.yaml's matrix names per
+  # PHP minor are bumped by hand with the Dockerfile's.
   - package-ecosystem: docker
     directories:
       - /docker
@@ -45,3 +46,8 @@ updates:
       docker:
         patterns:
           - "*"
+    ignore:
+      # PHP 8.4 is the oldest supported minor, which the images build against by default; the
+      # newer ones are --build-arg overrides (ci.yaml).
+      - dependency-name: php
+        update-types: [version-update:semver-major, version-update:semver-minor]

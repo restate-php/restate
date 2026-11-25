@@ -51,27 +51,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up devenv
-        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+      - name: Set up the dev shell
+        uses: ./.github/actions/setup
         with:
-          cachix-cache: restate-php
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          # The action builds the default shell; the first step builds the matrix PHP's.
+          # The action builds the default shell; the Cargo cache builds the matrix PHP's.
           build-shell: false
-
-      - name: Set up Composer cache
-        uses: ./.github/actions/composer-cache
-
-      - name: Set up Cargo cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            extension/target/
-          key: cargo-check-php${{ matrix.php }}-${{ hashFiles('extension/Cargo.lock', 'extension/rust-toolchain.toml') }}
-          restore-keys: cargo-check-php${{ matrix.php }}-
+          cargo-cache: check-php${{ matrix.php }}
+          shell: devenv -O languages.php.version:string ${{ matrix.php }} shell --
 
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
@@ -96,27 +83,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up devenv
-        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+      - name: Set up the dev shell
+        uses: ./.github/actions/setup
         with:
-          cachix-cache: restate-php
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
-      - name: Set up Composer cache
-        uses: ./.github/actions/composer-cache
-
-      - name: Set up Cargo cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            extension/target/
-          key: cargo-integration-${{ hashFiles('extension/Cargo.lock', 'extension/rust-toolchain.toml') }}
-          restore-keys: |
-            cargo-integration-
-            cargo-check-php8.5-
+          cargo-cache: integration
 
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
@@ -140,11 +111,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up devenv
-        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+      - name: Set up the dev shell
+        uses: ./.github/actions/setup
         with:
-          cachix-cache: restate-php
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          cargo-cache: integration
 
       # The harness's defaults are tested with the image's version, which restate-bin must be.
       - name: Check restate-server against the integration harness
@@ -154,20 +125,6 @@ jobs:
             echo "::error file=devenv.lock::restate-server ${version} (nix-restate's restate-bin) differs from RestateContainer::DEFAULT_IMAGE"
             exit 1
           fi
-
-      - name: Set up Composer cache
-        uses: ./.github/actions/composer-cache
-
-      - name: Set up Cargo cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            extension/target/
-          key: cargo-integration-macos-${{ hashFiles('extension/Cargo.lock', 'extension/rust-toolchain.toml') }}
-          restore-keys: cargo-integration-macos-
 
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
@@ -199,28 +156,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up devenv
-        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+      - name: Set up the dev shell
+        uses: ./.github/actions/setup
         with:
-          cachix-cache: restate-php
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
-      - name: Set up Composer cache
-        uses: ./.github/actions/composer-cache
-
-      # The host's extension build serves the suite's own php -S endpoints (examples/testing).
-      - name: Set up Cargo cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            extension/target/
-          key: cargo-integration-${{ hashFiles('extension/Cargo.lock', 'extension/rust-toolchain.toml') }}
-          restore-keys: |
-            cargo-integration-
-            cargo-check-php8.5-
+          cargo-cache: integration
 
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
@@ -230,7 +170,7 @@ jobs:
       - name: Test
         run: composer test:frankenphp
         env:
-          RESTATE_PHP_FRANKENPHP_BASE_IMAGE: ${{ matrix.base-image }}
+          RESTATE_PHP_TEST_FRANKENPHP_BASE_IMAGE: ${{ matrix.base-image }}
 
   frankenphp-worker:
     name: composer test:frankenphp-worker (PHP 8.4 ZTS)
@@ -243,28 +183,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up devenv
-        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+      - name: Set up the dev shell
+        uses: ./.github/actions/setup
         with:
-          cachix-cache: restate-php
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
-      - name: Set up Composer cache
-        uses: ./.github/actions/composer-cache
-
-      # The host's extension build serves the suite's own php -S endpoints (examples/testing).
-      - name: Set up Cargo cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            extension/target/
-          key: cargo-integration-${{ hashFiles('extension/Cargo.lock', 'extension/rust-toolchain.toml') }}
-          restore-keys: |
-            cargo-integration-
-            cargo-check-php8.5-
+          cargo-cache: integration
 
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
@@ -291,29 +214,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up devenv
-        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+      - name: Set up the dev shell
+        uses: ./.github/actions/setup
         with:
-          cachix-cache: restate-php
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
-      - name: Set up Composer cache
-        uses: ./.github/actions/composer-cache
-
-      # The host's extension build (the test recipes build it) serves the suite's own php -S
-      # endpoints (examples/testing).
-      - name: Set up Cargo cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            extension/target/
-          key: cargo-integration-${{ hashFiles('extension/Cargo.lock', 'extension/rust-toolchain.toml') }}
-          restore-keys: |
-            cargo-integration-
-            cargo-check-php8.5-
+          cargo-cache: integration
 
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
@@ -350,16 +255,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up devenv
-        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+      - name: Set up the dev shell
+        uses: ./.github/actions/setup
         with:
-          cachix-cache: restate-php
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
           # The action builds the default shell; the first step builds the profile's.
           build-shell: false
-
-      - name: Set up Composer cache
-        uses: ./.github/actions/composer-cache
 
       - name: Install dependencies
         run: composer install --no-interaction --no-progress

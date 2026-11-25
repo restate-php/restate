@@ -4,7 +4,7 @@ This repository holds the whole SDK: the Composer packages in `packages/`, the R
 
 ## Setting up
 
-You need [devenv](https://devenv.sh) and a container runtime: Docker, or rootless podman with its `docker` CLI. The dev shell provides everything else: nixpkgs' default PHP (8.5 now; `devenv -O languages.php.version:string 8.4 shell` for another supported minor) with its headers and `php-config`, Composer, the Rust toolchain pinned in `extension/rust-toolchain.toml`, libclang and the flags the extension build needs, Java 25 for the upstream suite, and the linters ([Development Environment](docs/decisions/0001-dev-environment.md)). The integration tests start Restate in a container, so the runtime stays on the host.
+You need [devenv](https://devenv.sh) and a container runtime: Docker, or rootless podman with its `docker` CLI. The dev shell provides everything else: nixpkgs' default PHP (8.5 now; `devenv -O languages.php.version:string 8.4 shell` for another supported minor) with its headers and `php-config`, Composer, the Rust toolchain pinned in `extension/rust-toolchain.toml`, libclang and the flags the extension build needs, Java 25 for the upstream suite, just, k6 and jq, and the linters ([Development Environment](docs/decisions/0001-dev-environment.md)). The integration tests start Restate in a container, so the runtime stays on the host.
 
 ```bash
 devenv shell
@@ -21,7 +21,7 @@ just extension build --release           # release build: extension/target/relea
 just extension build --php-config /path/to/zts/bin/php-config   # for another PHP, e.g. a ZTS one for FrankenPHP
 ```
 
-`composer build:extension` runs the same recipe (the test scripts call it). `just --list` lists the recipes.
+`composer build:extension` runs the same recipe (the test scripts call it); `just --list extension` lists the module's other recipes.
 
 A module loads only into the PHP minor version and thread safety (NTS or ZTS) it was built for; `--php-config` builds into a target directory of its own per PHP (`extension/target/php8.4-zts/…`), so builds never overwrite each other. Outside the dev shell bindgen can fail with `'stdlib.h' file not found`: the shell sets the flags it needs.
 

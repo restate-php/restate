@@ -17,9 +17,6 @@ on:
     branches: [main]
     paths: &paths
       - '.github/workflows/extension.yaml'
-      - 'devenv.lock'
-      - 'devenv.nix'
-      - 'devenv.yaml'
       - 'extension/**'
   pull_request:
     paths: *paths
@@ -48,6 +45,7 @@ jobs:
   version:
     name: Extension version
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     outputs:
       version: ${{ steps.version.outputs.version }}
 
@@ -86,10 +84,9 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up devenv
-        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+      - name: Set up the dev shell
+        uses: ./.github/actions/setup
         with:
-          cachix-cache: restate-php
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       # Every target on this one x86_64 runner (just extension pie: nix build ./extension#pie). An
@@ -155,7 +152,6 @@ jobs:
         uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
         with:
           name: restate-php
-          extraPullNames: ext-php-rs
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Download the archives
@@ -220,7 +216,6 @@ jobs:
         uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
         with:
           name: restate-php
-          extraPullNames: ext-php-rs
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Check the flake

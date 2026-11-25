@@ -22,16 +22,12 @@ up: build
 down:
     docker compose down --volumes
 
-# The endpoint image; LOAD_SKIP_BUILD=1 reuses it (or another one: LOAD_ENDPOINT_IMAGE), and
-# RESTATE_PHP_FRANKENPHP_BASE_IMAGE replaces its FrankenPHP base, as for the test suites
+# Build the endpoint image, unless LOAD_SKIP_BUILD=1 reuses it or LOAD_ENDPOINT_IMAGE names
+# another one; RESTATE_PHP_TEST_FRANKENPHP_BASE_IMAGE replaces its FrankenPHP base, as for the
+# test suites (compose.yaml passes it)
 [private]
-[script('bash')]
 build:
-    set -euo pipefail
-    [ "${LOAD_SKIP_BUILD:-0}" != 1 ] || exit 0
-    # Only when set: an empty build argument would replace the Dockerfile's default.
-    if [ -n "${RESTATE_PHP_FRANKENPHP_BASE_IMAGE:-}" ]; then export FRANKENPHP_IMAGE=$RESTATE_PHP_FRANKENPHP_BASE_IMAGE; fi
-    docker compose build endpoint
+    [ "${LOAD_SKIP_BUILD:-0}" = 1 ] || [ -n "${LOAD_ENDPOINT_IMAGE:-}" ] || docker compose build endpoint
 
 # One scenario with k6.js; the result and k6's log (a warning per timed-out call: thousands under overload) in var/load/results/<name>/
 [private]

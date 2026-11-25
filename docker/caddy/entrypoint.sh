@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# The image enables the extension in php.ini (`extension=restate`), so plain `php` loads it.
+# Entrypoint of the upstream-extension-caddy image (docker/Dockerfile): test-services/index.php under
+# php -S behind Caddy over h2c; the container stops when either exits. The image enables the
+# extension in php.ini (`extension=restate`), so plain `php` loads it, and its build checks that the
+# backend constructs.
 
 PHP_SERVER_PID=""
 CADDY_PID=""
@@ -19,15 +22,6 @@ cleanup() {
 }
 
 trap cleanup EXIT
-
-php -r '
-if (!extension_loaded("restate")) {
-    fwrite(STDERR, "Restate PHP extension did not load\n");
-    exit(1);
-}
-require "/app/vendor/autoload.php";
-new Restate\Internal\Backend\Extension\Backend();
-'
 
 php -S 127.0.0.1:9081 -t test-services test-services/index.php &
 PHP_SERVER_PID=$!

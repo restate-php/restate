@@ -2,13 +2,13 @@
 # runs it, against FrankenPHP worker-mode images built with the extension's diagnostics feature.
 #
 # - Nightly: frame replay (about a million requests), concurrency and bailouts
-#   (`just test soak nightly`, about 30 minutes).
+#   (`just test soak nightly`, about 30 minutes with the image builds).
 # - Weekly (Sunday): about 300,000 invocations through Restate (`just test soak restate`).
 # - By hand: any of them, optionally --quick.
 #
 # The checkpoints, latency windows and summaries (var/soak/) are uploaded as an artifact either
 # way, so slopes can be compared across runs when a threshold needs recalibrating.
-name: Soak tests
+name: Nightly soak
 
 on:
   schedule:
@@ -26,7 +26,7 @@ on:
         default: false
 
 concurrency:
-  group: soak-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event.schedule }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -49,14 +49,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up devenv
-        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+      - name: Set up the dev shell
+        uses: ./.github/actions/setup
         with:
-          cachix-cache: restate-php
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
-      - name: Set up Composer cache
-        uses: ./.github/actions/composer-cache
 
       - name: Install dependencies
         run: composer install --no-interaction --no-progress

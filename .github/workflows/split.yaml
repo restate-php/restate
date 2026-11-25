@@ -38,6 +38,7 @@ jobs:
     name: Split
     if: github.event_name == 'workflow_dispatch' || vars.SPLIT_ON_PUSH == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     # The release's environment, which holds the GitHub App's key; required reviewers on it hold
     # every run for approval too (docs/decisions/0031-release.md, decision 9).
     environment: release

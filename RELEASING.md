@@ -44,7 +44,7 @@ Done once.
   - [ ] For a new minor: `"ext-restate": "~X.Y.0"` in `packages/sdk/composer.json` (`composer check:packages` fails until it matches the crate).
   - [ ] The row for `X.Y.Z` in [Compatibility](docs/compatibility.md#versions): shared-core, contract and PHP versions, and "(unreleased)" dropped from it.
   - [ ] The changelog, if one is kept.
-- [ ] `composer check` passes locally; for a release that touches the extension or the protocol, also `composer test:integration`, `composer test:frankenphp` and `bin/conformance-upstream-local.sh`.
+- [ ] `composer check` passes locally; for a release that touches the extension or the protocol, also `composer test:integration`, `composer test:frankenphp` and `composer test:upstream`.
 - [ ] Merge to `main` and push. `CI`, `Upstream SDK tests` and `Extension binaries` pass on that commit.
 - [ ] Rehearse the split on that commit: `composer release:split -- publish --dry-run --version X.Y.Z --remote https://github.com/restate-php/{repository}.git`. For every repository it reports `main` as created, fast-forwarded, up to date or left alone (ahead: the push split already pushed a later commit's split), and the tag (`X.Y.Z` for the extension, `vX.Y.Z` for the packages) as created; it pushes nothing, and fails on what would stop the release ([Release](docs/decisions/0031-release.md), decision 5).
 

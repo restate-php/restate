@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Amends decision 6 of [Performance Benchmarks](0033-performance-benchmarks.md): the load tests no longer compare a run with earlier ones or gate on it. They are a compose project and a k6 script, with no PHP runner.
+Accepted. Amends decision 6 of [Performance Benchmarks](0033-performance-benchmarks.md): the load tests no longer compare a run with earlier ones or gate on it. They are a compose project and a k6 script, with no PHP runner. Its endpoint image is the `frankenphp-extension` target built with `EXTENSION_PROFILE=release` since [Image Builds and CI Caches](0042-image-builds-and-ci-caches.md).
 
 ## Context
 

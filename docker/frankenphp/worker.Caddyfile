@@ -1,10 +1,8 @@
 # Integration-suite endpoint in FrankenPHP worker mode (RESTATE_PHP_TEST_SERVER=frankenphp-worker,
-# just test frankenphp-worker; the soak images bake it in): every request goes to the
+# just test frankenphp-worker, and the soak suite): every request goes to the
 # long-lived worker script tests/Integration/Support/worker.php, which builds the endpoints once.
 #
 # RESTATE_PHP_TEST_WORKER_NUM      worker threads (default 4)
-# RESTATE_PHP_TEST_WORKER_FAILURES max_consecutive_failures before FrankenPHP gives up on the
-#                                  worker (default 6, FrankenPHP's own; -1: never)
 # MAX_REQUESTS                     requests per worker script run before it restarts (0: never)
 # RESTATE_PHP_TEST_DISPLAY_ERRORS  display_errors (default 1: the image has no php.ini, so PHP's own
 #                                  default, STDOUT)
@@ -25,7 +23,6 @@
 			name integration
 			file {$RESTATE_PHP_TEST_APP_DIR:/app}/tests/Integration/Support/worker.php
 			num {$RESTATE_PHP_TEST_WORKER_NUM:4}
-			max_consecutive_failures {$RESTATE_PHP_TEST_WORKER_FAILURES:6}
 			env MAX_REQUESTS {$MAX_REQUESTS:0}
 		}
 	}

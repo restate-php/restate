@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Covers the integration suite in FrankenPHP worker mode with isolation probes, and the soak suite: frame replay, ZTS concurrency, bailouts across Rust frames, and an end-to-end soak through Restate. Builds on [Stray Output](0032-stray-output.md) and the VM lifetime fix (`tests/Extension/VmLifetimeTest.php`).
+Accepted. Covers the integration suite in FrankenPHP worker mode with isolation probes, and the soak suite: frame replay, ZTS concurrency, bailouts across Rust frames, and an end-to-end soak through Restate. Builds on [Stray Output](0032-stray-output.md) and the VM lifetime fix (`tests/Extension/VmLifetimeTest.php`). The two soak images are one Dockerfile target with build arguments since [Image Builds and CI Caches](0042-image-builds-and-ci-caches.md).
 
 ## Context
 

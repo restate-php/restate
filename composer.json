@@ -60,12 +60,10 @@
       "phpunit --testsuite unit"
     ],
     "test:integration": [
-      "Composer\\Config::disableProcessTimeout",
       "@build:extension @no_additional_args",
       "phpunit --testsuite integration"
     ],
     "test:scale": [
-      "Composer\\Config::disableProcessTimeout",
       "@build:extension @no_additional_args",
       "phpunit --testsuite integration --group scale"
     ],
@@ -74,46 +72,27 @@
       "@test:integration"
     ],
     "test:integration:process": [
-      "Composer\\Config::disableProcessTimeout",
       "@putenv RESTATE_PHP_TEST_RESTATE=process",
       "@build:extension @no_additional_args",
       "phpunit tests/Integration"
     ],
     "test:integration:external": [
-      "Composer\\Config::disableProcessTimeout",
       "@putenv RESTATE_PHP_TEST_RESTATE=external",
       "phpunit tests/Integration --exclude-group managed --exclude-group large-bodies --exclude-group serving-hazards --exclude-group failure-nightly --exclude-group scale --exclude-group release"
     ],
-    "test:frankenphp": [
-      "Composer\\Config::disableProcessTimeout",
-      "just test frankenphp"
-    ],
-    "test:frankenphp-worker": [
-      "Composer\\Config::disableProcessTimeout",
-      "just test frankenphp-worker"
-    ],
-    "test:soak": [
-      "Composer\\Config::disableProcessTimeout",
-      "just test soak"
-    ],
-    "test:fpm": [
-      "Composer\\Config::disableProcessTimeout",
-      "just test fpm"
-    ],
+    "test:frankenphp": "just test frankenphp",
+    "test:frankenphp-worker": "just test frankenphp-worker",
+    "test:soak": "just test soak",
+    "test:fpm": "just test fpm",
     "test:large-bodies": [
-      "Composer\\Config::disableProcessTimeout",
       "@build:extension @no_additional_args",
       "phpunit --testsuite integration --group large-bodies"
     ],
     "test:failure": [
-      "Composer\\Config::disableProcessTimeout",
       "@build:extension @no_additional_args",
       "phpunit --testsuite integration --group failure-nightly"
     ],
-    "test:serving-hazards": [
-      "Composer\\Config::disableProcessTimeout",
-      "just test serving-hazards"
-    ],
+    "test:serving-hazards": "just test serving-hazards",
     "check": [
       "@cs",
       "@analyse",
@@ -136,7 +115,6 @@
       "php -d extension=extension/target/debug/restate.so bin/check-packages.php"
     ],
     "check:extension": [
-      "Composer\\Config::disableProcessTimeout",
       "cd extension && cargo fmt --all --check",
       "cd extension && cargo clippy --workspace --all-targets -- -D warnings",
       "cd extension && cargo test --workspace"
@@ -145,40 +123,21 @@
     "cs": "php-cs-fixer fix --dry-run --diff",
     "cs:fix": "php-cs-fixer fix",
     "build:extension": "just extension build",
-    "build:pie": [
-      "Composer\\Config::disableProcessTimeout",
-      "just extension pie"
-    ],
-    "release:split": [
-      "Composer\\Config::disableProcessTimeout",
-      "bash bin/split.sh"
-    ],
+    "build:pie": "just extension pie",
+    "release:split": "bash bin/split.sh",
     "test:release": "phpunit --testsuite unit --group release",
     "serve": [
-      "Composer\\Config::disableProcessTimeout",
       "@build:extension @no_additional_args",
       "php -d extension=extension/target/debug/restate.so -S 0.0.0.0:9080 -t test-services test-services/index.php"
     ],
-    "test:upstream": [
-      "Composer\\Config::disableProcessTimeout",
-      "bash bin/conformance-upstream-local.sh"
-    ],
+    "test:upstream": "bash bin/conformance-upstream-local.sh",
     "bench": [
-      "Composer\\Config::disableProcessTimeout",
-      "bash -c 'just extension build --release >/dev/null && vendor/bin/phpbench run --report=aggregate \"$@\"' bench"
+      "just extension build --release >/dev/null @no_additional_args",
+      "phpbench run --report=aggregate"
     ],
-    "bench:compare": [
-      "Composer\\Config::disableProcessTimeout",
-      "bash bin/bench-compare.sh"
-    ],
-    "bench:extension": [
-      "Composer\\Config::disableProcessTimeout",
-      "just extension bench"
-    ],
-    "load": [
-      "Composer\\Config::disableProcessTimeout",
-      "just load run"
-    ]
+    "bench:compare": "bash bin/bench-compare.sh",
+    "bench:extension": "just extension bench",
+    "load": "just load run"
   },
   "scripts-descriptions": {
     "test": "Build the extension, then run the unit suite (its `extension` group runs the extension in child processes).",
@@ -213,6 +172,7 @@
     "load": "Load tests against Restate with k6: `just load run` [--full] [--keep] [<scenario>...], all of them when none is named (tests/load/justfile; `just load down` removes the compose project; needs Docker with compose, k6 and jq; see TESTING.md, Load tests)."
   },
   "config": {
+    "process-timeout": 0,
     "sort-packages": true
   }
 }

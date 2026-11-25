@@ -6,7 +6,7 @@ set ignore-comments
 [arg('php_config', long='php-config', help="php-config of the PHP to build for, into target/php<minor>-<nts|zts>/")]
 [arg('profile', long='release', value='release', help="release build (the workspace's [profile.release])")]
 [script('bash')]
-build php_config='' profile='dev' *cargo_args:
+build php_config='' profile='dev':
     set -euo pipefail
     if [ -n {{ quote(php_config) }} ]; then
         # ext-php-rs reads the include paths from PHP_CONFIG and the thread safety and Zend API
@@ -21,7 +21,7 @@ build php_config='' profile='dev' *cargo_args:
         echo "build: building for $PHP_CONFIG into $PWD/$CARGO_TARGET_DIR" >&2
     fi
 
-    built=$(cargo build -p restate --profile {{ profile }} --message-format=json-render-diagnostics {{ cargo_args }} | cargo artifacts list)
+    built=$(cargo build -p restate --profile {{ profile }} --message-format=json-render-diagnostics | cargo artifacts list)
     module=$(dirname "$built")/restate.so
 
     # Rewriting the file in place would crash a PHP process that has it loaded. A rename leaves that
@@ -34,16 +34,17 @@ build php_config='' profile='dev' *cargo_args:
 # Cross-compile the PIE archives of a release (the flake's packages.pie) and copy them into <dir> (relative to where just runs; default: the repository's dist/)
 [no-cd]
 [script('bash')]
-pie dir=(source_directory() / ".." / "dist"):
+pie dir='':
     set -euo pipefail
+    dir={{ quote(if dir == '' { source_directory() / ".." / "dist" } else { dir }) }}
     # The flake sees git-tracked files only: `git add` new files under extension/ first.
     result=$(nix build {{ quote(source_directory()) }}#pie --no-link --print-out-paths)
 
-    mkdir -p {{ quote(dir) }}
-    install -m 644 "$result"/* {{ quote(dir) }}/
+    mkdir -p "$dir"
+    install -m 644 "$result"/* "$dir"/
 
     while read -r _ asset; do
-        echo {{ quote(dir) }}/"$asset"
+        echo "$dir/$asset"
     done <"$result/SHA256SUMS"
 
 # The Rust core's benchmarks (core/benches/, behind the crate's `bench` feature; TESTING.md,
@@ -71,7 +72,7 @@ bench-criterion *runner: bench-lint
 # The base is built in a temporary git worktree, into target/bench-base/ (its own Cargo.lock
 # must not evict this checkout's build; CI caches it), and saved as gungraun baseline `base`. A
 # base without the benchmarks is skipped, with a note.
-[doc("Instruction counts of <base> (default: the merge base with origin/main) and of this checkout against them, failing above BENCH_EXTENSION_IR_LIMIT (2%); then the replay linearity check")]
+[doc("Instruction counts of <base> (default: the merge base with origin/main) and of this checkout against them, failing 2% above them; then the replay linearity check")]
 [positional-arguments]
 [script('bash')]
 bench-compare base='' *runner: bench-setup && bench-linearity
@@ -79,7 +80,7 @@ bench-compare base='' *runner: bench-setup && bench-linearity
     shift
     base={{ quote(base) }}
     if [ -z "$base" ]; then base=$(git merge-base HEAD origin/main 2>/dev/null || git merge-base HEAD main); fi
-    worktree=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/bench-extension-base.XXXXXX")
+    worktree=$(mktemp -d -t bench-extension-base.XXXXXX)
     trap 'git worktree remove --force "$worktree" >/dev/null 2>&1 || rm -rf "$worktree"' EXIT
     git worktree add --detach "$worktree" "$base" >&2
     echo "bench-compare: base $(git -C "$worktree" rev-parse --short HEAD) in $worktree" >&2
@@ -92,7 +93,7 @@ bench-compare base='' *runner: bench-setup && bench-linearity
     }
     if grep -q '^name = "vm_instructions"$' "$worktree/extension/core/Cargo.toml" 2>/dev/null; then
         CARGO_TARGET_DIR={{ quote(source_directory() / "target/bench-base") }} instructions "$worktree/extension" --save-baseline=base "$@"
-        instructions . --baseline=base --callgrind-limits="ir=${BENCH_EXTENSION_IR_LIMIT:-2%}" "$@"
+        instructions . --baseline=base --callgrind-limits=ir=2% "$@"
     else
         echo "bench-compare: the base has no benchmarks; measuring this checkout only" >&2
         instructions . "$@"
@@ -113,12 +114,12 @@ bench-setup: bench-lint
         cargo install --locked --force gungraun-runner --version "$version" --root {{ quote(source_directory() / "target/gungraun-runner") }}
     fi
 
-# The instructions per replayed run (replay_runs runs_N minus runs_0, divided by N) at 1000 runs must stay within BENCH_EXTENSION_LINEAR_LIMIT (1.25) times those at 100 runs: a replay that turns superlinear fails even when the base was already slow. Skipped when a filter left out the replay benchmarks.
+# The instructions per replayed run (replay_runs runs_N minus runs_0, divided by N) at 1000 runs must stay within 1.25 times those at 100 runs: a replay that turns superlinear fails even when the base was already slow. Skipped when a filter left out the replay benchmarks.
 [private]
 [script('php')]
 bench-linearity:
     <?php
-    $limit = (float) (getenv('BENCH_EXTENSION_LINEAR_LIMIT') ?: '1.25');
+    $limit = 1.25;
     $ir = [];
     foreach ([0, 100, 1000] as $runs) {
         $file = getenv('GUNGRAUN_HOME') . "/restate-php-core/vm_instructions/vm/replay_runs.runs_{$runs}/summary.json";

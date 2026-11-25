@@ -44,6 +44,15 @@ final class RestateContainerTest extends TestCase
         self::assertStringContainsString('image: ${RESTATE_PHP_RESTATE_IMAGE:-' . RestateContainer::DEFAULT_IMAGE . '}', $compose);
     }
 
+    public function testTheQuickstartRunsTheDefaultImage(): void
+    {
+        $compose = (string) file_get_contents(dirname(__DIR__, 3) . '/examples/quickstart/compose.yaml');
+
+        preg_match_all('{^ *image: (docker\.restate\.dev/restatedev/restate:\S+)$}m', $compose, $images);
+        self::assertNotEmpty($images[1]);
+        self::assertSame([RestateContainer::DEFAULT_IMAGE], array_values(array_unique($images[1])));
+    }
+
     public function testTheImageVariableReplacesTheDefaultImage(): void
     {
         putenv('RESTATE_PHP_RESTATE_IMAGE=docker.restate.dev/restatedev/restate:1.7.14');

@@ -43,6 +43,7 @@ jobs:
   version:
     name: Version
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     outputs:
       version: ${{ steps.pick.outputs.version }}
       tag: ${{ steps.pick.outputs.tag }}
@@ -154,6 +155,7 @@ jobs:
     name: Attest
     needs: [version, extension]
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     permissions:
       contents: read
       id-token: write
@@ -211,6 +213,7 @@ jobs:
     # ci and upstream are skipped with skip-tests; anything failed or cancelled stops the release.
     if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     # Holds the GitHub App's key; give it required reviewers to approve each release.
     environment: release
     permissions:

@@ -107,7 +107,7 @@ function inFlight() {
   return row === null ? null : row.n;
 }
 
-function waitFor(seconds, what, ready) {
+function waitFor(seconds, ready) {
   const deadline = Date.now() + seconds * 1000;
   while (!ready()) {
     if (Date.now() > deadline) {
@@ -119,16 +119,16 @@ function waitFor(seconds, what, ready) {
 }
 
 function drain() {
-  if (!waitFor(300, 'drain', () => inFlight() === 0)) {
+  if (!waitFor(300, () => inFlight() === 0)) {
     console.warn(`${name}: invocations still in flight after 300 s`);
   }
 }
 
 export function setup() {
-  if (!waitFor(120, 'Restate', () => query('SELECT count(*) AS n FROM sys_invocation') !== null)) {
+  if (!waitFor(120, () => query('SELECT count(*) AS n FROM sys_invocation') !== null)) {
     throw new Error(`Restate is not ready at ${admin}.`);
   }
-  if (!waitFor(60, 'the endpoint', () => http.get(`${endpoint}/health`).status === 200)) {
+  if (!waitFor(60, () => http.get(`${endpoint}/health`).status === 200)) {
     throw new Error(`The endpoint is not ready at ${endpoint}.`);
   }
   // Forced: every run registers the same URI again.

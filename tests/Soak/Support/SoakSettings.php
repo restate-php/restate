@@ -11,17 +11,20 @@ use Restate\Tests\Support\Repository;
  *
  * - RESTATE_PHP_SOAK_QUICK=1                 a short local run: a few percent of the requests; the RSS slope is
  *                                            reported, not gated (too noisy that short).
- * - RESTATE_PHP_SOAK_RELEASE_IMAGE           worker image with the release diagnostics build (frankenphp-worker-release).
- * - RESTATE_PHP_SOAK_DEBUG_IMAGE             worker image with the debug diagnostics build (frankenphp-worker-debug).
+ * - RESTATE_PHP_SOAK_RELEASE_IMAGE           frankenphp-extension image with the release diagnostics build.
+ * - RESTATE_PHP_SOAK_DEBUG_IMAGE             frankenphp-extension image with the debug diagnostics build.
  * - RESTATE_PHP_SOAK_INVOCATIONS             invocations of the end-to-end soak through Restate (default 300,000;
  *                                            quick 3,000).
  * - RESTATE_PHP_SOAK_REPORT_DIR              where runs write their samples and summaries (default var/soak).
  */
 final class SoakSettings
 {
-    public const string DEFAULT_RELEASE_IMAGE = 'restate.local/restate-php-frankenphp:worker-release';
+    public const string DEFAULT_RELEASE_IMAGE = 'restate.local/restate-php-frankenphp:diagnostics-release';
 
-    public const string DEFAULT_DEBUG_IMAGE = 'restate.local/restate-php-frankenphp:worker-debug';
+    public const string DEFAULT_DEBUG_IMAGE = 'restate.local/restate-php-frankenphp:diagnostics-debug';
+
+    /** The soak endpoints' environment: Go returns freed memory at once, so the container's RSS follows the heaps. */
+    public const array ENDPOINT_ENVIRONMENT = ['GODEBUG' => 'madvdontneed=1'];
 
     private function __construct()
     {
