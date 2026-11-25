@@ -86,7 +86,7 @@ jobs:
           failed=0
           IFS=. read -r major minor _ <<< "$VERSION"
 
-          # restate/sdk requires the extension of its own minor version (composer check:packages
+          # restate/sdk requires the extension of its own minor version (just check-packages
           # checks the same against the crate version).
           constraint=$(jq -r '.require["ext-restate"]' packages/sdk/composer.json)
           if [ "$constraint" != "~$major.$minor.0" ]; then
@@ -264,7 +264,7 @@ jobs:
           fi
 
           # Each directory's history on its repository's main (fast-forward only, never forced)
-          # and the tag on it: bin/split.sh, which `composer release:split` runs locally too.
+          # and the tag on it: bin/split.sh, which `just split` runs locally too.
           remote="https://x-access-token:$GH_TOKEN@github.com/$OWNER/{repository}.git"
           splits=$(bash bin/split.sh list)
           read -r directory repository <<< "$(head -n 1 <<< "$splits")"

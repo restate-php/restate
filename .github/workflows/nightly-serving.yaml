@@ -29,15 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - server: php-cli
-            command: composer test:large-bodies
-          - server: nginx-fpm
-            command: just test fpm --group large-bodies
-          - server: nginx-fpm-h2c
-            command: just test fpm --group large-bodies
-          - server: caddy-fpm
-            command: just test fpm --group large-bodies
+        server: [php-cli, nginx-fpm, nginx-fpm-h2c, caddy-fpm]
 
     steps:
       - name: Checkout repository
@@ -56,13 +48,12 @@ jobs:
 
       # RESTATE_PHP_TEST_REPORT_MEMORY prints each large case's peak RSS into the log.
       - name: Run the large-bodies group
-        run: ${{ matrix.command }}
+        run: just test integration ${{ matrix.server }} --group large-bodies
         env:
-          RESTATE_PHP_TEST_SERVER: ${{ matrix.server }}
           RESTATE_PHP_TEST_REPORT_MEMORY: '1'
 
   serving-hazards:
-    name: composer test:serving-hazards
+    name: just test serving-hazards
     runs-on: ubuntu-24.04
     timeout-minutes: 60
 
@@ -85,7 +76,7 @@ jobs:
       # Builds the fpm-extension-apache image (php-fpm with nginx, Caddy and Apache) and runs the
       # serving-hazards group against it.
       - name: Test
-        run: composer test:serving-hazards
+        run: just test serving-hazards
 
   # upstream.yaml against php-fpm behind nginx. The action publishes the JUnit results as a check
   # run and looks for a pull request to comment on, which a scheduled or manual run on main never

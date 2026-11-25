@@ -27,9 +27,9 @@ use Restate\Testing\PhpCliServer;
  *                                      HTTP/1.1), `nginx-fpm-h2c` (the same, registered for HTTP/2: h2c) or
  *                                      `caddy-fpm` (php-fpm behind Caddy php_fastcgi, h2c).
  * - RESTATE_PHP_TEST_FRANKENPHP_IMAGE  FrankenPHP endpoint image; default {@see self::DEFAULT_FRANKENPHP_IMAGE}
- *                                      (built by just test frankenphp).
+ *                                      (built by just test integration frankenphp).
  * - RESTATE_PHP_TEST_FPM_IMAGE         PHP-FPM endpoint image; default {@see self::DEFAULT_FPM_IMAGE} (built by
- *                                      just test fpm).
+ *                                      just test integration nginx-fpm, nginx-fpm-h2c or caddy-fpm).
  *
  * With RESTATE_PHP_TEST_RESTATE=external, which devenv.nix's profiles export with the endpoint they serve:
  * - RESTATE_PHP_TEST_ENDPOINT_URL      the endpoint, as the tests reach it and Restate does.
@@ -167,7 +167,7 @@ final class IntegrationEndpoint
     {
         $endpoint = self::managed('runs the worker-mode endpoint with other worker threads');
         if (!self::isWorker() || !$endpoint instanceof EndpointContainer) {
-            throw new \RuntimeException('Worker threads are a setting of the worker-mode endpoint: run with RESTATE_PHP_TEST_SERVER=frankenphp-worker (just test frankenphp-worker).');
+            throw new \RuntimeException('Worker threads are a setting of the worker-mode endpoint: run with RESTATE_PHP_TEST_SERVER=frankenphp-worker (just test integration frankenphp-worker).');
         }
 
         return $endpoint->withEnvironment([self::WORKER_THREADS_VARIABLE => (string) $threads]);
@@ -204,7 +204,7 @@ final class IntegrationEndpoint
             throw new \RuntimeException(IntegrationRestate::needsManaged('starts a php-fpm endpoint of its own'));
         }
         $image ??= self::env('RESTATE_PHP_TEST_FPM_IMAGE') ?? self::DEFAULT_FPM_IMAGE;
-        self::preflight($image, 'just test fpm', 'RESTATE_PHP_TEST_FPM_IMAGE');
+        self::preflight($image, 'just test integration nginx-fpm', 'RESTATE_PHP_TEST_FPM_IMAGE');
 
         return self::container($image)
             ->withEnvironment(['RESTATE_PHP_FPM_FRONT' => $front, ...$settings]);
@@ -263,7 +263,7 @@ final class IntegrationEndpoint
      */
     private static function frankenPhp(string $image): EndpointContainer
     {
-        self::preflight($image, 'just test frankenphp', 'RESTATE_PHP_TEST_FRANKENPHP_IMAGE', threadSafe: true);
+        self::preflight($image, 'just test integration frankenphp', 'RESTATE_PHP_TEST_FRANKENPHP_IMAGE', threadSafe: true);
 
         return self::container($image);
     }

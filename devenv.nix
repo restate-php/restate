@@ -27,22 +27,20 @@ let
 
   # A profile that serves the integration suite's endpoint outside the test harness, with Restate
   # next to it (devenv-extras' services.restate): `devenv --profile <name> up` runs both, and
-  # `devenv --profile <name> test` runs the suite against them (composer test:integration:external,
-  # RESTATE_PHP_TEST_RESTATE=external). The shell exports what the suite connects to
+  # `devenv --profile <name> test` runs the suite against them (`RESTATE_PHP_TEST_RESTATE=external
+  # just test integration <server>`). The shell exports what the suite connects to
   # (tests/Integration/Support/IntegrationEndpoint.php). The tests that start, stop or configure
   # Restate or the endpoint themselves (#[Group('managed')]) run under the harness instead:
   # docs/decisions/0039-external-test-environments.md.
   #
   # server: the RESTATE_PHP_TEST_SERVER value of what serves the endpoint; process: its devenv
-  # process; url: where it listens; http2: whether Restate reaches it over h2c; tests: more test
-  # directories for enterTest.
+  # process; url: where it listens; http2: whether Restate reaches it over h2c.
   externalSuite =
     {
       server,
       process,
       url,
       http2 ? false,
-      tests ? [ ],
     }:
     { config, ... }:
     let
@@ -108,9 +106,7 @@ let
       };
 
       enterTest = ''
-        composer test:integration:external${
-          lib.optionalString (tests != [ ]) " -- ${lib.escapeShellArgs tests}"
-        }
+        RESTATE_PHP_TEST_RESTATE=external just test integration ${lib.escapeShellArg server}
       '';
     };
 
@@ -160,7 +156,6 @@ let
     {
       server,
       caddyfile,
-      tests ? [ ],
     }:
     { config, ... }:
     {
@@ -170,7 +165,7 @@ let
           caddyfile = "docker/frankenphp/${caddyfile}";
         })
         (externalSuite {
-          inherit server tests;
+          inherit server;
           process = "frankenphp";
           url = "http://127.0.0.1:${toString config.processes.frankenphp.ports.http.value}";
         })
@@ -266,10 +261,10 @@ in
       # ext-php-rs's C shim with it, failing on `stdlib.h`.
       libclang.lib
       config.languages.php.package.unwrapped.dev
-      # composer check:scripts
+      # just lint
       actionlint
       shellcheck
-      # k6 and jq for the load tests (composer load).
+      # k6 and jq for the load tests (just load run).
       k6
       jq
       # restate-server, for the integration suite with RESTATE_PHP_TEST_RESTATE=process (TESTING.md). Its version
@@ -277,7 +272,7 @@ in
       restate-bin
     ]
     # Benchmarks (TESTING.md, Performance): callgrind instruction counts for the PHP
-    # benchmarks' backstop and for gungraun (composer bench:extension). nixpkgs marks
+    # benchmarks' backstop and for gungraun (just extension bench). nixpkgs marks
     # valgrind broken on Darwin (it has no macOS/Apple Silicon support), so Linux only.
     ++ lib.optionals stdenv.isLinux [ pkgs.valgrind ];
 
@@ -296,12 +291,11 @@ in
       server = "frankenphp";
       caddyfile = "integration.Caddyfile";
     };
-    # FrankenPHP's worker mode: worker.php builds the endpoints once per worker. The worker suite's
-    # WorkerModeTest too (WorkerIsolationTest is managed).
+    # FrankenPHP's worker mode: worker.php builds the endpoints once per worker. The recipe adds
+    # the worker suite's WorkerModeTest (WorkerIsolationTest is managed).
     frankenphp-worker.module = frankenphpSuite {
       server = "frankenphp-worker";
       caddyfile = "worker.Caddyfile";
-      tests = [ "tests/Worker" ];
     };
     # The load tests: Restate and the load endpoint, without Docker (loadSuite above).
     load.module = loadSuite;

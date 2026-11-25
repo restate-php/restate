@@ -21,14 +21,14 @@
         <testsuite name="extension">
             <directory>tests/Extension</directory>
         </testsuite>
-        <!-- Real Restate server + real extension backend; run with `composer test:integration`. examples/testing is the
+        <!-- Real Restate server + real extension backend; run with `just test integration php-cli`. examples/testing is the
              public test harness used as a user would. -->
         <testsuite name="integration">
             <directory>tests/Integration</directory>
             <directory>examples/testing</directory>
         </testsuite>
         <!-- Only against the integration endpoint in FrankenPHP's worker mode, after the integration suite:
-             just test frankenphp-worker (RESTATE_PHP_TEST_SERVER=frankenphp-worker). -->
+             just test integration frankenphp-worker (RESTATE_PHP_TEST_SERVER=frankenphp-worker). -->
         <testsuite name="worker">
             <directory>tests/Worker</directory>
         </testsuite>
@@ -38,14 +38,14 @@
         </testsuite>
     </testsuites>
     <!-- Nightly only (.github/workflows/nightly-serving.yaml, nightly-failure.yaml); phpunit's group option runs one anyway. -->
-    <!-- The large scale parameterisations (tests/Integration/Scale) run on their own: `composer test:scale` (nightly). -->
+    <!-- The large scale parameterisations (tests/Integration/Scale) run on their own: the `scale` group of `just test integration php-cli` (nightly). -->
     <groups>
         <exclude>
             <group>large-bodies</group>
             <group>serving-hazards</group>
             <group>failure-nightly</group>
             <group>scale</group>
-            <!-- bin/split.sh on a throwaway monorepo: composer test:release (and composer check). -->
+            <!-- bin/split.sh on a throwaway monorepo: just test release (and just check). -->
             <group>release</group>
         </exclude>
     </groups>

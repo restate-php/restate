@@ -13,7 +13,7 @@ use Restate\Testing\PhpCliServer;
  * extension (in php.ini, RESTATE_PHP_EXTENSION_PATH, or PhpCliServer::withExtension()), and guzzlehttp/guzzle for the
  * default ingress client.
  *
- * The repository's integration suite runs this file (`composer test:integration`).
+ * The repository's integration suite runs this file (`just test integration php-cli`).
  */
 final class GreeterTest extends TestCase
 {

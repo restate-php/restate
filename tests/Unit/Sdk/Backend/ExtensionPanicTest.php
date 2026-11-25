@@ -11,7 +11,7 @@ use Restate\Tests\Support\ExtensionProcess;
 /**
  * The extension's panic guard, driven by the debug-only panic probe (`extension/extension/src/probe.rs`):
  * in a debug build the probe value panics when it is converted from a PHP array, or when it names a `sysRun()`.
- * The default test build (`composer build:extension`) is a debug build.
+ * The default test build (`just extension build`) is a debug build.
  */
 #[Group('extension')]
 final class ExtensionPanicTest extends TestCase

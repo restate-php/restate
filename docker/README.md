@@ -13,10 +13,10 @@ One file, so the targets share the stages that compile the extension inside each
 
 | Target | Serves | Built by |
 | --- | --- | --- |
-| `upstream-extension-caddy` | `test-services/index.php` under `php -S`, behind Caddy over h2c (the repository baked in) | `composer test:upstream`, `upstream.yaml` |
-| `upstream-fpm-nginx` | `test-services/index.php` under php-fpm behind nginx (the repository baked in) | `composer test:upstream -- upstream-fpm-nginx`, `nightly-serving.yaml` |
-| `frankenphp-extension` | the integration router, FrankenPHP classic mode (repository mounted at `/app`); the worker-mode and soak runs start it with `worker.Caddyfile`, and the load tests mount their own Caddyfile | `just test frankenphp`, `just test frankenphp-worker`; `just load run` (release build); `just test soak` (the `diagnostics` build, release and debug) |
-| `fpm-extension`, `fpm-extension-apache` | any router script under php-fpm behind nginx, Caddy or Apache | `just test fpm`, `just test serving-hazards` |
+| `upstream-extension-caddy` | `test-services/index.php` under `php -S`, behind Caddy over h2c (the repository baked in) | `just test upstream`, `upstream.yaml` |
+| `upstream-fpm-nginx` | `test-services/index.php` under php-fpm behind nginx (the repository baked in) | `just test upstream upstream-fpm-nginx`, `nightly-serving.yaml` |
+| `frankenphp-extension` | the integration router, FrankenPHP classic mode (repository mounted at `/app`); the worker-mode and soak runs start it with `worker.Caddyfile`, and the load tests mount their own Caddyfile | `just test integration frankenphp`, `just test integration frankenphp-worker`; `just load run` (release build); `just test soak` (the `diagnostics` build, release and debug) |
+| `fpm-extension`, `fpm-extension-apache` | any router script under php-fpm behind nginx, Caddy or Apache | `just test integration <fpm server>`, `just test serving-hazards` |
 | `quickstart-php-restate` | nothing: the PHP base of [`examples/quickstart`](../examples/quickstart/README.md) with the extension and packages from this checkout | `examples/quickstart/scripts/smoke-test.sh --local`, `quickstart.yaml` |
 
 ## Configuration

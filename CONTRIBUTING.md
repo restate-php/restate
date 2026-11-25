@@ -11,32 +11,32 @@ devenv shell
 composer install   # all packages at once, through the root restate/monorepo package (development only)
 ```
 
-Run everything inside the shell (`devenv shell`, or prefix a command with `devenv shell --`). The tasks are Composer scripts (`composer run --list`) and just recipes (`just --list`): the extension's build, PIE archives and benchmarks (`just extension <recipe>`, `extension/justfile`), the suites that build an image (`just test <recipe>`, `tests/justfile`) and the load tests (`just load <recipe>`, `tests/load/justfile`). Several Composer scripts call a recipe ([Just Recipes](docs/decisions/0041-just-recipes.md)).
+Run everything inside the shell (`devenv shell`, or prefix a command with `devenv shell --`). Every task is a just recipe (`just --list`): the repository-wide ones (`just check`, `just cs`, `just analyse`, `just lint`, `just serve`, `just bench`, …) in `justfile`, the extension's build, checks, PIE archives and benchmarks (`just extension <recipe>`, `extension/justfile`), the PHPUnit suites (`just test <recipe>`, `tests/justfile`) and the load tests (`just load <recipe>`, `tests/load/justfile`); see [Just for Every Task](docs/decisions/0043-just-for-every-task.md).
 
 ## Building the extension
 
 ```bash
-just extension build                     # debug build: extension/target/debug/restate.so
-just extension build --release           # release build: extension/target/release/restate.so
-just extension build --php-config /path/to/zts/bin/php-config   # for another PHP, e.g. a ZTS one for FrankenPHP
+just extension build                                           # debug build: extension/target/debug/restate.so
+just extension build --release                                 # release build: extension/target/release/restate.so
+just extension build --php-config /path/to/zts/bin/php-config  # for another PHP, e.g. a ZTS one for FrankenPHP
 ```
 
-`composer build:extension` runs the same recipe (the test scripts call it); `just --list extension` lists the module's other recipes.
+The test recipes call it first; `just --list extension` lists the module's other recipes.
 
 A module loads only into the PHP minor version and thread safety (NTS or ZTS) it was built for; `--php-config` builds into a target directory of its own per PHP (`extension/target/php8.4-zts/…`), so builds never overwrite each other. Outside the dev shell bindgen can fail with `'stdlib.h' file not found`: the shell sets the flags it needs.
 
 To serve every test service on port 9080 with the debug build loaded:
 
 ```bash
-composer serve   # builds it, then php -d extension=… -S 0.0.0.0:9080 serving test-services/index.php
+just serve  # builds it, then php -d extension=… -S 0.0.0.0:9080 serving test-services/index.php
 ```
 
 ## Checks and tests
 
 ```bash
-composer check             # before every commit: code style, static analysis, workflow and shell lint,
-                           # unit tests, the packages' composer.json files, cargo fmt/clippy/test
-composer test:integration  # builds the extension, then runs the integration suite against a real Restate server
+just check                     # before every commit: code style, static analysis, workflow and shell lint,
+                               # unit tests, the packages' composer.json files, cargo fmt/clippy/test
+just test integration php-cli  # builds the extension, then runs the integration suite against a real Restate server
 ```
 
 [TESTING.md](TESTING.md) describes every suite (unit, extension, integration, FrankenPHP, PHP-FPM, scale, soak, upstream), the benchmarks and load tests, and CI.

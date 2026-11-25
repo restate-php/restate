@@ -19,7 +19,7 @@ use Restate\Tests\Integration\Support\IntegrationTestCase;
  * record, tests/Integration/Services/scale.php, and Restate's journal events), a concurrent ingress driver, and the
  * measurement report.
  *
- * The large parameterisations are in the PHPUnit group `scale` (excluded by default, `composer test:scale`, nightly);
+ * The large parameterisations are in the PHPUnit group `scale` (excluded by default, `just test integration php-cli --group scale`, nightly);
  * a small variant of each runs with the rest of the integration suite.
  */
 abstract class ScaleTestCase extends IntegrationTestCase

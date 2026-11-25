@@ -32,9 +32,9 @@ Only the dev shell could build the extension with Nix. Nix users had no way to g
    - `outputs.pie`: the flake's `packages.pie`
    - `outputs.checks`: the flake's checks
 
-   The shell does not load the module. The tests load the cargo build (`composer build:extension`), and loading both would load two copies. A `git+file` input sees only what git tracks, as with any flake in a git repository. It ignores `extension/target/`, which a `path:` input would copy into the store. The catch: a new file under `extension/` must be `git add`ed before Nix sees it.
+   The shell does not load the module. The tests load the cargo build (`just extension build`), and loading both would load two copies. A `git+file` input sees only what git tracks, as with any flake in a git repository. It ignores `extension/target/`, which a `path:` input would copy into the store. The catch: a new file under `extension/` must be `git add`ed before Nix sees it.
 5. **One nixpkgs, ext-php-rs.nix's.** The flake's nixpkgs follows ext-php-rs.nix's (`nixpkgs.follows = "ext-php-rs/nixpkgs"`), as its template recommends. The dev shell follows the flake's (`nixpkgs` and `rust-overlay` in `devenv.yaml` are `follows: ext-restate/…`), so the shell's PHP, the Nix builds and the CI jobs use one package set. `extension/flake.lock` is the only pin of nixpkgs, rust-overlay and ext-php-rs.nix, and `devenv.lock` copies it. With nixpkgs that matches exactly, [ext-php-rs.cachix.org](https://ext-php-rs.cachix.org) has the expensive parts of the portable builds: the PHP headers configured for each target, and cargo-zigbuild. The dev shell pulls from it (`cachix.pull` in `devenv.nix`). Rejected: keeping the shell on `cachix/devenv-nixpkgs/rolling`. Every Nix build would then evaluate a second nixpkgs, `outputs.extension` would not be built against the shell's PHP, and the cache would miss.
-6. **Composer stays the task runner** (decision 2 of [Development Environment](0001-dev-environment.md)). `composer build:pie` runs `devenv build outputs.pie`. No devenv script or `enterTest` duplicates a Composer script.
+6. **Composer stays the task runner** (decision 2 of [Development Environment](0001-dev-environment.md)). `just extension pie` runs `devenv build outputs.pie`. No devenv script or `enterTest` duplicates a Composer script.
 
 ## Consequences
 

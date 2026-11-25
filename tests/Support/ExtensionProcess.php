@@ -12,7 +12,7 @@ use PHPUnit\Framework\Assert;
  * loaded into a running process.
  *
  * The extension comes from RESTATE_PHP_EXTENSION_PATH, default extension/target/debug/restate.so
- * (`composer build:extension`). A missing build fails the test; it does not skip it.
+ * (`just extension build`). A missing build fails the test; it does not skip it.
  */
 final class ExtensionProcess
 {
@@ -21,7 +21,7 @@ final class ExtensionProcess
         $path = getenv('RESTATE_PHP_EXTENSION_PATH');
         $path = is_string($path) && $path !== '' ? $path : Repository::ROOT . '/extension/target/debug/restate.so';
 
-        Assert::assertFileExists($path, 'Build the extension first: composer build:extension');
+        Assert::assertFileExists($path, 'Build the extension first: just extension build');
 
         return $path;
     }
