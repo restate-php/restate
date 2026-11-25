@@ -23,8 +23,7 @@ Done once.
 
 - [x] Immutable releases on the extension repository (optional; the release creates a draft, uploads, then publishes, so it works either way).
 - [x] Run the push split (`.github/workflows/split.yaml`, [Release](docs/decisions/0031-release.md) decision 9) once by hand (Actions → **Split**) and check that every repository's `main` has the split, with its `composer.json`.
-- [ ] Set the repository variable `SPLIT_ON_PUSH` to `true`, so every push to `main` runs the split. It uses the `release` environment, so that environment's required reviewers, if any, approve every push run too.
-- [ ] Recommended: required reviewers on the `release` environment. Without them the `publish` job starts as soon as the jobs before it pass, without an approval.
+- [ ] Recommended: required reviewers on the `release` environment. Without them the `publish` job starts as soon as the jobs before it pass, without an approval. The push split uses the same environment, so they approve every push and hourly split run too.
 - [x] Dependabot (`.github/dependabot.yaml`) keeps the workflows' commit-SHA action pins (and their version comments) current.
 
 ### Packagist
