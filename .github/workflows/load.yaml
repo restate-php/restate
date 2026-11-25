@@ -5,14 +5,12 @@
 # Needs a dedicated self-hosted runner with the label `restate-php-load`: shared GitHub runners
 # are too noisy for CPU-per-invocation numbers, and results only compare with earlier results
 # from the same machine. The runner needs Docker with compose on cgroup v2, Nix is installed by the
-# setup-devenv action, and nothing else may run on it during a job (turbo boost off and the
+# setup action, and nothing else may run on it during a job (turbo boost off and the
 # performance governor make the numbers steadier). A run fails only on its checks (a 401,
 # unexpected attempts, failed calls); its result files are kept as the job's artifact, for
 # comparing by hand.
 #
-# The workflow runs only by hand (workflow_dispatch; all scenarios take about 20 min). With the
-# commented-out schedule enabled, a scheduled run picks one scenario per night by day of year
-# (6 scenarios, so each one every 6 nights).
+# The workflow runs only by hand (workflow_dispatch; all scenarios take about 20 min).
 name: Load tests
 
 on:
@@ -22,8 +20,6 @@ on:
         description: 'Scenarios, space-separated (noop, state, runs, fanout, long-journal, overload); empty: all'
         required: false
         default: ''
-  # schedule:
-  #   - cron: '17 2 * * *'
 
 concurrency:
   group: load-${{ github.ref }}
@@ -39,7 +35,7 @@ defaults:
 
 jobs:
   load:
-    name: just load run ${{ github.event_name == 'schedule' && '(rotation)' || inputs.scenarios || '(all)' }}
+    name: just load run ${{ inputs.scenarios || '(all)' }}
     runs-on: [self-hosted, restate-php-load]
     timeout-minutes: 60
 
@@ -49,28 +45,19 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up devenv
-        uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+      - name: Set up the dev shell
+        uses: ./.github/actions/setup
         with:
-          cachix-cache: restate-php
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
-      - name: Set up Composer cache
-        uses: ./.github/actions/composer-cache
 
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
 
       - name: Run
         env:
-          EVENT: ${{ github.event_name }}
           SCENARIOS: ${{ inputs.scenarios }}
         run: |
           read -ra scenarios <<<"$SCENARIOS"
-          if [ "$EVENT" = schedule ]; then
-            all=(noop state runs fanout long-journal overload)
-            scenarios=("${all[$((10#$(date -u +%j) % ${#all[@]}))]}")
-          fi
           just load run --full "${scenarios[@]}"
 
       # The project outlives a cancelled run otherwise, on a runner that keeps its Docker state.

@@ -3,50 +3,111 @@
 # (just test frankenphp, just test fpm, just load run, just test soak).
 #
 # PHP_IMAGE is the NTS PHP the extension is built against and the upstream images run on;
-# FRANKENPHP_IMAGE is the thread-safe (ZTS) runtime for the frankenphp-extension target;
+# FRANKENPHP_IMAGE is the thread-safe (ZTS) runtime of the frankenphp-extension target;
 # PHP_FPM_IMAGE is the NTS php-fpm of the fpm-extension targets (trixie: its nginx, 1.26, serves
-# h2c and HTTP/1.1 on one port). Override any with --build-arg to build against another PHP minor.
-ARG PHP_IMAGE=docker.io/library/php:8.4-cli-bookworm
-ARG FRANKENPHP_IMAGE=docker.io/dunglas/frankenphp:1.13.5-php8.4-bookworm
-ARG PHP_FPM_IMAGE=docker.io/library/php:8.4-fpm-trixie
+# h2c and HTTP/1.1 on one port). Set any with --build-arg to build against another PHP minor;
+# unset or empty, each is the *-default stage below.
+#
+# EXTENSION_PROFILE (debug or release; default debug) and EXTENSION_FEATURES (cargo features)
+# choose the extension build of every target (docker/extension/build.sh).
+ARG PHP_IMAGE
+ARG FRANKENPHP_IMAGE
+ARG PHP_FPM_IMAGE
+
+# The default bases, as stages of their own so that Dependabot, which reads FROM lines only, keeps
+# them up to date.
+FROM docker.io/library/php:8.4-cli-bookworm AS php-default
+FROM docker.io/dunglas/frankenphp:1.13.5-php8.4-bookworm AS frankenphp-default
+FROM docker.io/library/php:8.4-fpm-trixie AS php-fpm-default
+
+FROM ${PHP_IMAGE:-php-default} AS php-base
+FROM ${FRANKENPHP_IMAGE:-frankenphp-default} AS frankenphp-base
+FROM ${PHP_FPM_IMAGE:-php-fpm-default} AS php-fpm-base
 
 FROM docker.io/library/composer:2 AS composer-bin
 
 FROM docker.io/library/caddy:2.11.9 AS caddy-bin
 
-FROM ${PHP_IMAGE} AS extension-bridge
-
-WORKDIR /app
+# rustup and the toolchain pinned in extension/rust-toolchain.toml (the dev shell uses the same
+# file), which the extension-bridge stages copy: its binaries run on any of the Debian bases.
+FROM docker.io/library/debian:bookworm-slim AS rust-toolchain
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential ca-certificates clang curl git libclang-dev pkg-config \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 
-# rustup installs the toolchain pinned in extension/rust-toolchain.toml (the dev shell uses the
-# same file), in a layer of its own so source changes do not reinstall it.
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
 ENV PATH="/root/.cargo/bin:${PATH}"
-COPY extension/rust-toolchain.toml extension/rust-toolchain.toml
-RUN cd extension && rustup toolchain install && rustc --version
+COPY extension/rust-toolchain.toml /app/extension/rust-toolchain.toml
+RUN cd /app/extension && rustup toolchain install && rustc --version
 
+# The extension built against the NTS PHP of PHP_IMAGE (docker/extension/build.sh), for the
+# upstream and quickstart images. extension-bridge-zts and extension-bridge-fpm below do the same
+# inside the FrankenPHP and php-fpm images: a module loads only into the PHP it was built against
+# (an NTS one does not load into a ZTS runtime).
+FROM php-base AS extension-bridge
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential ca-certificates clang libclang-dev pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=rust-toolchain /root/.rustup /root/.rustup
+COPY --from=rust-toolchain /root/.cargo /root/.cargo
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+WORKDIR /app
+COPY docker/extension/build.sh /usr/local/bin/build-extension
 # The whole Cargo workspace (extension/target is excluded by .dockerignore).
 COPY extension extension
 
-# Built with plain cargo (the dev shell's `just extension build` does the same plus bookkeeping
-# an image does not need): for the PHP whose php-config is on PATH, the image's. The module is
-# staged under /out at the path an install puts it, restate.so in this PHP's extension_dir, so
-# the image stages copy /out/ to / and enable it with `extension=restate`.
-RUN php-config --version \
-    && (cd extension && cargo build -p restate) \
-    && extension_dir=$(php -r 'echo ini_get("extension_dir");') \
-    && mkdir -p "/out$extension_dir" \
-    && cp extension/target/debug/librestate.so "/out$extension_dir/restate.so"
+ARG EXTENSION_PROFILE
+ARG EXTENSION_FEATURES
+RUN --mount=type=cache,id=restate-cargo-registry,target=/root/.cargo/registry \
+    --mount=type=cache,id=restate-extension-target,target=/cache/target,sharing=locked \
+    build-extension
+
+FROM frankenphp-base AS extension-bridge-zts
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential ca-certificates clang libclang-dev pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=rust-toolchain /root/.rustup /root/.rustup
+COPY --from=rust-toolchain /root/.cargo /root/.cargo
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+WORKDIR /app
+COPY docker/extension/build.sh /usr/local/bin/build-extension
+COPY extension extension
+
+ARG EXTENSION_PROFILE
+ARG EXTENSION_FEATURES
+RUN --mount=type=cache,id=restate-cargo-registry,target=/root/.cargo/registry \
+    --mount=type=cache,id=restate-extension-target,target=/cache/target,sharing=locked \
+    build-extension
+
+FROM php-fpm-base AS extension-bridge-fpm
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential ca-certificates clang libclang-dev pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=rust-toolchain /root/.rustup /root/.rustup
+COPY --from=rust-toolchain /root/.cargo /root/.cargo
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+WORKDIR /app
+COPY docker/extension/build.sh /usr/local/bin/build-extension
+COPY extension extension
+
+ARG EXTENSION_PROFILE
+ARG EXTENSION_FEATURES
+RUN --mount=type=cache,id=restate-cargo-registry,target=/root/.cargo/registry \
+    --mount=type=cache,id=restate-extension-target,target=/cache/target,sharing=locked \
+    build-extension
 
 # The PHP base of the Docker quickstart when it runs against this checkout instead of the released
 # extension and packages (examples/quickstart/compose.local.yaml): PHP_IMAGE with the extension built
 # from source, and a global Composer configuration that installs restate/* from packages/ at the
 # extension's version, so the quickstart's own Dockerfile and composer.json work unchanged.
-FROM ${PHP_IMAGE} AS quickstart-php-restate
+FROM php-base AS quickstart-php-restate
 
 COPY --from=extension-bridge /out/ /
 COPY packages /opt/restate/packages
@@ -61,121 +122,40 @@ RUN echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
         "$version" "$version" "$version" "$version" > "$COMPOSER_HOME/config.json" \
     && rm /tmp/restate-extension-Cargo.toml
 
-FROM ${PHP_IMAGE} AS upstream-base
-
-WORKDIR /app
-COPY . /app
+FROM php-base AS upstream-base
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git unzip \
     && rm -rf /var/lib/apt/lists/*
-
 COPY --from=composer-bin /usr/bin/composer /usr/bin/composer
 
+WORKDIR /app
+COPY . /app
 RUN composer install --no-interaction
 
+# test-services/index.php under php -S, behind Caddy over h2c (docker/caddy/).
 FROM upstream-base AS upstream-extension-caddy
 
 COPY --from=caddy-bin /usr/bin/caddy /usr/bin/caddy
 COPY --from=extension-bridge /out/ /
-COPY docker/caddy/Caddyfile docker/caddy/Caddyfile
-COPY docker/caddy/entrypoint.sh /usr/local/bin/upstream-extension-caddy-entrypoint.sh
-RUN chmod +x /usr/local/bin/upstream-extension-caddy-entrypoint.sh \
-    && echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
-    && php -r 'if (!extension_loaded("restate")) { fwrite(STDERR, "Restate PHP extension did not load\n"); exit(1); } require "/app/vendor/autoload.php"; new Restate\Internal\Backend\Extension\Backend();'
+RUN echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
+    && php -r 'require "/app/vendor/autoload.php"; new Restate\Internal\Backend\Extension\Backend();'
 
-CMD ["/usr/local/bin/upstream-extension-caddy-entrypoint.sh"]
+CMD ["/app/docker/caddy/entrypoint.sh"]
 
-# The Rust toolchain and the extension's sources inside the FrankenPHP image, for the builds
-# against its thread-safe (ZTS) PHP below: an NTS module does not load into a ZTS runtime, so
-# FrankenPHP needs builds of its own.
-FROM ${FRANKENPHP_IMAGE} AS zts-toolchain
-
-WORKDIR /app
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential ca-certificates clang curl libclang-dev pkg-config \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
-ENV PATH="/root/.cargo/bin:${PATH}"
-COPY extension/rust-toolchain.toml extension/rust-toolchain.toml
-RUN cd extension && rustup toolchain install && rustc --version
-
-COPY extension extension
-
-# The ZTS extension, built and staged under /out like the NTS module above.
-FROM zts-toolchain AS extension-bridge-zts
-
-RUN php -r 'exit(PHP_ZTS ? 0 : 1);' \
-    && (cd extension && cargo build -p restate) \
-    && extension_dir=$(php -r 'echo ini_get("extension_dir");') \
-    && mkdir -p "/out$extension_dir" \
-    && cp extension/target/debug/librestate.so "/out$extension_dir/restate.so"
-
-# FrankenPHP endpoint for the integration suite (RESTATE_PHP_TEST_SERVER=frankenphp, see
-# just test frankenphp). Only the ZTS extension and the Caddyfile are baked in: the harness
-# mounts the repository at /app, so the endpoint always runs the working-tree PHP code.
-FROM ${FRANKENPHP_IMAGE} AS frankenphp-extension
+# FrankenPHP with the ZTS extension, serving the repository the harness mounts at /app (the
+# working-tree PHP code) with the integration suite's Caddyfile (RESTATE_PHP_TEST_SERVER=frankenphp,
+# just test frankenphp). The worker-mode and soak runs start it with worker.Caddyfile from the
+# repository instead; the load tests (tests/load/compose.yaml, EXTENSION_PROFILE=release) mount
+# their own over this one. The soak images are this target with EXTENSION_FEATURES=diagnostics.
+FROM frankenphp-base AS frankenphp-extension
 
 COPY --from=extension-bridge-zts /out/ /
 COPY docker/frankenphp/integration.Caddyfile /etc/frankenphp/Caddyfile
-
 RUN echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
-    && php -r 'if (!PHP_ZTS || !extension_loaded("restate")) { fwrite(STDERR, "ZTS Restate extension did not load\n"); exit(1); }'
+    && php --ri restate > /dev/null
 
 CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]
-
-# The ZTS extension as a release build: the load tests' endpoint (just load run), and the soak
-# images' base. Its own stage, so building this target never compiles the debug module.
-FROM zts-toolchain AS extension-bridge-zts-release
-
-RUN php -r 'exit(PHP_ZTS ? 0 : 1);' \
-    && (cd extension && cargo build -p restate --release) \
-    && extension_dir=$(php -r 'echo ini_get("extension_dir");') \
-    && mkdir -p "/out$extension_dir" \
-    && cp extension/target/release/librestate.so "/out$extension_dir/restate.so"
-
-# FrankenPHP with the release ZTS extension: the load-test endpoint. It bakes in no PHP code and no
-# configuration: tests/load/compose.yaml mounts the repository at /app, and tests/load/Caddyfile
-# and php.ini over the image's Caddyfile and into its PHP configuration (classic mode, OPcache on,
-# JIT off). Another endpoint image (FrankenPHP worker mode, php-fpm behind nginx) plugs in with
-# `LOAD_ENDPOINT_IMAGE=<tag> LOAD_SKIP_BUILD=1 just load run` when it serves
-# tests/load/endpoint.php on port 8080 with the repository at /app.
-FROM ${FRANKENPHP_IMAGE} AS frankenphp-extension-release
-
-COPY --from=extension-bridge-zts-release /out/ /
-
-RUN echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
-    && php -r 'if (!PHP_ZTS || !extension_loaded("restate") || !function_exists("opcache_get_status")) { fwrite(STDERR, "ZTS Restate extension or OPcache did not load\n"); exit(1); }'
-
-CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]
-
-# The extension built against the NTS PHP inside the php-fpm image, as the stages above do for
-# theirs. --build-arg EXTENSION_PROFILE=release builds the release module (production-like runs);
-# debug, the default, keeps the debug assertions the integration suite runs with.
-FROM ${PHP_FPM_IMAGE} AS extension-bridge-fpm
-
-ARG EXTENSION_PROFILE=debug
-
-WORKDIR /app
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential ca-certificates clang curl libclang-dev pkg-config \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
-ENV PATH="/root/.cargo/bin:${PATH}"
-COPY extension/rust-toolchain.toml extension/rust-toolchain.toml
-RUN cd extension && rustup toolchain install && rustc --version
-
-COPY extension extension
-
-RUN case "$EXTENSION_PROFILE" in debug) profile=dev ;; release) profile=release ;; *) echo "EXTENSION_PROFILE must be debug or release" >&2; exit 1 ;; esac \
-    && (cd extension && cargo build -p restate --profile "$profile") \
-    && extension_dir=$(php -r 'echo ini_get("extension_dir");') \
-    && mkdir -p "/out$extension_dir" \
-    && cp "extension/target/$EXTENSION_PROFILE/librestate.so" "/out$extension_dir/restate.so"
 
 # PHP-FPM endpoint for the integration suite (RESTATE_PHP_TEST_SERVER=nginx-fpm, nginx-fpm-h2c,
 # caddy-fpm; see just test fpm): php-fpm behind nginx or Caddy php_fastcgi, chosen when the
@@ -183,7 +163,7 @@ RUN case "$EXTENSION_PROFILE" in debug) profile=dev ;; release) profile=release 
 # docker/fpm/php.ini on top (display_errors Off, enable_post_data_reading 0, OPcache on).
 # Like the FrankenPHP image it bakes in only the extension and the configuration: the harness
 # mounts the repository at /app.
-FROM ${PHP_FPM_IMAGE} AS fpm-extension
+FROM php-fpm-base AS fpm-extension
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gettext-base nginx \
@@ -196,10 +176,8 @@ COPY docker/fpm/php.ini /usr/local/etc/php/conf.d/zz-restate.ini
 COPY docker/fpm/entrypoint.sh /usr/local/bin/fpm-entrypoint.sh
 
 RUN cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini \
-    && chmod +x /usr/local/bin/fpm-entrypoint.sh \
     && php-fpm -m | grep -qx restate \
     && php-fpm -i | grep -q '^opcache.enable => On' \
-    && php -r 'if (!extension_loaded("restate") || PHP_ZTS) { fwrite(STDERR, "NTS Restate extension did not load\n"); exit(1); }' \
     && nginx -v && caddy version
 
 EXPOSE 8080
@@ -219,15 +197,13 @@ RUN apt-get update \
 # E2E_REQUEST_SIGNING, which the suite's ProxyRequestSigning case sets.
 FROM fpm-extension AS upstream-fpm-nginx
 
-WORKDIR /app
-COPY . /app
-
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git unzip \
     && rm -rf /var/lib/apt/lists/*
-
 COPY --from=composer-bin /usr/bin/composer /usr/bin/composer
 
+WORKDIR /app
+COPY . /app
 RUN composer install --no-interaction \
     && php -r 'require "/app/vendor/autoload.php"; new Restate\Internal\Backend\Extension\Backend();'
 
@@ -236,50 +212,3 @@ ENV RESTATE_PHP_FPM_FRONT=nginx-h2c \
     RESTATE_PHP_FPM_SCRIPT=/app/test-services/index.php
 
 EXPOSE 9080
-
-# The thread-safe extension with the `diagnostics` cargo feature (Restate\Extension\diagnostics():
-# live objects and a counting allocator) for the soak suite (tests/Soak, just test soak), each on
-# top of a ZTS build stage above, so only the extension crate is compiled again. Release for the
-# resource soaks, debug for the panic and bailout probes (which release builds compile out).
-FROM extension-bridge-zts-release AS extension-bridge-zts-release-diagnostics
-
-RUN (cd extension && cargo build -p restate --release --features diagnostics) \
-    && extension_dir=$(php -r 'echo ini_get("extension_dir");') \
-    && mkdir -p "/out-diagnostics$extension_dir" \
-    && cp extension/target/release/librestate.so "/out-diagnostics$extension_dir/restate.so"
-
-FROM extension-bridge-zts AS extension-bridge-zts-debug-diagnostics
-
-RUN (cd extension && cargo build -p restate --features diagnostics) \
-    && extension_dir=$(php -r 'echo ini_get("extension_dir");') \
-    && mkdir -p "/out-diagnostics$extension_dir" \
-    && cp extension/target/debug/librestate.so "/out-diagnostics$extension_dir/restate.so"
-
-# FrankenPHP worker mode for the soak suite: the integration endpoint's worker script
-# (tests/Integration/Support/worker.php, from the repository mounted at /app, as for
-# frankenphp-extension) under docker/frankenphp/worker.Caddyfile on port 8080, with the
-# diagnostics build. It serves the integration services and the /__worker probe, not the load
-# router, so it is no drop-in for the load tests' LOAD_ENDPOINT_IMAGE. GODEBUG=madvdontneed=1 makes Go return
-# freed memory at once, so RSS follows the heaps.
-FROM ${FRANKENPHP_IMAGE} AS frankenphp-worker-release
-
-COPY --from=extension-bridge-zts-release-diagnostics /out-diagnostics/ /
-COPY docker/frankenphp/worker.Caddyfile /etc/frankenphp/Caddyfile
-ENV GODEBUG=madvdontneed=1
-
-RUN echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
-    && php -r 'if (!PHP_ZTS || !function_exists("Restate\\Extension\\diagnostics")) { fwrite(STDERR, "ZTS Restate extension with diagnostics did not load\n"); exit(1); }'
-
-CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]
-
-# The same with the debug diagnostics build: the panic and bailout probes work.
-FROM ${FRANKENPHP_IMAGE} AS frankenphp-worker-debug
-
-COPY --from=extension-bridge-zts-debug-diagnostics /out-diagnostics/ /
-COPY docker/frankenphp/worker.Caddyfile /etc/frankenphp/Caddyfile
-ENV GODEBUG=madvdontneed=1
-
-RUN echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
-    && php -r 'if (!PHP_ZTS || !function_exists("Restate\\Extension\\diagnostics")) { fwrite(STDERR, "ZTS Restate extension with diagnostics did not load\n"); exit(1); }'
-
-CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]

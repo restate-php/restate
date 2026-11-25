@@ -222,7 +222,7 @@ let
       enterTest = ''
         status=0
         for name in $(jq -r 'to_entries[] | select(.value.overload | not) | .key' tests/load/scenarios.json); do
-          k6 run --quiet --no-usage-report -e LOAD_SCENARIO="$name" tests/load/k6.js 2>/dev/null || status=1
+          k6 run --quiet --no-usage-report -e LOAD_SCENARIO="$name" tests/load/k6.js || status=1
         done
         exit $status
       '';

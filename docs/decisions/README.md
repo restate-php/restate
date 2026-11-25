@@ -67,3 +67,4 @@ Why the SDK works the way it does: one record per decision, with its context, th
 | [0031](0031-release.md) | Release |
 | [0037](0037-extension-flake.md) | Extension Flake |
 | [0041](0041-just-recipes.md) | Just Recipes |
+| [0042](0042-image-builds-and-ci-caches.md) | Image Builds and CI Caches |

@@ -5,10 +5,11 @@
 #   k6 run -e LOAD_SCENARIO=noop tests/load/k6.js
 #   docker compose -f tests/load/compose.yaml down -v
 #
-# `just load run [<scenario>...]` (justfile next to this file) does the same for the scenarios named,
-# or all of them, with the endpoint limits a scenario asks for. The signing key is a fixed test key (request-identity.pem and .pub next to
-# this file): Restate and the endpoint only ever run here, on loopback ports. devenv's load
-# profile runs the same two without Docker (TESTING.md, Load tests).
+# `just load run [<scenario>...]` (justfile next to this file) does the same for the scenarios
+# named, or all of them, with the endpoint limits a scenario asks for. The signing key is a fixed
+# test key (request-identity.pem and .pub next to this file): Restate and the endpoint only ever
+# run here, on loopback ports. devenv's load profile runs the same two without Docker (TESTING.md,
+# Load tests).
 name: restate-php-load
 
 services:
@@ -29,19 +30,21 @@ services:
       - 127.0.0.1:${LOAD_ADMIN_PORT:-19070}:9070
     cpuset: ${LOAD_CPUSET_RESTATE:-}
 
-  # FrankenPHP with the release ZTS extension (the Dockerfile's frankenphp-extension-release
-  # target), in classic mode with OPcache on (Caddyfile and php.ini next to this file), serving
-  # endpoint.php from the repository. Restate reaches it as http://endpoint:8080, k6 its
-  # /load-stats on the host port. Changing either file needs a restart, not a rebuild.
+  # FrankenPHP with the release ZTS extension (the Dockerfile's frankenphp-extension target,
+  # EXTENSION_PROFILE=release), in classic mode with OPcache on (Caddyfile and php.ini next to
+  # this file), serving endpoint.php from the repository. Restate reaches it as
+  # http://endpoint:8080, k6 its /load-stats on the host port. Changing either file needs a
+  # restart, not a rebuild.
   endpoint:
     image: ${LOAD_ENDPOINT_IMAGE:-restate.local/restate-php-frankenphp:extension-zts-release}
     build:
       context: ../..
       dockerfile: docker/Dockerfile
-      target: frankenphp-extension-release
+      target: frankenphp-extension
       args:
-        # The FrankenPHP base image when set: the build recipe passes RESTATE_PHP_FRANKENPHP_BASE_IMAGE.
-        - FRANKENPHP_IMAGE
+        EXTENSION_PROFILE: release
+        # The FrankenPHP base image; empty: the Dockerfile's.
+        FRANKENPHP_IMAGE: ${RESTATE_PHP_TEST_FRANKENPHP_BASE_IMAGE:-}
     environment:
       # FrankenPHP's PHP threads; 0: its default, twice the CPUs it sees.
       LOAD_NUM_THREADS: ${LOAD_NUM_THREADS:-0}

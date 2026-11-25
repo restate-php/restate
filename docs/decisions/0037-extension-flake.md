@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Decisions 5 and 6 are amended by [Just Recipes](0041-just-recipes.md): the PIE archives are `just extension pie` (`nix build ./extension#pie`), and the dev shell no longer pulls ext-php-rs.cachix.org.
+Accepted. Decisions 4, 5 and 6 are amended by [Just Recipes](0041-just-recipes.md): the PIE archives are `just extension pie` (`nix build ./extension#pie`), so the dev shell no longer has `outputs.pie`, and it no longer pulls ext-php-rs.cachix.org.
 
 ## Context
 

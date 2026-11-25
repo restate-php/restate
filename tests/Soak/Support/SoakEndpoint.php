@@ -9,11 +9,11 @@ use Restate\Tests\Integration\Support\WorkerProbe;
 use Restate\Tests\Support\Repository;
 
 /**
- * A FrankenPHP worker-mode endpoint for a soak run, without Restate: one of the soak images (`frankenphp-worker-release`
- * or `frankenphp-worker-debug`, built by just test soak) serving the integration endpoint's worker script from the
- * repository mounted at /app, on a free 127.0.0.1 port. The driver sends it protocol bodies straight away
- * ({@see \Restate\Tests\Support\Workload\ConcurrentHttpDriver}) and reads its state from `/__worker`
- * ({@see WorkerProbe}). Stopped and removed when the process exits.
+ * A FrankenPHP worker-mode endpoint for a soak run, without Restate: one of the soak images (the
+ * frankenphp-extension image with the diagnostics build, release or debug; built by just test soak) serving the
+ * integration endpoint's worker script from the repository mounted at /app, on a free 127.0.0.1 port. The driver
+ * sends it protocol bodies straight away ({@see \Restate\Tests\Support\Workload\ConcurrentHttpDriver}) and reads its
+ * state from `/__worker` ({@see WorkerProbe}). Stopped and removed when the process exits.
  *
  * @phpstan-import-type WorkerStats from WorkerProbe
  */
@@ -48,12 +48,13 @@ final class SoakEndpoint
         $name = 'restate-php-soak-' . bin2hex(random_bytes(4));
         $command = [$runtime, 'run', '--detach', '--name', $name, '--label', self::LABEL, '--publish', '127.0.0.1::8080',
             '--volume', Repository::ROOT . ':/app:ro', '--volume', "{$stateDir}:{$stateDir}"];
-        $environment = ['RESTATE_PHP_TEST_STATE_DIR' => $stateDir, 'RESTATE_PHP_TEST_WORKER_NUM' => (string) $threads] + $environment;
+        $environment = ['RESTATE_PHP_TEST_STATE_DIR' => $stateDir, 'RESTATE_PHP_TEST_WORKER_NUM' => (string) $threads]
+            + $environment + SoakSettings::ENDPOINT_ENVIRONMENT;
         foreach ($environment as $variable => $value) {
             $command[] = '--env';
             $command[] = "{$variable}={$value}";
         }
-        // The repository's worker.Caddyfile rather than the copy baked into the image: changing it needs no rebuild.
+        // Worker mode, with the repository's worker.Caddyfile: changing it needs no rebuild.
         [$exitCode, $stdout, $stderr] = Process::run([...$command, ...$runArguments, $image, 'frankenphp', 'run', '--config', '/app/docker/frankenphp/worker.Caddyfile']);
         if ($exitCode !== 0) {
             throw new \RuntimeException("Could not start {$image} (build it with just test soak): " . trim($stdout . $stderr));

@@ -13,7 +13,6 @@
 #                                               Default 610, above Restate's default abort timeout.
 #   RESTATE_PHP_FPM_REQUEST_TERMINATE_TIMEOUT   php-fpm request_terminate_timeout. Default 0 (none).
 #   RESTATE_PHP_FPM_CLEAR_ENV                   php-fpm clear_env. Default no, as in the official images.
-#   RESTATE_PHP_FPM_MAX_CHILDREN                php-fpm workers (pm = static). Default 8.
 #   RESTATE_PHP_FPM_PROCESS_CONTROL_TIMEOUT     php-fpm process_control_timeout: how long a graceful reload or
 #                                               stop waits for requests in flight. Default 0 (php-fpm's: none).
 set -euo pipefail
@@ -25,7 +24,6 @@ export RESTATE_PHP_FPM_SCRIPT=${RESTATE_PHP_FPM_SCRIPT:-/app/tests/Integration/S
 export RESTATE_PHP_FPM_READ_TIMEOUT=${RESTATE_PHP_FPM_READ_TIMEOUT:-610}
 export RESTATE_PHP_FPM_REQUEST_TERMINATE_TIMEOUT=${RESTATE_PHP_FPM_REQUEST_TERMINATE_TIMEOUT:-0}
 export RESTATE_PHP_FPM_CLEAR_ENV=${RESTATE_PHP_FPM_CLEAR_ENV:-no}
-export RESTATE_PHP_FPM_MAX_CHILDREN=${RESTATE_PHP_FPM_MAX_CHILDREN:-8}
 export RESTATE_PHP_FPM_PROCESS_CONTROL_TIMEOUT=${RESTATE_PHP_FPM_PROCESS_CONTROL_TIMEOUT:-0}
 RESTATE_PHP_FPM_ROOT=$(dirname "$RESTATE_PHP_FPM_SCRIPT")
 RESTATE_PHP_FPM_SCRIPT_NAME=$(basename "$RESTATE_PHP_FPM_SCRIPT")
@@ -38,7 +36,7 @@ mkdir -p "$CONFIG"
 # Only these variables are substituted: nginx's own $variables stay as they are.
 # shellcheck disable=SC2016 # envsubst's list of variable names, not an expansion
 render() {
-  envsubst '${RESTATE_PHP_FPM_PORT} ${RESTATE_PHP_FPM_SCRIPT} ${RESTATE_PHP_FPM_ROOT} ${RESTATE_PHP_FPM_SCRIPT_NAME} ${RESTATE_PHP_FPM_READ_TIMEOUT} ${RESTATE_PHP_FPM_REQUEST_TERMINATE_TIMEOUT} ${RESTATE_PHP_FPM_CLEAR_ENV} ${RESTATE_PHP_FPM_MAX_CHILDREN} ${RESTATE_PHP_FPM_PROCESS_CONTROL_TIMEOUT} ${RESTATE_PHP_FPM_HTTP2} ${RESTATE_PHP_FPM_APACHE_SENDCL} ${RESTATE_PHP_FPM_APACHE_TIMEOUT}' < "$TEMPLATES/$1" > "$2"
+  envsubst '${RESTATE_PHP_FPM_PORT} ${RESTATE_PHP_FPM_SCRIPT} ${RESTATE_PHP_FPM_ROOT} ${RESTATE_PHP_FPM_SCRIPT_NAME} ${RESTATE_PHP_FPM_READ_TIMEOUT} ${RESTATE_PHP_FPM_REQUEST_TERMINATE_TIMEOUT} ${RESTATE_PHP_FPM_CLEAR_ENV} ${RESTATE_PHP_FPM_PROCESS_CONTROL_TIMEOUT} ${RESTATE_PHP_FPM_HTTP2} ${RESTATE_PHP_FPM_APACHE_SENDCL} ${RESTATE_PHP_FPM_APACHE_TIMEOUT}' < "$TEMPLATES/$1" > "$2"
 }
 
 case "$RESTATE_PHP_FPM_PROFILE" in

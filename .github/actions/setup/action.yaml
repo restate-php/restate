@@ -1,0 +1,56 @@
+name: Set up the dev shell
+description: >-
+  devenv with restate-php.cachix.org, Composer's download cache, and optionally the Cargo cache of
+  extension/. Composer's cache directory reaches the dev shell through `COMPOSER_CACHE_DIR`, so
+  `devenv shell -- composer install` uses it. The Cargo cache (Swatinem/rust-cache) is saved on
+  main only: pull requests restore main's instead of filling the repository's cache quota with
+  their own.
+
+inputs:
+  cachix-auth-token:
+    description: Pushes the Nix builds to restate-php.cachix.org
+    required: false
+  build-shell:
+    description: Build the default dev shell; false when the job's steps run another one
+    default: 'true'
+  cargo-cache:
+    description: >-
+      The Cargo cache's key, shared by the jobs that build extension/ alike (the same PHP and
+      profile); empty: no Cargo cache
+    default: ''
+  shell:
+    description: The command prefix of the job's dev shell, for the Cargo cache's cargo and rustc
+    default: devenv shell --
+
+runs:
+  using: composite
+
+  steps:
+    - name: Set up devenv
+      uses: sagikazarmark/setup-devenv@c36f9e57ca50ee1a6dad1a05a1a684e321f8096a # v0.3.0
+      with:
+        cachix-cache: restate-php
+        cachix-auth-token: ${{ inputs.cachix-auth-token }}
+        build-shell: ${{ inputs.build-shell }}
+
+    # Pin Composer's cache to the path cached below, whatever the runner image sets.
+    - name: Set the Composer cache directory
+      shell: bash
+      run: echo "COMPOSER_CACHE_DIR=$HOME/.cache/composer" >> "$GITHUB_ENV"
+
+    - name: Restore the Composer cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/composer
+        key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+        restore-keys: composer-${{ runner.os }}-
+
+    # The toolchain is the dev shell's, so rust-cache runs cargo and rustc in it.
+    - name: Restore the Cargo cache
+      if: inputs.cargo-cache != ''
+      uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      with:
+        workspaces: extension -> target
+        shared-key: ${{ inputs.cargo-cache }}
+        cmd-format: ${{ inputs.shell }} {0}
+        save-if: ${{ github.ref == 'refs/heads/main' }}

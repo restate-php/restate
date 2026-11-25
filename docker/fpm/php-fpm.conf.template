@@ -16,7 +16,7 @@ listen = 127.0.0.1:9000
 ; A fixed pool, as PHP_CLI_SERVER_WORKERS=8 for php -S: a handler that calls another one of the same endpoint waits
 ; for it.
 pm = static
-pm.max_children = ${RESTATE_PHP_FPM_MAX_CHILDREN}
+pm.max_children = 8
 
 ; The official images set no; php-fpm's own default is yes (docs/serving.md, "PHP-FPM and FastCGI").
 clear_env = ${RESTATE_PHP_FPM_CLEAR_ENV}
