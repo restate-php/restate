@@ -38,7 +38,7 @@ A release should be one run, started by hand in CI, that does everything else, a
    - **A release of a commit that later pushes passed.** A release takes as long as its slowest test job, and anything merged meanwhile gets split and pushed. `publish --version` therefore leaves a `main` that contains the release's split alone and tags the split. It cannot tell such a `main` from commits pushed by hand on top of the split; the push workflow can, since it splits the tip of `main`: without `--version`, a `main` that contains the split and more stops the run (and a `main` that does not contain it stops both). The hourly run catches such a commit even when the directory has not changed since.
    - **Races.** The workflow does not share `release.yaml`'s concurrency group, which would let a push cancel a pending release; its own runs go one at a time, a newer pending run replacing an older one. When a push of `main` fails, `bin/split.sh` fetches `main` again and goes on if it now contains the split (the other workflow pushed a later one); otherwise it stops.
    - **The App's key: the `release` environment, for now.** One environment holds the key and its variables. Required reviewers on it would hold every push run for approval too; a second environment (`split`, deployment branches limited to `main`, no reviewers) would let the push runs go unattended while releases keep their approval, at the cost of the key in two places. The job only checks out, lists the repositories and runs `bin/split.sh`, with actions pinned by commit.
-   - **Off until the repository variable `SPLIT_ON_PUSH` is `true`**, set once the repositories and the App exist ([RELEASING.md](../../RELEASING.md)); a manual run works either way.
+   - **On since the first split** (2026-11-25). Until the repositories and the App existed, the repository variable `SPLIT_ON_PUSH` held the push and hourly runs back; it no longer gates anything.
    - **Costs:** about a minute per run, growing with the history (decision 5's fallback applies). Between a new minor version's version commit and its release, `dev-main` of `restate/sdk` requires an extension (`~X.Y.0`) that has no release yet, so it installs only with the extension built from source.
 
 ## Releasing
@@ -64,7 +64,7 @@ The checklist is [RELEASING.md](../../RELEASING.md): what to set up once before 
 ## Consequences
 
 - Releasing is one manual run after a version commit; nothing is published from a developer's machine.
-- With `SPLIT_ON_PUSH` on, the repositories' `main` follows this repository's `main`, and `dev-main` of every package is installable; a release then mostly tags.
+- The repositories' `main` follows this repository's `main`, and `dev-main` of every package is installable; a release then mostly tags.
 - Every release publishes 24 extension archives, also when only PHP code changed, and every new minor version of `restate/sdk` needs the same new minor of the extension.
 - The release takes as long as its slowest test job (the integration and FrankenPHP suites, the upstream suite) plus the arm64 and musl builds.
 - Adding a package means a line in `SPLITS` in `bin/split.sh`, a repository, the App's installation on it and a Packagist entry.

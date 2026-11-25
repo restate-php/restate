@@ -4,8 +4,7 @@
 # repository's main (fast-forward only, never forced) and tags nothing. Releases tag through
 # release.yaml, which tags the split of its own commit even when this workflow has pushed a later one.
 #
-# Off until the repository variable SPLIT_ON_PUSH is `true` (RELEASING.md); manual runs work either
-# way. A run fails when a repository's main has commits the split of main's tip does not: someone
+# A run fails when a repository's main has commits the split of main's tip does not: someone
 # pushed to it by hand, and it needs repairing by hand.
 name: Split
 
@@ -36,7 +35,6 @@ concurrency:
 jobs:
   split:
     name: Split
-    if: github.event_name == 'workflow_dispatch' || vars.SPLIT_ON_PUSH == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     # The release's environment, which holds the GitHub App's key; required reviewers on it hold
