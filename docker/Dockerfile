@@ -17,7 +17,7 @@ ARG PHP_FPM_IMAGE
 # The default bases, as stages of their own so that Dependabot, which reads FROM lines only, keeps
 # them up to date.
 FROM docker.io/library/php:8.4-cli-bookworm AS php-default
-FROM docker.io/dunglas/frankenphp:1.13.5-php8.4-bookworm AS frankenphp-default
+FROM docker.io/dunglas/frankenphp:1.14.0-php8.4-bookworm AS frankenphp-default
 FROM docker.io/library/php:8.4-fpm-trixie AS php-fpm-default
 
 FROM ${PHP_IMAGE:-php-default} AS php-base
