@@ -30,7 +30,7 @@ In CI, fifteen copies of a ten-line `actions/cache` step cached `extension/targe
 ## Consequences
 
 - A cold image build takes as long as before: the cache mounts speed up repeated local builds, and CI runners start without them.
-- The integration, load and soak images are tags of one target; `just test frankenphp`, `just load run` and `just test soak` each choose their build arguments.
+- The integration, load and soak images are tags of one target; `just test integration frankenphp`, `just load run` and `just test soak` each choose their build arguments.
 - A pull request that changes `Cargo.lock` builds its dependencies from scratch until `main` has saved a cache for the new lock.
 - The extension benchmarks install the gungraun runner in each run, since rust-cache's cleanup removes it from `extension/target/`.
 - Dependabot now proposes base image updates, which run the whole CI.

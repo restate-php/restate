@@ -8,12 +8,12 @@ The official SDKs are tested with one shared suite: `sdk-tests.jar` from [`resta
 
 The PHP SDK runs release **v2.3**, the one the official SDKs run, with its 322 test cases and no exclusions (`test-services/exclusions.yaml` is empty): every case passes. The test services are the PHP implementations of the suite's contracts ([test-services/README.md](../../test-services/README.md)).
 
-- **Locally:** `composer test:upstream` ([TESTING.md](../../TESTING.md#upstream-sdk-test-suite) has the options, requirements and artifacts). The jar is pinned by SHA-256, the Restate image is `RestateContainer::DEFAULT_IMAGE` (1.8.1), and the service image is built from the checkout.
+- **Locally:** `just test upstream` ([TESTING.md](../../TESTING.md#upstream-sdk-test-suite) has the options, requirements and artifacts). The jar is pinned by SHA-256, the Restate image is `RestateContainer::DEFAULT_IMAGE` (1.8.1), and the service image is built from the checkout.
 - **In CI:** `.github/workflows/upstream.yaml` runs the suite with Restate's own [`restatedev/e2e/sdk-tests@v2.3`](https://github.com/restatedev/e2e/blob/main/sdk-tests/action.yml) action, the way the official SDKs do, against the `upstream-extension-caddy` image (Caddy h2c in front of `php -S`), and `nightly-serving.yaml` against `upstream-fpm-nginx` (php-fpm behind nginx). The workflow fails when its Restate image differs from `RestateContainer::DEFAULT_IMAGE`. Unlike the local run, the action downloads the jar by release tag without a checksum ([TESTING.md](../../TESTING.md#ci)).
 
-The suite needs Restate 1.8's admin API, so it has no 1.7 run; `composer test:integration:restate-1.7` is the 1.7 check.
+The suite needs Restate 1.8's admin API, so it has no 1.7 run; the integration suite with `RESTATE_PHP_RESTATE_IMAGE=docker.restate.dev/restatedev/restate:1.7.14` is the 1.7 check.
 
-The repository's own integration suite (`composer test:integration`, [TESTING.md](../../TESTING.md#integration-tests)) covers what the upstream suite does not: the PHP API surface, serving under `php -S`, FrankenPHP and php-fpm, failure injection, and the packages around the SDK. [Status](../status.md#what-works) maps each feature to its tests in both suites.
+The repository's own integration suite (`just test integration php-cli`, [TESTING.md](../../TESTING.md#integration-tests)) covers what the upstream suite does not: the PHP API surface, serving under `php -S`, FrankenPHP and php-fpm, failure injection, and the packages around the SDK. [Status](../status.md#what-works) maps each feature to its tests in both suites.
 
 ## Official Conformance
 

@@ -13,7 +13,7 @@ use Restate\Tests\Support\Repository;
  * published directories, pushing to local bare repositories (`file://`) instead of GitHub: what a release run, a
  * re-run, the next release, a push to main (no version: main only), a release of a commit that later pushes passed,
  * and a run that must stop do to the split repositories. In the `release` group, which
- * `composer test` leaves out (each split takes a few hundred milliseconds): `composer test:release`, and `composer check`.
+ * `just test unit` leaves out (each split takes a few hundred milliseconds): `just test release`, and `just check`.
  */
 #[Group('release')]
 final class SplitScriptTest extends TestCase

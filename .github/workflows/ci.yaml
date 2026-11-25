@@ -1,5 +1,5 @@
 # The local suites (TESTING.md), run the way a developer runs them: in the devenv dev shell,
-# through the Composer scripts. A job here passes exactly when its command passes locally.
+# through the just recipes. A job here passes exactly when its command passes locally.
 name: CI
 
 on:
@@ -31,7 +31,7 @@ defaults:
 
 jobs:
   check:
-    name: composer check (PHP ${{ matrix.php }})
+    name: just check (PHP ${{ matrix.php }})
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -64,18 +64,22 @@ jobs:
         run: composer install --no-interaction --no-progress
 
       - name: Check
-        run: composer check
+        run: just check
 
   integration:
-    name: composer ${{ matrix.script }}
+    name: just test integration php-cli (Restate ${{ matrix.restate }})
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        # Restate 1.8.1 is the default (Restate\Testing\RestateContainer::DEFAULT_IMAGE);
-        # 1.7.14 is the best-effort older server (protocol v6).
-        script: ['test:integration', 'test:integration:restate-1.7']
+        # The default is Restate\Testing\RestateContainer::DEFAULT_IMAGE (an empty
+        # RESTATE_PHP_RESTATE_IMAGE); 1.7.14 is the best-effort older server (protocol v6).
+        include:
+          - restate: default
+            image: ''
+          - restate: '1.7.14'
+            image: docker.restate.dev/restatedev/restate:1.7.14
 
     steps:
       - name: Checkout repository
@@ -95,13 +99,15 @@ jobs:
       # The harness starts Restate with the runner's Docker and serves the endpoint on the
       # host; Restate's and the endpoint's log tails are in the output of a failed test.
       - name: Test
-        run: composer ${{ matrix.script }}
+        run: just test integration php-cli
+        env:
+          RESTATE_PHP_RESTATE_IMAGE: ${{ matrix.image }}
 
   # The integration suite on macOS, whose GitHub runners have no Docker: Restate as a process of
   # the harness (RESTATE_PHP_TEST_RESTATE=process, restate-server from the dev shell), the endpoint
   # under php -S, both on loopback (docs/decisions/0038-native-restate-for-the-test-harness.md).
   integration-macos:
-    name: composer test:integration:process (macOS)
+    name: RESTATE_PHP_TEST_RESTATE=process just test integration php-cli (macOS)
     runs-on: macos-15
     timeout-minutes: 45
 
@@ -130,10 +136,10 @@ jobs:
         run: composer install --no-interaction --no-progress
 
       - name: Test
-        run: composer test:integration:process
+        run: RESTATE_PHP_TEST_RESTATE=process just test integration php-cli
 
   frankenphp:
-    name: composer test:frankenphp (PHP ${{ matrix.php }} ZTS)
+    name: just test integration frankenphp (PHP ${{ matrix.php }} ZTS)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -168,12 +174,12 @@ jobs:
       # Builds the frankenphp-extension image (the extension compiled against FrankenPHP's
       # thread-safe PHP) and runs the integration suite against it.
       - name: Test
-        run: composer test:frankenphp
+        run: just test integration frankenphp
         env:
           RESTATE_PHP_TEST_FRANKENPHP_BASE_IMAGE: ${{ matrix.base-image }}
 
   frankenphp-worker:
-    name: composer test:frankenphp-worker (PHP 8.4 ZTS)
+    name: just test integration frankenphp-worker (PHP 8.4 ZTS)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
 
@@ -195,10 +201,10 @@ jobs:
       # The frankenphp-extension image in worker mode (worker.Caddyfile, the endpoints built once
       # per worker): the integration suite, then the worker suite (tests/Worker).
       - name: Test
-        run: composer test:frankenphp-worker
+        run: just test integration frankenphp-worker
 
   fpm:
-    name: composer test:fpm (${{ matrix.server }})
+    name: just test integration ${{ matrix.server }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -226,12 +232,10 @@ jobs:
       # Builds the fpm-extension image (the extension compiled inside the official php-fpm image)
       # and runs the integration suite against php-fpm behind this matrix entry's front door.
       - name: Test
-        run: composer test:fpm
-        env:
-          RESTATE_PHP_TEST_SERVER: ${{ matrix.server }}
+        run: just test integration ${{ matrix.server }}
 
   # The integration suite against an endpoint and a Restate that devenv runs, the harness only
-  # connecting to them (composer test:integration:external): a devenv.nix profile serves the
+  # connecting to them (RESTATE_PHP_TEST_RESTATE=external just test integration <server>): a devenv.nix profile serves the
   # endpoint with FrankenPHP built from the matrix PHP, with Restate next to it, on Linux and on
   # macOS, without Docker (docs/decisions/0039-external-test-environments.md). The tests that
   # start, stop or configure their environment (group `managed`) run in the jobs above.

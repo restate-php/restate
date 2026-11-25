@@ -23,7 +23,7 @@ defaults:
 
 jobs:
   scale:
-    name: composer test:scale
+    name: just test integration php-cli --group scale
     runs-on: ubuntu-24.04
     timeout-minutes: 150
 
@@ -43,7 +43,7 @@ jobs:
         run: composer install --no-interaction --no-progress
 
       - name: Test
-        run: composer test:scale
+        run: just test integration php-cli --group scale
         env:
           RESTATE_PHP_TEST_SCALE_REPORT: ${{ github.workspace }}/var/scale-report.jsonl
 
@@ -78,7 +78,7 @@ jobs:
 
       # Builds the frankenphp-extension image, then runs the contention cases against it.
       - name: Test
-        run: just test frankenphp --group scale --filter ContentionTest
+        run: just test integration frankenphp --group scale --filter ContentionTest
         env:
           RESTATE_PHP_TEST_SCALE_REPORT: ${{ github.workspace }}/var/scale-report.jsonl
 

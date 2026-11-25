@@ -10,7 +10,7 @@ Nothing measured the SDK's time, memory or capacity. The hot path spans PHP (rou
 
 ## Decision
 
-1. **Three layers.** phpbench for PHP, against the release extension with OPcache on and JIT off. gungraun (instruction counts) plus criterion (wall clock) for the Rust core, behind a `bench` feature with `required-features`, so `composer check:extension` never builds them. k6 load tests against Restate on a dedicated runner only. The first two run on pull requests; load numbers from shared runners would not be comparable.
+1. **Three layers.** phpbench for PHP, against the release extension with OPcache on and JIT off. gungraun (instruction counts) plus criterion (wall clock) for the Rust core, behind a `bench` feature with `required-features`, so `just extension check` never builds them. k6 load tests against Restate on a dedicated runner only. The first two run on pull requests; load numbers from shared runners would not be comparable.
 2. **Each side runs its own benchmarks.** `bin/bench-compare.sh` checks the base out in a worktree, runs the base's own benchmark files on the base and head's on head, and compares only the variants with the same `Class::subject#set` name in both. A pull request that changes the API, or adds, renames or removes a benchmark, never breaks the comparison; the unmatched names are listed. Running head's files against base code would break exactly on refactoring PRs.
 3. **Stable entry points.** The endpoint benchmarks send the workload library's wire-level request bodies through `Endpoint::handleHttpRequest()`. The Rust benchmarks feed protocol frames to the core's `Vm`. Both survive internal churn.
 4. **Noise control.** Base and head run in one job on one machine, in the order base, head, head, base. A time regression must exceed the threshold in both pairs, with every run under an rstdev limit; anything noisier is reported, not failed.
@@ -24,7 +24,7 @@ Nothing measured the SDK's time, memory or capacity. The hot path spans PHP (rou
 - A PR job costs about 5 min for PHP (four phpbench runs of about 45 s, callgrind about 30 s, plus the base's `composer install`, and a base extension build when `extension/` changed) and about 6-8 min for Rust.
 - `criterion` and `gungraun` are dev-dependencies of the core, so `cargo test` builds them although it never builds the benches.
 - Benchmarks rot silently unless something compiles them. phpbench files are under `tests/`, so PHPStan and php-cs-fixer check them. The Rust benches are linted with the feature on by `just extension bench`.
-- The load tests need a self-hosted runner labelled `restate-php-load`. Until one exists they run by hand (`composer load`).
+- The load tests need a self-hosted runner labelled `restate-php-load`. Until one exists they run by hand (`just load run`).
 - The reference measurements show costs worth following:
   - shared-core's all-of-N await tree is O(N²) in instructions;
   - 100 eager state keys cost about 5 µs each;

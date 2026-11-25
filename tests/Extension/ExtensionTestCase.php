@@ -39,7 +39,7 @@ abstract class ExtensionTestCase extends TestCase
     {
         self::assertTrue(
             Backend::isLoaded(),
-            'The extension suite needs the Restate extension loaded: run it with `php -d extension=<path> vendor/bin/phpunit --testsuite extension`, or through the unit suite (`composer test`).',
+            'The extension suite needs the Restate extension loaded: run it with `php -d extension=<path> vendor/bin/phpunit --testsuite extension`, or through the unit suite (`just test unit`).',
         );
     }
 

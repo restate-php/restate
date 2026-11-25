@@ -8,67 +8,109 @@ set working-directory := '..'
 # RESTATE_PHP_TEST_EXTENSION_PROFILE (debug, the default, or release) chooses the extension build
 # of the fpm and frankenphp images; RESTATE_PHP_TEST_FRANKENPHP_BASE_IMAGE and
 # RESTATE_PHP_TEST_FPM_BASE_IMAGE replace the Dockerfile's FrankenPHP and php-fpm bases.
-frankenphp_image := env('RESTATE_PHP_TEST_FRANKENPHP_IMAGE', 'restate.local/restate-php-frankenphp:extension-zts')
 
-# RESTATE_PHP_TEST_SERVER lists the servers, space-separated: nginx-fpm (HTTP/1.1), nginx-fpm-h2c,
-# caddy-fpm (both h2c); all three by default. The container mounts the repository, so PHP
-# changes need no rebuild; Rust changes (extension/) and changes under docker/fpm/ do.
-# RESTATE_PHP_TEST_FPM_IMAGE (the tag), RESTATE_PHP_TEST_FPM_TARGET (fpm-extension;
-# serving-hazards builds fpm-extension-apache).
-[doc("Integration suite on PHP-FPM behind nginx and Caddy (fpm-extension image), once per server; arguments go to phpunit")]
+# The unit suite's `extension` group runs the extension (tests/Extension) in child processes.
+[doc("Build the extension, then run the unit suite; arguments go to phpunit")]
+[positional-arguments]
+unit *phpunit: host-extension
+    vendor/bin/phpunit --testsuite unit "$@"
+
+# bin/split.sh on a throwaway monorepo pushing to local bare repositories: a release, a re-run,
+# the next release, a push to main, a release of a commit later pushes passed, and the runs that
+# must stop (tests/Unit/Release). The unit suite leaves the group out; `just check` runs it.
+[doc("The release group: bin/split.sh against local bare repositories; arguments go to phpunit")]
+[positional-arguments]
+release *phpunit:
+    vendor/bin/phpunit --testsuite unit --group release "$@"
+
+# The server is one of RESTATE_PHP_TEST_SERVER's values:
+# - php-cli: php -S on the host with the host's extension build;
+# - frankenphp: FrankenPHP classic mode, the router script per request (frankenphp-extension image,
+#   the ZTS extension);
+# - frankenphp-worker: FrankenPHP worker mode (docker/frankenphp/worker.Caddyfile, with
+#   tests/Integration/Support/worker.php building the endpoints once per worker), same image; the
+#   worker suite (tests/Worker) runs after the integration suite;
+# - nginx-fpm (HTTP/1.1), nginx-fpm-h2c, caddy-fpm (both h2c): php-fpm behind that front door
+#   (fpm-extension image).
+# The containers mount the repository, so PHP changes need no rebuild; Rust changes (extension/)
+# and changes under docker/ do. RESTATE_PHP_TEST_FRANKENPHP_IMAGE and RESTATE_PHP_TEST_FPM_IMAGE
+# (the tags), RESTATE_PHP_TEST_FPM_TARGET (fpm-extension; serving-hazards builds
+# fpm-extension-apache).
+#
+# RESTATE_PHP_TEST_RESTATE chooses Restate: container (the default; RESTATE_PHP_RESTATE_IMAGE),
+# process (restate-server from the dev shell: no container runtime needed, macOS included) or
+# external (a Restate and an endpoint that run outside the harness, which only connects to them:
+# those of a devenv.nix profile, `devenv --profile frankenphp test`, or `devenv --profile
+# frankenphp up` and this recipe in its shell). With process and external, examples/testing is
+# left out: it shows a user the default, a container. With external, nothing is built, and the
+# tests that start, stop or configure Restate or the endpoint themselves (group `managed`) are left
+# out with the groups phpunit.xml.dist excludes (a command-line --exclude-group replaces that list).
+[doc("Integration suite on one server: php-cli, frankenphp, frankenphp-worker, nginx-fpm, nginx-fpm-h2c or caddy-fpm; arguments after the server go to phpunit")]
 [positional-arguments]
 [script('bash')]
-fpm *phpunit: host-extension
+integration server *phpunit:
     set -euo pipefail
-    image=${RESTATE_PHP_TEST_FPM_IMAGE:-restate.local/restate-php-fpm:extension}
-    read -r -a servers <<<"${RESTATE_PHP_TEST_SERVER:-nginx-fpm nginx-fpm-h2c caddy-fpm}"
-    for server in "${servers[@]}"; do
-        case $server in
-            nginx-fpm | nginx-fpm-h2c | caddy-fpm) ;;
-            *) echo "RESTATE_PHP_TEST_SERVER must list nginx-fpm, nginx-fpm-h2c or caddy-fpm, got '$server'" >&2 && exit 64 ;;
-        esac
-    done
-    if [ "${RESTATE_PHP_TEST_SKIP_BUILD:-0}" != 1 ]; then
-        docker build --build-arg "PHP_FPM_IMAGE=${RESTATE_PHP_TEST_FPM_BASE_IMAGE:-}" \
-            --build-arg "EXTENSION_PROFILE=${RESTATE_PHP_TEST_EXTENSION_PROFILE:-}" \
-            --target "${RESTATE_PHP_TEST_FPM_TARGET:-fpm-extension}" -f docker/Dockerfile -t "$image" .
+    shift
+    server={{ quote(server) }}
+    restate=${RESTATE_PHP_TEST_RESTATE:-container}
+    build=1
+    if [ "${RESTATE_PHP_TEST_SKIP_BUILD:-0}" = 1 ]; then build=0; fi
+    case $server in
+        php-cli | frankenphp | frankenphp-worker | nginx-fpm | nginx-fpm-h2c | caddy-fpm) ;;
+        *) echo "integration: the server is php-cli, frankenphp, frankenphp-worker, nginx-fpm, nginx-fpm-h2c or caddy-fpm, not '$server'" >&2 && exit 64 ;;
+    esac
+    case $restate in
+        container)
+            tests=(--testsuite integration)
+            if [ "$server" = frankenphp-worker ]; then tests=(--testsuite integration,worker); fi
+            ;;
+        process | external)
+            tests=(tests/Integration)
+            if [ "$server" = frankenphp-worker ]; then tests+=(tests/Worker); fi
+            ;;
+        *) echo "integration: RESTATE_PHP_TEST_RESTATE is container, process or external, not '$restate'" >&2 && exit 64 ;;
+    esac
+    if [ "$restate" = external ]; then
+        build=0
+        for group in managed large-bodies serving-hazards failure-nightly scale release; do
+            tests+=(--exclude-group "$group")
+        done
+    else
+        # The host's extension (debug), which the suite's own php -S endpoints load next to the image's.
+        {{ quote(just_executable()) }} --justfile {{ quote(justfile()) }} extension build >/dev/null
     fi
-    status=0
-    for server in "${servers[@]}"; do
-        echo "== integration suite on $server ($image)" >&2
-        RESTATE_PHP_TEST_SERVER=$server RESTATE_PHP_TEST_FPM_IMAGE=$image \
-            vendor/bin/phpunit --testsuite integration "$@" || status=$?
-    done
-    exit "$status"
+    case $server in
+        frankenphp | frankenphp-worker)
+            image=${RESTATE_PHP_TEST_FRANKENPHP_IMAGE:-restate.local/restate-php-frankenphp:extension-zts}
+            export RESTATE_PHP_TEST_FRANKENPHP_IMAGE=$image
+            if [ "$build" = 1 ]; then
+                docker build --build-arg "FRANKENPHP_IMAGE=${RESTATE_PHP_TEST_FRANKENPHP_BASE_IMAGE:-}" \
+                    --build-arg "EXTENSION_PROFILE=${RESTATE_PHP_TEST_EXTENSION_PROFILE:-}" \
+                    --target frankenphp-extension -f docker/Dockerfile -t "$image" .
+            fi
+            ;;
+        nginx-fpm | nginx-fpm-h2c | caddy-fpm)
+            image=${RESTATE_PHP_TEST_FPM_IMAGE:-restate.local/restate-php-fpm:extension}
+            export RESTATE_PHP_TEST_FPM_IMAGE=$image
+            if [ "$build" = 1 ]; then
+                docker build --build-arg "PHP_FPM_IMAGE=${RESTATE_PHP_TEST_FPM_BASE_IMAGE:-}" \
+                    --build-arg "EXTENSION_PROFILE=${RESTATE_PHP_TEST_EXTENSION_PROFILE:-}" \
+                    --target "${RESTATE_PHP_TEST_FPM_TARGET:-fpm-extension}" -f docker/Dockerfile -t "$image" .
+            fi
+            ;;
+    esac
+    RESTATE_PHP_TEST_SERVER=$server exec vendor/bin/phpunit "${tests[@]}" "$@"
 
 # The group starts nginx, Caddy and Apache front doors of its own, so it builds the
 # fpm-extension-apache image (fpm-extension with Apache added) as RESTATE_PHP_TEST_FPM_IMAGE and
 # runs once, on nginx-fpm.
-# It waits out real timeouts. Settings as for `fpm`.
+# It waits out real timeouts. Settings as for `integration`.
 [doc("The serving-hazards group (front doors' body limits and timeouts, clear_env) on PHP-FPM behind nginx, Caddy and Apache; arguments go to phpunit")]
 [positional-arguments]
 serving-hazards *phpunit:
-    RESTATE_PHP_TEST_SERVER=nginx-fpm RESTATE_PHP_TEST_FPM_TARGET=fpm-extension-apache \
+    RESTATE_PHP_TEST_FPM_TARGET=fpm-extension-apache \
         RESTATE_PHP_TEST_FPM_IMAGE=restate.local/restate-php-fpm:extension-apache \
-        {{ quote(just_executable()) }} --justfile {{ quote(justfile()) }} test fpm --group serving-hazards "$@"
-
-# The router script runs per request (RESTATE_PHP_TEST_SERVER=frankenphp). The container mounts
-# the repository, so PHP changes need no rebuild; Rust changes (extension/) do.
-# RESTATE_PHP_TEST_FRANKENPHP_IMAGE (the tag).
-[doc("Integration suite on FrankenPHP classic mode (frankenphp-extension image, the ZTS extension); arguments go to phpunit")]
-[positional-arguments]
-frankenphp *phpunit: host-extension frankenphp-image
-    RESTATE_PHP_TEST_SERVER=frankenphp RESTATE_PHP_TEST_FRANKENPHP_IMAGE={{ quote(frankenphp_image) }} \
-        vendor/bin/phpunit --testsuite integration "$@"
-
-# docker/frankenphp/worker.Caddyfile, with tests/Integration/Support/worker.php building the
-# endpoints once per worker (RESTATE_PHP_TEST_SERVER=frankenphp-worker); the worker suite
-# (tests/Worker) runs after the integration suite. Settings as for `frankenphp`.
-[doc("Integration and worker suites on FrankenPHP worker mode (frankenphp-extension image); arguments go to phpunit")]
-[positional-arguments]
-frankenphp-worker *phpunit: host-extension frankenphp-image
-    RESTATE_PHP_TEST_SERVER=frankenphp-worker RESTATE_PHP_TEST_FRANKENPHP_IMAGE={{ quote(frankenphp_image) }} \
-        vendor/bin/phpunit --testsuite integration,worker "$@"
+        {{ quote(just_executable()) }} --justfile {{ quote(justfile()) }} integration nginx-fpm --group serving-hazards "$@"
 
 # nightly: frames, concurrency and bailout (the default); frames: FrameReplaySoakTest, about a
 # million requests; concurrency: ConcurrencySoakTest, many PHP threads in one process; bailout:
@@ -106,16 +148,15 @@ soak quick='0' suite='nightly' *phpunit:
     RESTATE_PHP_SOAK_QUICK={{ quick }} RESTATE_PHP_SOAK_RELEASE_IMAGE=$release RESTATE_PHP_SOAK_DEBUG_IMAGE=$debug \
         exec vendor/bin/phpunit --testsuite soak --filter "$filter" "$@"
 
-# The frankenphp-extension image (the ZTS extension compiled inside the FrankenPHP image)
-[private]
-frankenphp-image:
-    [ "${RESTATE_PHP_TEST_SKIP_BUILD:-0}" = 1 ] || docker build \
-        --build-arg "FRANKENPHP_IMAGE=${RESTATE_PHP_TEST_FRANKENPHP_BASE_IMAGE:-}" \
-        --build-arg "EXTENSION_PROFILE=${RESTATE_PHP_TEST_EXTENSION_PROFILE:-}" \
-        --target frankenphp-extension -f docker/Dockerfile -t {{ quote(frankenphp_image) }} .
+# Java 25 from the dev shell; arguments: [target] [basic|full], see bin/conformance-upstream-local.sh.
+[doc("Build a test-services image and run the upstream Restate SDK test suite against it; arguments go to bin/conformance-upstream-local.sh")]
+[positional-arguments]
+upstream *args:
+    bash bin/conformance-upstream-local.sh "$@"
 
-# The host's extension build (debug), which the integration suite's own endpoints load next to
-# the image's: php -S for examples/testing and the tests that start an endpoint of their own.
+# The host's extension build (debug), which the unit suite's extension group loads in child
+# processes and the integration suite's own endpoints next to the image's: php -S for
+# examples/testing and the tests that start an endpoint of their own.
 [private]
 host-extension:
     {{ quote(just_executable()) }} --justfile {{ quote(justfile()) }} extension build >/dev/null

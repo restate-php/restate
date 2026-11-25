@@ -47,9 +47,15 @@ pie dir='':
         echo "$dir/$asset"
     done <"$result/SHA256SUMS"
 
+[doc("cargo fmt --check, clippy -D warnings and cargo test for every crate in the workspace (needs the dev shell for the extension build)")]
+check:
+    cargo fmt --all --check
+    cargo clippy --workspace --all-targets -- -D warnings
+    cargo test --workspace
+
 # The Rust core's benchmarks (core/benches/, behind the crate's `bench` feature; TESTING.md,
 # Performance). Each one first lints the benches (clippy -D warnings with the feature on), since
-# `composer check:extension` never compiles them. Their arguments go to gungraun's or criterion's
+# `just extension check` never compiles them. Their arguments go to gungraun's or criterion's
 # runner, e.g. '*::replay_runs::*' to filter by module path, or --save-baseline=mine.
 #
 # The gungraun runner, at exactly the version of the library that Cargo.lock pins (installed by

@@ -11,7 +11,7 @@ use Restate\Tests\Integration\Support\WorkerProbe;
 
 /**
  * Base class of the `worker` suite: tests that only mean something against the integration endpoint in FrankenPHP's
- * worker mode (RESTATE_PHP_TEST_SERVER=frankenphp-worker, `just test frankenphp-worker`). They fail, never skip,
+ * worker mode (RESTATE_PHP_TEST_SERVER=frankenphp-worker, `just test integration frankenphp-worker`). They fail, never skip,
  * under any other server.
  *
  * @phpstan-import-type WorkerStats from WorkerProbe
@@ -21,7 +21,7 @@ abstract class WorkerTestCase extends IntegrationTestCase
     #[\Override]
     public static function setUpBeforeClass(): void
     {
-        self::assertTrue(IntegrationEndpoint::isWorker(), 'The worker suite needs the worker-mode endpoint: run it with just test frankenphp-worker (RESTATE_PHP_TEST_SERVER=frankenphp-worker).');
+        self::assertTrue(IntegrationEndpoint::isWorker(), 'The worker suite needs the worker-mode endpoint: run it with just test integration frankenphp-worker (RESTATE_PHP_TEST_SERVER=frankenphp-worker).');
     }
 
     /**

@@ -17,7 +17,7 @@ Done once.
 
 - [x] `LICENSE` at the root and in `extension/` and each of `packages/*` (the release refuses to run without them).
 - [x] `README.md` in `extension/` and each of `packages/*`: what the package is, how to install it, a link back here. Packagist and the split repositories show it.
-- [x] Composer metadata Packagist shows: `homepage`, `support` (issues, source), `authors` and `keywords` in each `composer.json` (`composer check:packages` must still pass).
+- [x] Composer metadata Packagist shows: `homepage`, `support` (issues, source), `authors` and `keywords` in each `composer.json` (`just check-packages` must still pass).
 
 ### GitHub
 
@@ -41,12 +41,12 @@ Done once.
 - [ ] Check upstream: the Restate server versions the tests run against (`RestateContainer::DEFAULT_IMAGE`, `.github/workflows/upstream.yaml`), `restate-sdk-shared-core`, the PHP minors in the build matrix. Updating them is a change of its own, before the release commit.
 - [ ] On a branch, one commit "Release X.Y.Z":
   - [ ] `version = "X.Y.Z"` in `extension/extension/Cargo.toml`, then `cd extension && cargo update --workspace` so `extension/Cargo.lock` follows (the archives are built with `--locked`).
-  - [ ] For a new minor: `"ext-restate": "~X.Y.0"` in `packages/sdk/composer.json` (`composer check:packages` fails until it matches the crate).
+  - [ ] For a new minor: `"ext-restate": "~X.Y.0"` in `packages/sdk/composer.json` (`just check-packages` fails until it matches the crate).
   - [ ] The row for `X.Y.Z` in [Compatibility](docs/compatibility.md#versions): shared-core, contract and PHP versions, and "(unreleased)" dropped from it.
   - [ ] The changelog, if one is kept.
-- [ ] `composer check` passes locally; for a release that touches the extension or the protocol, also `composer test:integration`, `composer test:frankenphp` and `composer test:upstream`.
+- [ ] `just check` passes locally; for a release that touches the extension or the protocol, also `just test integration php-cli`, `just test integration frankenphp` and `just test upstream`.
 - [ ] Merge to `main` and push. `CI`, `Upstream SDK tests` and `Extension binaries` pass on that commit.
-- [ ] Rehearse the split on that commit: `composer release:split -- publish --dry-run --version X.Y.Z --remote https://github.com/restate-php/{repository}.git`. For every repository it reports `main` as created, fast-forwarded, up to date or left alone (ahead: the push split already pushed a later commit's split), and the tag (`X.Y.Z` for the extension, `vX.Y.Z` for the packages) as created; it pushes nothing, and fails on what would stop the release ([Release](docs/decisions/0031-release.md), decision 5).
+- [ ] Rehearse the split on that commit: `just split publish --dry-run --version X.Y.Z --remote https://github.com/restate-php/{repository}.git`. For every repository it reports `main` as created, fast-forwarded, up to date or left alone (ahead: the push split already pushed a later commit's split), and the tag (`X.Y.Z` for the extension, `vX.Y.Z` for the packages) as created; it pushes nothing, and fails on what would stop the release ([Release](docs/decisions/0031-release.md), decision 5).
 
 ### 2. Release
 
@@ -76,7 +76,7 @@ Done once.
 The version is the `version` in `extension/extension/Cargo.toml`; shared-core 8.7.2 speaks service protocol v5–v8, of which Restate 1.8 negotiates v7 and 1.7 v6.
 
 - **The version is the release's**, for the packages and the extension alike, by semantic versioning of the whole SDK: while it is 0.x, a new minor version for breaking changes and new features, a patch version for fixes. A release starts with the commit that sets it ([Release](docs/decisions/0031-release.md#releasing)). A released version never changes; until a version is released, changes to the tree update its row instead of adding one.
-- **`restate/sdk`'s `ext-restate` constraint is `~X.Y.0` of that version**: a new minor version changes it in the same commit (`composer check:packages` fails otherwise).
+- **`restate/sdk`'s `ext-restate` constraint is `~X.Y.0` of that version**: a new minor version changes it in the same commit (`just check-packages` fails otherwise).
 - **The contract version is bumped only by an incompatible change after a release.** It versions the extension surface (the classes, functions and argument and result shapes in `Restate\Extension`, described by `extension/restate.stub.php`) as released extensions carry it. `CONTRACT_VERSION` in `extension/extension/src/lib.rs` and `Backend::CONTRACT_VERSION` in `packages/sdk/src/Internal/Backend/Extension/Backend.php` always hold the same number and change in the same commit.
   - **Until the first release it stays 1**, whatever changes: an incompatible change to the surface updates the unreleased row in place, like any other change, since before a release no extension with another number exists ([Composer Metadata](docs/decisions/0026-composer-metadata.md#decision)).
   - **After a release**, the first incompatible change to the surface since that release bumps the contract version by one. **It needs a new minor version**: `restate/sdk` accepts every extension of its minor version, so a patch release with a new contract version would accept an extension with the old one (the release workflow refuses it). Further incompatible changes before that version is released keep the number, so a release brings at most one new contract version.

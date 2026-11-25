@@ -1,5 +1,5 @@
 # The upstream Restate SDK test suite (restatedev/e2e sdk-tests.jar) against the PHP test
-# services, through the action the official SDKs use. Locally: composer test:upstream.
+# services, through the action the official SDKs use. Locally: just test upstream.
 name: Upstream SDK tests
 
 on:

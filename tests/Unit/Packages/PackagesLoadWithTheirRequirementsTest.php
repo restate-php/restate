@@ -11,7 +11,7 @@ use Restate\Tests\Support\Packages;
 /**
  * Every type of every package in packages/ loads in a plain PHP process (`php -n`: no php.ini, so no Restate
  * extension) with only the packages its composer.json requires, directly or through them; a class from anywhere else
- * is refused (docs/decisions/0029-package-split.md). `composer check:packages` checks the same requirements statically,
+ * is refused (docs/decisions/0029-package-split.md). `just check-packages` checks the same requirements statically,
  * over every class, function and constant the code names; this checks the class hierarchy as PHP resolves it.
  */
 final class PackagesLoadWithTheirRequirementsTest extends TestCase

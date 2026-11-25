@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// Checks the Composer packages in packages/ (docs/decisions/0029-package-split.md), for `composer check:packages`:
+// Checks the Composer packages in packages/ (docs/decisions/0029-package-split.md), for `just check-packages`:
 //
 // - each composer.json passes `composer validate --strict`;
 // - each package's code uses exactly the packages and extensions its composer.json requires: no class, function or
@@ -18,7 +18,7 @@ declare(strict_types=1);
 // - no package declares anything in `Restate\Extension\`, the extension's namespace (the extension's own classes and
 //   functions, and those extension/restate.stub.php lists, must all be in it).
 //
-// Run it with the Restate extension loaded (`composer check:packages` does), so that `Restate\Extension\` resolves to
+// Run it with the Restate extension loaded (`just check-packages` does), so that `Restate\Extension\` resolves to
 // `ext-restate`.
 
 use ShipMonk\ComposerDependencyAnalyser\Analyser;

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Amends decision 2 of [Development Environment](0001-dev-environment.md), and decisions 5 and 6 of [Extension Flake](0037-extension-flake.md): tasks that take arguments or run in several steps are [just](https://just.systems) recipes, and the Composer scripts of the common tasks call them.
+Accepted. Amends decision 2 of [Development Environment](0001-dev-environment.md), and decisions 5 and 6 of [Extension Flake](0037-extension-flake.md): tasks that take arguments or run in several steps are [just](https://just.systems) recipes, and the Composer scripts of the common tasks call them. Decisions 1 to 3 are superseded by [Just for Every Task](0043-just-for-every-task.md): every task is a just recipe, and `composer.json` has no scripts.
 
 ## Context
 

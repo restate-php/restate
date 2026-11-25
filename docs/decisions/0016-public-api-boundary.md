@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Enforced by `tests/PHPStan/PublicApiBoundaryRule.php` as part of `composer analyse`.
+Accepted. Enforced by `tests/PHPStan/PublicApiBoundaryRule.php` as part of `just analyse`.
 
 ## Context
 
@@ -70,7 +70,7 @@ The promise covers every `restate/*` package at their shared version ([Package S
 
 ### Enforcement
 
-`tests/PHPStan/PublicApiBoundaryRule.php` is a PHPStan rule registered in `phpstan.neon`, so `composer analyse` (and therefore `composer check`) fails when:
+`tests/PHPStan/PublicApiBoundaryRule.php` is a PHPStan rule registered in `phpstan.neon`, so `just analyse` (and therefore `just check`) fails when:
 
 - a type under an `Internal` namespace lacks `@internal`;
 - a public type extends or implements an internal type;

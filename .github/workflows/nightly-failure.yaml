@@ -3,7 +3,7 @@
 # proxy, request stalls, back-pressure codes, container OOM kills, expired request identity, the
 # full truncation sweep) on php -S, on php-fpm behind each front door and on FrankenPHP (classic
 # mode, thread-safe extension: the only server for SIGTERM to FrankenPHP). Each job runs the same
-# command as locally.
+# command as locally: just test integration <server> --group failure-nightly.
 name: Nightly failure
 
 on:
@@ -31,19 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - server: php-cli
-            command: composer test:failure
-          - server: nginx-fpm
-            command: just test fpm --group failure-nightly
-          - server: nginx-fpm-h2c
-            command: just test fpm --group failure-nightly
-          - server: caddy-fpm
-            command: just test fpm --group failure-nightly
-          # Builds the frankenphp-extension image (the extension compiled against FrankenPHP's
-          # thread-safe PHP), then runs the group against it.
-          - server: frankenphp
-            command: just test frankenphp --group failure-nightly
+        server: [php-cli, nginx-fpm, nginx-fpm-h2c, caddy-fpm, frankenphp]
 
     steps:
       - name: Checkout repository
@@ -60,7 +48,6 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
 
+      # Builds the server's image first (none for php-cli).
       - name: Run the failure-nightly group
-        run: ${{ matrix.command }}
-        env:
-          RESTATE_PHP_TEST_SERVER: ${{ matrix.server }}
+        run: just test integration ${{ matrix.server }} --group failure-nightly

@@ -86,8 +86,8 @@ Values cross as PHP values. Payloads are binary strings in both directions. Stru
 
 ## Evidence
 
-- `composer test:integration`: the Integration Harness drives real traffic through a real Restate server ([TESTING.md](../../TESTING.md#integration-tests)).
-- `composer test:frankenphp` and `composer test:fpm`: the integration suite against the thread-safe extension build under FrankenPHP, and under php-fpm.
-- `composer test:upstream`: the upstream SDK test suite ([TESTING.md](../../TESTING.md#upstream-sdk-test-suite)).
+- `just test integration php-cli`: the Integration Harness drives real traffic through a real Restate server ([TESTING.md](../../TESTING.md#integration-tests)).
+- `just test integration frankenphp` and `just test integration nginx-fpm` (or `nginx-fpm-h2c`, `caddy-fpm`): the integration suite against the thread-safe extension build under FrankenPHP, and under php-fpm.
+- `just test upstream`: the upstream SDK test suite ([TESTING.md](../../TESTING.md#upstream-sdk-test-suite)).
 
 [Status](../status.md#evidence) lists every suite. None of this is an official Restate SDK conformance claim ([Conformance](conformance.md#official-conformance)).

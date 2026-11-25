@@ -33,7 +33,7 @@ use Restate\Testing\RestateTestEnvironment;
  * - `clear_env = yes`: an identity key read from the environment is missing, and the endpoint refuses to build
  *   instead of serving unsigned requests.
  *
- * Nightly (group serving-hazards, `just test serving-hazards` or `composer test:serving-hazards`): it needs the
+ * Nightly (group serving-hazards, `just test serving-hazards`): it needs the
  * fpm-extension-apache image as RESTATE_PHP_TEST_FPM_IMAGE (the recipe builds it; it has nginx and Caddy too) and waits
  * out real timeouts.
  */

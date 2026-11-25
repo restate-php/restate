@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Decision 2 is amended by [Just Recipes](0041-just-recipes.md): tasks that take arguments or run in several steps are just recipes, and the Composer scripts of the common tasks call them.
+Accepted. Decision 2 is amended by [Just Recipes](0041-just-recipes.md) and [Just for Every Task](0043-just-for-every-task.md): every task is a just recipe, and `composer.json` has no scripts.
 
 ## Context
 

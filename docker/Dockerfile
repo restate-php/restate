@@ -1,6 +1,6 @@
 # Test-service images for the upstream SDK test suite (bin/conformance-upstream-local.sh) and
 # the FrankenPHP and PHP-FPM endpoint images for the integration, load and soak suites
-# (just test frankenphp, just test fpm, just load run, just test soak).
+# (just test integration <server>, just load run, just test soak).
 #
 # PHP_IMAGE is the NTS PHP the extension is built against and the upstream images run on;
 # FRANKENPHP_IMAGE is the thread-safe (ZTS) runtime of the frankenphp-extension target;
@@ -145,7 +145,7 @@ CMD ["/app/docker/caddy/entrypoint.sh"]
 
 # FrankenPHP with the ZTS extension, serving the repository the harness mounts at /app (the
 # working-tree PHP code) with the integration suite's Caddyfile (RESTATE_PHP_TEST_SERVER=frankenphp,
-# just test frankenphp). The worker-mode and soak runs start it with worker.Caddyfile from the
+# just test integration frankenphp). The worker-mode and soak runs start it with worker.Caddyfile from the
 # repository instead; the load tests (tests/load/compose.yaml, EXTENSION_PROFILE=release) mount
 # their own over this one. The soak images are this target with EXTENSION_FEATURES=diagnostics.
 FROM frankenphp-base AS frankenphp-extension
@@ -158,7 +158,7 @@ RUN echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
 CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]
 
 # PHP-FPM endpoint for the integration suite (RESTATE_PHP_TEST_SERVER=nginx-fpm, nginx-fpm-h2c,
-# caddy-fpm; see just test fpm): php-fpm behind nginx or Caddy php_fastcgi, chosen when the
+# caddy-fpm; see just test integration): php-fpm behind nginx or Caddy php_fastcgi, chosen when the
 # container starts (docker/fpm/entrypoint.sh). php.ini-production with
 # docker/fpm/php.ini on top (display_errors Off, enable_post_data_reading 0, OPcache on).
 # Like the FrankenPHP image it bakes in only the extension and the configuration: the harness
