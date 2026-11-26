@@ -5,7 +5,7 @@
 #   export COMPOSE_FILE=compose.yaml:compose.local.yaml
 #   docker compose up --build -d
 #
-# scripts/smoke-test.sh --local does the same.
+# `just test quickstart local`, from the repository root, does the same and runs the walkthrough (tests/Quickstart).
 services:
   greeter:
     build:

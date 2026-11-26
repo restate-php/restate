@@ -1,5 +1,5 @@
-# The Docker quickstart (examples/quickstart): starts it with Docker Compose and checks every step of its
-# walkthrough, so the README's first experience doesn't rot. Locally: examples/quickstart/scripts/smoke-test.sh.
+# The Docker quickstart (examples/quickstart): starts it with Docker Compose and runs every step of its
+# walkthrough, so the README's first experience doesn't rot (tests/Quickstart). Locally: just test quickstart.
 #
 # - local: against this commit (the extension built from source, the packages from packages/), on both CPUs
 #   the prebuilt extension targets: x86_64 and arm64.
@@ -15,6 +15,8 @@ on:
       - 'examples/quickstart/**'
       - 'extension/**'
       - 'packages/**'
+      - 'tests/Quickstart/**'
+      - 'tests/Integration/Support/Http*.php'
   pull_request:
     paths: *paths
   schedule:
@@ -28,6 +30,11 @@ concurrency:
 
 permissions:
   contents: read
+
+defaults:
+  run:
+    # Every step runs in the devenv shell, with the project's toolchain.
+    shell: devenv shell -- bash -e {0}
 
 jobs:
   local:
@@ -45,10 +52,18 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up the dev shell
+        uses: ./.github/actions/setup
+        with:
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
       # Its Restate image is RestateContainer::DEFAULT_IMAGE (tests/Unit/Testing/RestateContainerTest.php
       # checks it).
       - name: Run the quickstart against this commit
-        run: examples/quickstart/scripts/smoke-test.sh --local
+        run: just test quickstart local
 
   released:
     name: released
@@ -64,6 +79,7 @@ jobs:
 
       - name: Check for a released version
         id: released
+        shell: bash
         run: |
           if curl -fsS https://repo.packagist.org/p2/restate/sdk.json | grep -q '"version"'; then
             echo "released=true" >> "$GITHUB_OUTPUT"
@@ -71,6 +87,16 @@ jobs:
             echo "::notice::No version of restate/sdk is released yet; skipping the released quickstart"
           fi
 
+      - name: Set up the dev shell
+        if: steps.released.outputs.released == 'true'
+        uses: ./.github/actions/setup
+        with:
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Install dependencies
+        if: steps.released.outputs.released == 'true'
+        run: composer install --no-interaction --no-progress
+
       - name: Run the quickstart against the released extension and packages
         if: steps.released.outputs.released == 'true'
-        run: examples/quickstart/scripts/smoke-test.sh
+        run: just test quickstart released

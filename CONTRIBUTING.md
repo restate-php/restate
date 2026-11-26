@@ -43,7 +43,7 @@ just test integration php-cli  # builds the extension, then runs the integration
 
 ## Documentation
 
-User documentation lives in [`docs/`](docs/README.md): the guides for writing services in `docs/develop/`, and serving, installation and compatibility next to them. The [README](README.md) stays short: highlights, the quickstart, and links. When you change behaviour, update the guide that describes it; when you change the [Docker quickstart](examples/quickstart/README.md), run `examples/quickstart/scripts/smoke-test.sh --local` (CI runs it too). Write for PHP developers who may not know Restate, use Restate's vocabulary (Basic Service, Virtual Object, Workflow, durable step…), keep the design reasoning in decision records, and link those only from a page's "Design notes".
+User documentation lives in [`docs/`](docs/README.md): the guides for writing services in `docs/develop/`, and serving, installation and compatibility next to them. The [README](README.md) stays short: highlights, the quickstart, and links. When you change behaviour, update the guide that describes it; when you change the [Docker quickstart](examples/quickstart/README.md), run `just test quickstart` (CI runs it too). Write for PHP developers who may not know Restate, use Restate's vocabulary (Basic Service, Virtual Object, Workflow, durable step…), keep the design reasoning in decision records, and link those only from a page's "Design notes".
 
 ## Further reading
 

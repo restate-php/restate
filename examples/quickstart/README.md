@@ -103,7 +103,7 @@ final class Greeter
 ## 3. Call the service
 
 ```bash
-./scripts/greet.sh Sarah
+curl localhost:8080/Greeter/greet --json '{"name": "Sarah"}'
 ```
 
 About five seconds later:
@@ -112,8 +112,8 @@ About five seconds later:
 {"message":"You said hi to Sarah!"}
 ```
 
-The script calls `POST http://localhost:8080/Greeter/greet` with `{"name": "Sarah"}`. Port 8080 is
-Restate's ingress, where clients call services.
+Port 8080 is Restate's ingress, where clients call services: `/Greeter/greet` names the service and the handler,
+and the JSON body is the handler's input.
 
 Now look at the service's log:
 
@@ -162,7 +162,7 @@ Open <http://localhost:9070>.
 would:
 
 ```bash
-./scripts/greet.sh Alice
+curl localhost:8080/Greeter/greet --json '{"name": "Alice"}'
 docker compose logs greeter | grep SIMULATED
 ```
 
@@ -178,15 +178,27 @@ again. Any exception retries; throw a `TerminalError` to fail for good
 
 ## 6. Kill the service mid-invocation
 
-This is what Restate is for. The script sends a greeting without waiting for it, kills the PHP container while the
-handler sleeps, and starts it again:
+This is what Restate is for. Send a greeting without waiting for its result (`/send`), and kill the PHP container
+while the handler sleeps. Paste both lines at once, so that the kill comes within the five seconds:
 
 ```bash
-./scripts/kill-and-resume.sh
+curl localhost:8080/Greeter/greet/send --json '{"name": "Mary"}'
+docker compose kill greeter
 ```
 
-While the container is down, the timer fires and Restate can't reach the service. The script shows what Restate
-knows about the invocation (`restate invocations describe`, run inside the Restate container):
+Restate answers the first with the invocation's id:
+
+```json
+{"invocationId":"inv_1jhw…","status":"Accepted"}
+```
+
+While the container is down, the timer fires and Restate can't reach the service. Wait a few seconds, then ask
+Restate what it knows about the invocation, with the id from its answer (the `restate` CLI, run inside the Restate
+container):
+
+```bash
+docker compose exec restate restate invocations describe inv_1jhw…
+```
 
 ```text
  Status:               backing-off  (3 seconds and 829 ms. Retried 3 time(s). Next retry in 302 ms.)
@@ -202,14 +214,27 @@ Journal:
  >> backing-off
 ```
 
-Restate has recorded the notification and the completed sleep, and keeps retrying. Once the container is back, the
-next retry finishes the invocation:
+Restate has recorded the notification and the completed sleep, and keeps retrying. Start the container again, and
+wait for the result:
+
+```bash
+docker compose start greeter
+curl localhost:8080/restate/invocation/inv_1jhw…/attach
+```
+
+The next retry finishes the invocation:
 
 ```json
 {"message":"You said hi to Mary!"}
 ```
 
-The log shows one notification and one reminder, with the same greeting id, although PHP was killed in between.
+The service's log for the invocation shows one notification and one reminder, with the same greeting id, although
+PHP was killed in between:
+
+```bash
+docker compose logs greeter | grep inv_1jhw…
+```
+
 Try `docker compose restart restate` during a sleep too: Restate keeps its journals and timers on disk, so the
 greeting still finishes.
 
@@ -289,8 +314,8 @@ The `-d` flags are the settings of [`php.ini`](php.ini), on top of your own php.
 In another terminal, register it. Restate reaches your machine as `host.docker.internal`:
 
 ```bash
-./scripts/register.sh http://host.docker.internal:9080
-./scripts/greet.sh Sarah
+curl localhost:9070/deployments --json '{"uri": "http://host.docker.internal:9080", "use_http_11": true, "force": true}'
+curl localhost:8080/Greeter/greet --json '{"name": "Sarah"}'
 ```
 
 ## Clean up
@@ -318,5 +343,4 @@ This also deletes Restate's state, so the next `up` starts fresh.
 | [`php.ini`](php.ini) | The PHP settings every Restate endpoint needs |
 | [`index.php`](index.php) | The endpoint: serves the three services |
 | [`src/`](src) | The services, their input and output classes, a notification stub and a stderr logger |
-| [`scripts/`](scripts) | `greet.sh`, `kill-and-resume.sh`, `register.sh`, and `smoke-test.sh`, which CI runs to check this walkthrough |
 | [`compose.local.yaml`](compose.local.yaml) | Builds against this repository instead of the released packages |

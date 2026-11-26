@@ -36,6 +36,10 @@
         <testsuite name="soak">
             <directory>tests/Soak</directory>
         </testsuite>
+        <!-- The Docker quickstart's walkthrough (examples/quickstart) in Docker Compose: just test quickstart. -->
+        <testsuite name="quickstart">
+            <directory>tests/Quickstart</directory>
+        </testsuite>
     </testsuites>
     <!-- Nightly only (.github/workflows/nightly-serving.yaml, nightly-failure.yaml); phpunit's group option runs one anyway. -->
     <!-- The large scale parameterisations (tests/Integration/Scale) run on their own: the `scale` group of `just test integration php-cli` (nightly). -->
