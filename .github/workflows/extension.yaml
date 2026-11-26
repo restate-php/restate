@@ -2,12 +2,15 @@
 # one gzipped tar per PHP minor x thread safety x CPU x libc, named as PIE looks for it.
 # docs/decisions/0030-prebuilt-extension-binaries.md has the design.
 #
-# One job cross-compiles all of them with Nix in the dev shell (`just extension pie`, the
-# extension flake's packages.pie, extension/flake.nix), which also checks each module's
-# shared libraries and glibc floor, and checks the flake; then a job per CPU loads each archive
-# of that CPU into a clean PHP and runs extension/tests/*.phpt there, and a macOS job runs the
-# flake's checks on macOS. Keeps the archives as a workflow artifact; it never publishes
-# anything.
+# A job per CPU cross-compiles all of them with Nix in the dev shell (`just extension pie`, the
+# extension flake's packages.pie, extension/flake.nix), which also checks each module's shared
+# libraries and glibc floor, and checks the flake. The x86_64 job's archives are the ones kept;
+# the arm64 job builds the same for restate-php.cachix.org, because Nix caches a build per system
+# it runs on: an aarch64-linux Nix (Docker on an Apple silicon Mac, an arm64 Linux machine) finds
+# nothing an x86_64 runner built, even for the same target. Each job also builds the modules the
+# Docker-based suites use for its own CPU. Then a job per CPU loads each archive of that CPU into
+# a clean PHP and runs extension/tests/*.phpt there, and a macOS job runs the flake's checks on
+# macOS. Keeps the archives as a workflow artifact; it never publishes anything.
 # Runs on changes to the extension or its build, by hand, and as part of a release:
 # .github/workflows/release.yaml calls it and publishes the archives it builds.
 name: Extension binaries
@@ -68,10 +71,14 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
   build:
-    name: Build the archives
+    name: Build the archives on ${{ matrix.arch }}
     needs: version
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, arm64]
     defaults:
       run:
         shell: devenv shell -- bash -e {0}
@@ -89,9 +96,9 @@ jobs:
         with:
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      # Every target on this one x86_64 runner (just extension pie: nix build ./extension#pie). An
-      # earlier run's archives and modules for the same sources come from restate-php.cachix.org,
-      # the rest are built here and pushed there.
+      # Every target on this runner (just extension pie: nix build ./extension#pie). An earlier
+      # run's archives and modules for the same sources and runner CPU come from
+      # restate-php.cachix.org, the rest are built here and pushed there.
       - name: Build the archives
         run: just extension pie dist
 
@@ -104,6 +111,23 @@ jobs:
             exit 1
           fi
 
+      # The builds of the Docker-based suites that are not in the archives, for this runner's CPU
+      # and every PHP minor, for restate-php.cachix.org: debug NTS (php-fpm) and ZTS (FrankenPHP),
+      # and the soak suite's diagnostics builds (FrankenPHP, debug and release).
+      - name: Build the Docker suites' modules
+        run: |
+          target=$(uname -m)-linux-glibc
+          modules=()
+          for php in $(nix eval --raw ./extension#modules --apply 'modules: toString (builtins.attrNames modules)'); do
+            modules+=(
+              "./extension#modules.$php.nts.$target.debug"
+              "./extension#modules.$php.zts.$target.debug"
+              "./extension#modules.$php.zts.$target.debug-diagnostics"
+              "./extension#modules.$php.zts.$target.release-diagnostics"
+            )
+          done
+          nix build --no-link -L "${modules[@]}"
+
       # The flake restate-php/ext-restate publishes (the split of extension/): every system's
       # outputs evaluate, and its checks pass on this one: tests/*.phpt with PHP 8.4, 8.5 and 8.6
       # and with a ZTS PHP (the extension loaded through its overlay), and an invocation per
@@ -111,8 +135,9 @@ jobs:
       - name: Check the flake
         run: nix flake check -L ./extension
 
-      # One artifact with every archive: the release downloads php_restate-*.
+      # One artifact with every archive, the x86_64 job's: the release downloads php_restate-*.
       - name: Upload the archives
+        if: matrix.arch == 'x86_64'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: php_restate-${{ needs.version.outputs.version }}
