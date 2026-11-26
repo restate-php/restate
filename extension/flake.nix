@@ -12,7 +12,7 @@
   };
 
   inputs = {
-    ext-php-rs.url = "github:sagikazarmark/ext-php-rs.nix/v0.2.0";
+    ext-php-rs.url = "github:sagikazarmark/ext-php-rs.nix/v0.3.0";
     # ext-php-rs's nixpkgs, as its template recommends. The dev shell of restate-php/restate
     # follows this one too (its devenv.yaml), so the shell and every Nix build share one nixpkgs.
     nixpkgs.follows = "ext-php-rs/nixpkgs";
@@ -184,29 +184,30 @@
         {
           modules = all;
 
-          # Everything the glibc modules build with but their source (the toolchain, the PHP
-          # headers, the vendored crates), for extension/Dockerfile to fetch before it copies
-          # the source in: what each module's derivation is given. Not inputDerivation, which
-          # leaves out `env` (the PHP headers and libclang are in PHP_CONFIG and
-          # LIBCLANG_PATH). The variants of a module share their inputs.
-          moduleInputs = pkgs.writeText "restate-module-inputs" (
-            builtins.toJSON (
-              lib.concatMap (
-                php:
-                lib.concatMap
-                  (
-                    ts:
-                    map (target: removeAttrs all.${php}.${ts}.${target}.debug.drvAttrs [ "src" ]) [
+          # Everything the glibc modules build with (the toolchain, the PHP headers, the
+          # vendored crates): each module's inputDerivation, for extension/Dockerfile to fetch
+          # before it copies the source in. The variants of a module share their inputs.
+          moduleInputs = pkgs.linkFarm "restate-module-inputs" (
+            lib.concatMap (
+              php:
+              lib.concatMap
+                (
+                  ts:
+                  map
+                    (target: {
+                      name = "${php}-${ts}-${target}";
+                      path = all.${php}.${ts}.${target}.debug.inputDerivation;
+                    })
+                    [
                       "x86_64-linux-glibc"
                       "aarch64-linux-glibc"
                     ]
-                  )
-                  [
-                    "nts"
-                    "zts"
-                  ]
-              ) phps
-            )
+                )
+                [
+                  "nts"
+                  "zts"
+                ]
+            ) phps
           );
         }
       );
