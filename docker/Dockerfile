@@ -2,7 +2,7 @@
 # the FrankenPHP and PHP-FPM endpoint images for the integration, load and soak suites
 # (just test integration <server>, just load run, just test soak).
 #
-# PHP_IMAGE is the NTS PHP the extension is built against and the upstream images run on;
+# PHP_IMAGE is the NTS PHP the quickstart image builds the extension against;
 # FRANKENPHP_IMAGE is the thread-safe (ZTS) runtime of the frankenphp-extension target;
 # PHP_FPM_IMAGE is the NTS php-fpm of the fpm-extension targets (trixie: its nginx, 1.26, serves
 # h2c and HTTP/1.1 on one port). Set any with --build-arg to build against another PHP minor;
@@ -42,7 +42,7 @@ COPY extension/rust-toolchain.toml /app/extension/rust-toolchain.toml
 RUN cd /app/extension && rustup toolchain install && rustc --version
 
 # The extension built against the NTS PHP of PHP_IMAGE (docker/extension/build.sh), for the
-# upstream and quickstart images. extension-bridge-zts and extension-bridge-fpm below do the same
+# quickstart image. extension-bridge-zts and extension-bridge-fpm below do the same
 # inside the FrankenPHP and php-fpm images: a module loads only into the PHP it was built against
 # (an NTS one does not load into a ZTS runtime).
 FROM php-base AS extension-bridge
@@ -122,27 +122,6 @@ RUN echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
         "$version" "$version" "$version" "$version" > "$COMPOSER_HOME/config.json" \
     && rm /tmp/restate-extension-Cargo.toml
 
-FROM php-base AS upstream-base
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends git unzip \
-    && rm -rf /var/lib/apt/lists/*
-COPY --from=composer-bin /usr/bin/composer /usr/bin/composer
-
-WORKDIR /app
-COPY . /app
-RUN composer install --no-interaction
-
-# test-services/index.php under php -S, behind Caddy over h2c (docker/caddy/).
-FROM upstream-base AS upstream-extension-caddy
-
-COPY --from=caddy-bin /usr/bin/caddy /usr/bin/caddy
-COPY --from=extension-bridge /out/ /
-RUN echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
-    && php -r 'require "/app/vendor/autoload.php"; new Restate\Internal\Backend\Extension\Backend();'
-
-CMD ["/app/docker/caddy/entrypoint.sh"]
-
 # FrankenPHP with the ZTS extension, serving the repository the harness mounts at /app (the
 # working-tree PHP code) with the integration suite's Caddyfile (RESTATE_PHP_TEST_SERVER=frankenphp,
 # just test integration frankenphp). The worker-mode and soak runs start it with worker.Caddyfile from the
@@ -156,6 +135,23 @@ RUN echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
     && php --ri restate > /dev/null
 
 CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]
+
+# The upstream suite against FrankenPHP classic mode: test-services/index.php from the baked-in
+# repository on :9080, over h2c or HTTP/1.1 (docker/frankenphp/upstream.Caddyfile).
+FROM frankenphp-extension AS upstream-frankenphp
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git unzip \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=composer-bin /usr/bin/composer /usr/bin/composer
+
+WORKDIR /app
+COPY . /app
+RUN composer install --no-interaction \
+    && php -r 'require "/app/vendor/autoload.php"; new Restate\Internal\Backend\Extension\Backend();'
+COPY docker/frankenphp/upstream.Caddyfile /etc/frankenphp/Caddyfile
+
+EXPOSE 9080
 
 # PHP-FPM endpoint for the integration suite (RESTATE_PHP_TEST_SERVER=nginx-fpm, nginx-fpm-h2c,
 # caddy-fpm; see just test integration): php-fpm behind nginx or Caddy php_fastcgi, chosen when the

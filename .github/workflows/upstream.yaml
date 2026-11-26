@@ -23,25 +23,25 @@ on:
       target:
         description: The docker/Dockerfile target of the test services
         type: string
-        default: upstream-extension-caddy
+        default: upstream-frankenphp
 
 # Inside a called workflow github.workflow is the caller's name, so the group names this
 # workflow itself; manual runs and the release's call (workflow_dispatch) get a group of their
 # own and are never cancelled by a push.
 concurrency:
-  group: upstream-${{ inputs.target || 'upstream-extension-caddy' }}-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event_name }}
+  group: upstream-${{ inputs.target || 'upstream-frankenphp' }}-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event_name }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 env:
-  TARGET: ${{ inputs.target || 'upstream-extension-caddy' }}
-  SERVICE_IMAGE: restate.local/restate-php-test-services:${{ inputs.target || 'upstream-extension-caddy' }}
+  TARGET: ${{ inputs.target || 'upstream-frankenphp' }}
+  SERVICE_IMAGE: restate.local/restate-php-test-services:${{ inputs.target || 'upstream-frankenphp' }}
 
 jobs:
   sdk-tests:
-    name: restatedev/e2e sdk-tests (${{ inputs.target || 'upstream-extension-caddy' }})
+    name: restatedev/e2e sdk-tests (${{ inputs.target || 'upstream-frankenphp' }})
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     # contents: read checks out the repository. The action publishes the JUnit results as a check

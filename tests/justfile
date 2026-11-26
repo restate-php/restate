@@ -148,6 +148,29 @@ soak quick='0' suite='nightly' *phpunit:
     RESTATE_PHP_SOAK_QUICK={{ quick }} RESTATE_PHP_SOAK_RELEASE_IMAGE=$release RESTATE_PHP_SOAK_DEBUG_IMAGE=$debug \
         exec vendor/bin/phpunit --testsuite soak --filter "$filter" "$@"
 
+# Every step of examples/quickstart/README.md in Docker Compose, on the README's ports (8080 and
+# 9070: stop a quickstart of your own first), checking that the README still shows the commands
+# (tests/Quickstart). local: this checkout, built into the quickstart-php-restate image that
+# compose.local.yaml uses (RESTATE_PHP_TEST_SKIP_BUILD=1 reuses it); released: the released
+# extension and packages, as a user gets them (PIE and Packagist).
+[doc("The Docker quickstart's walkthrough in Docker Compose: local (this checkout, the default) or released (PIE and Packagist); arguments after it go to phpunit")]
+[positional-arguments]
+[script('bash')]
+quickstart source='local' *phpunit:
+    set -euo pipefail
+    shift
+    case {{ quote(source) }} in
+        local)
+            if [ "${RESTATE_PHP_TEST_SKIP_BUILD:-0}" != 1 ]; then
+                docker build --target quickstart-php-restate -f docker/Dockerfile \
+                    -t restate-php-quickstart/php-restate:local .
+            fi
+            ;;
+        released) ;;
+        *) echo "quickstart: the source is local or released, not '{{ source }}'" >&2 && exit 64 ;;
+    esac
+    RESTATE_PHP_QUICKSTART={{ quote(source) }} exec vendor/bin/phpunit --testsuite quickstart "$@"
+
 # Java 25 from the dev shell; arguments: [target] [basic|full], see bin/conformance-upstream-local.sh.
 [doc("Build a test-services image and run the upstream Restate SDK test suite against it; arguments go to bin/conformance-upstream-local.sh")]
 [positional-arguments]

@@ -99,13 +99,12 @@ out that release's tag first (`git checkout v0.1.0`, for example).
 
 ```bash
 docker compose up --build -d
-./scripts/greet.sh Sarah            # {"message":"You said hi to Sarah!"}, about 5 seconds later
-./scripts/kill-and-resume.sh        # kills PHP mid-request; Restate finishes the greeting anyway
+curl localhost:8080/Greeter/greet --json '{"name": "Sarah"}'   # {"message":"You said hi to Sarah!"}, about 5 seconds later
 ```
 
 Then open the Restate UI at <http://localhost:9070>. The
-[walkthrough](examples/quickstart/README.md) explains each step, and continues with retries, state in a Virtual
-Object, and a Workflow waiting for an event.
+[walkthrough](examples/quickstart/README.md) explains each step, and continues with retries, a kill of PHP
+mid-request that Restate finishes anyway, state in a Virtual Object, and a Workflow waiting for an event.
 
 ### Without Docker
 

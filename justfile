@@ -31,7 +31,7 @@ analyse:
 [doc("actionlint on .github/workflows, shellcheck on the shell scripts and just --fmt --check on the justfiles (all from the dev shell)")]
 lint:
     actionlint
-    shellcheck bin/*.sh docker/*/*.sh examples/quickstart/scripts/*.sh
+    shellcheck bin/*.sh docker/*/*.sh
     just --justfile justfile --fmt --check
     just --justfile extension/justfile --fmt --check
     just --justfile tests/justfile --fmt --check

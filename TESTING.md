@@ -342,15 +342,15 @@ The `large-bodies` and `serving-hazards` groups are excluded in `phpunit.xml.dis
 ## Upstream SDK test suite
 
 ```bash
-just test upstream                                                     # bin/conformance-upstream-local.sh: upstream-extension-caddy full
-just test upstream upstream-extension-caddy basic # the `default` suite only
+just test upstream                                                     # bin/conformance-upstream-local.sh: upstream-frankenphp full
+just test upstream upstream-frankenphp basic      # the `default` suite only
 RESTATE_PHP_UPSTREAM_TEST_NAME=ProxyRequestSigning just test upstream  # one test class
 ```
 
 `just test upstream [-- <target> [basic|full]]` (`bin/conformance-upstream-local.sh [target] [basic|full]`) runs the upstream Restate SDK test suite, `sdk-tests.jar` of [`restatedev/e2e`](https://github.com/restatedev/e2e) **v2.3**, the release the official SDKs run, against this repository's test services. What a pass means, and what it does not, is in [Conformance](docs/internals/conformance.md). The script:
 
 1. downloads the jar to `var/conformance/upstream/` and checks its pinned SHA-256;
-2. builds the given `docker/Dockerfile` target (default `upstream-extension-caddy`: Caddy h2c in front of `php -S` serving `test-services/index.php`; or `upstream-fpm-nginx`: php-fpm behind nginx) as `restate.local/restate-php-test-services:<target>`;
+2. builds the given `docker/Dockerfile` target (default `upstream-frankenphp`: `test-services/index.php` in FrankenPHP classic mode over h2c; or `upstream-fpm-nginx`: php-fpm behind nginx) as `restate.local/restate-php-test-services:<target>`;
 3. runs the suite with `java -jar`: `full` (the default) runs all eight suite configurations, `basic` only `default`;
 4. prints a pass/fail table per suite from the JUnit reports, and fails a run that reports no tests.
 
@@ -541,6 +541,15 @@ RESTATE_PHP_SOAK_INVOCATIONS=30000 just test soak restate
 
 CI: `.github/workflows/nightly-soak.yaml` runs `just test soak nightly` every night and `just test soak restate` every Sunday, and by hand (`workflow_dispatch`, any suite, optionally quick); the reports are kept as the `soak-reports` artifact.
 
+## Docker quickstart
+
+```bash
+just test quickstart            # this checkout: the quickstart-php-restate image (compose.local.yaml)
+just test quickstart released   # the released extension and packages (PIE and Packagist)
+```
+
+The `quickstart` suite (`tests/Quickstart`) runs the [Docker quickstart](examples/quickstart/README.md)'s walkthrough the way a reader does: `docker compose up --build` in `examples/quickstart`, then a test per step in the README's order against the ports the README calls (8080 and 9070): the registration, greetings, a greeting whose PHP container is killed during its sleep (exactly one notification and one reminder after `docker compose start`), the Virtual Object and the Workflow. Each step first checks that the README still shows the commands it runs, so a change to the walkthrough fails the test until the step follows it. The Compose project is `restate-php-quickstart-test`, so a quickstart of your own keeps its state, but it needs the same ports: stop it first. A failed step prints the project's logs. `local` builds the image first (`RESTATE_PHP_TEST_SKIP_BUILD=1` reuses it). The quickstart itself has no scripts: what the README shows is what a user types.
+
 ## CI
 
 GitHub Actions runs the same commands, in the same dev shell. Nothing in CI is CI-only: when a job fails, run its command locally.
@@ -556,8 +565,8 @@ GitHub Actions runs the same commands, in the same dev shell. Nothing in CI is C
 | | `external` | `devenv --profile <profile> -O languages.php.version:string <php> test` ([External environments](#external-environments)) | `ubuntu-24.04`, `macos-15` × `frankenphp`, `frankenphp-worker` × PHP 8.4, 8.5, 8.6 |
 | `.github/workflows/nightly-soak.yaml` | `soak` | `just test soak nightly` nightly, `just test soak restate` on Sundays, any suite by hand; reports as an artifact ([Soak suite](#soak-suite)) | — |
 | `.github/workflows/nightly-scale.yaml` | `scale`, `contention-frankenphp` | `just test integration php-cli --group scale`; `just test integration frankenphp --group scale --filter ContentionTest` ([Scale tests](#scale-tests)), each uploading its measurements | — (nightly and manual runs) |
-| `.github/workflows/upstream.yaml` | `sdk-tests` | `docker build --target <target> …` (input `target`, default `upstream-extension-caddy`), then the [`restatedev/e2e/sdk-tests@v2.3`](https://github.com/restatedev/e2e/blob/main/sdk-tests/action.yml) action | — |
-| `.github/workflows/quickstart.yaml` | `local`, `released` | `examples/quickstart/scripts/smoke-test.sh --local` on pull requests and pushes touching the quickstart, `docker/Dockerfile`, `packages/` or `extension/` (the [Docker quickstart](examples/quickstart/README.md) built from the commit); nightly also `smoke-test.sh` against the released extension and packages, skipped until a version is released | `local`: `ubuntu-24.04`, `ubuntu-24.04-arm` |
+| `.github/workflows/upstream.yaml` | `sdk-tests` | `docker build --target <target> …` (input `target`, default `upstream-frankenphp`), then the [`restatedev/e2e/sdk-tests@v2.3`](https://github.com/restatedev/e2e/blob/main/sdk-tests/action.yml) action | — |
+| `.github/workflows/quickstart.yaml` | `local`, `released` | `just test quickstart local` on pull requests and pushes touching the quickstart, `tests/Quickstart/`, `docker/Dockerfile`, `packages/` or `extension/` (the [Docker quickstart](examples/quickstart/README.md) built from the commit); nightly also `just test quickstart released`, skipped until a version is released ([Docker quickstart](#docker-quickstart)) | `local`: `ubuntu-24.04`, `ubuntu-24.04-arm` |
 | `.github/workflows/nightly-serving.yaml` | `large-bodies` | `just test integration <server> --group large-bodies` with `RESTATE_PHP_TEST_REPORT_MEMORY=1` | `php-cli`, `nginx-fpm`, `nginx-fpm-h2c`, `caddy-fpm` |
 | | `serving-hazards` | `devenv shell -- just test serving-hazards` | — |
 | | `upstream-fpm-nginx` | `upstream.yaml` with `target: upstream-fpm-nginx` | — |
