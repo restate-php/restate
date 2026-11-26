@@ -74,6 +74,58 @@
         "php85"
         "php86"
       ];
+
+      # The Linux targets of the PIE archives.
+      pieTargets = [
+        "x86_64-linux-glibc"
+        "aarch64-linux-glibc"
+        "x86_64-linux-musl"
+        "aarch64-linux-musl"
+      ];
+
+      # The builds of each module: the profile, and the soak suite's diagnostics feature.
+      variants = {
+        debug = {
+          buildType = "debug";
+        };
+        release = { };
+        debug-diagnostics = {
+          buildType = "debug";
+          buildFeatures = [ "diagnostics" ];
+        };
+        release-diagnostics = {
+          buildFeatures = [ "diagnostics" ];
+        };
+      };
+
+      # modules.<php>.<nts|zts>.<target>.<variant>: one portable module, cross-compiled from
+      # any of the systems.
+      modules =
+        pkgs:
+        let
+          platform = rustPhpPlatform pkgs;
+        in
+        lib.genAttrs phps (
+          php:
+          lib.genAttrs [ "nts" "zts" ] (
+            ts:
+            lib.genAttrs pieTargets (
+              target:
+              lib.mapAttrs (
+                _: variant:
+                platform.buildRustPhpExtension (
+                  args
+                  // variant
+                  // {
+                    php = pkgs.${php};
+                    target = platform.targets.${target};
+                    zts = ts == "zts";
+                  }
+                )
+              ) variants
+            )
+          )
+        );
     in
     {
       # The extension for every PHP of nixpkgs, built against the PHP that loads it:
@@ -107,16 +159,25 @@
         # restate-php/restate): every PHP minor × NTS and ZTS × x86_64 and arm64 × Linux with
         # glibc 2.28 or newer and with musl, 24 archives with SHA256SUMS. Cross-compiled on any
         # of the systems.
-        pie = (rustPhpPlatform pkgs).buildPieRelease {
-          inherit args;
-          php = map (php: pkgs.${php}) phps;
-          targets = with (rustPhpPlatform pkgs).targets; [
-            x86_64-linux-glibc
-            aarch64-linux-glibc
-            x86_64-linux-musl
-            aarch64-linux-musl
-          ];
+        pie = (rustPhpPlatform pkgs).mkPieRelease {
+          extensions = lib.concatMap (
+            php:
+            lib.concatMap (ts: map (target: (modules pkgs).${php}.${ts}.${target}.release) pieTargets) [
+              "nts"
+              "zts"
+            ]
+          ) phps;
         };
+      });
+
+      # Each module of packages.pie on its own, and the debug and diagnostics builds of the
+      # Docker-based suites:
+      #
+      #   nix build .#modules.php84.zts.x86_64-linux-glibc.debug
+      #
+      # Here rather than in packages, which `nix flake show` and `nix flake check` list.
+      legacyPackages = forAllSystems (pkgs: {
+        modules = modules pkgs;
       });
 
       checks = forAllSystems (
