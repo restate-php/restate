@@ -22,12 +22,14 @@ up: build
 down:
     docker compose down --volumes
 
-# Build the endpoint image, unless LOAD_SKIP_BUILD=1 reuses it or LOAD_ENDPOINT_IMAGE names
-# another one; RESTATE_PHP_TEST_FRANKENPHP_BASE_IMAGE replaces its FrankenPHP base, as for the
-# test suites (compose.yaml passes it)
+# Build the endpoint image (bin/build-image.sh: frankenphp-extension, the release build), unless
+# LOAD_SKIP_BUILD=1 reuses it or LOAD_ENDPOINT_IMAGE names another one;
+# RESTATE_PHP_TEST_PHP_VERSION chooses its PHP minor, as for the test suites
 [private]
 build:
-    [ "${LOAD_SKIP_BUILD:-0}" = 1 ] || [ -n "${LOAD_ENDPOINT_IMAGE:-}" ] || docker compose build endpoint
+    [ "${LOAD_SKIP_BUILD:-0}" = 1 ] || [ -n "${LOAD_ENDPOINT_IMAGE:-}" ] || \
+        bash ../../bin/build-image.sh --php "${RESTATE_PHP_TEST_PHP_VERSION:-8.4}" --variant release \
+            frankenphp-extension restate.local/restate-php-frankenphp:extension-zts-release
 
 # One scenario with k6.js; the result and k6's log (a warning per timed-out call: thousands under overload) in var/load/results/<name>/
 [private]

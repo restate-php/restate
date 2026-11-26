@@ -1,7 +1,7 @@
 # Runs the quickstart against this checkout of the SDK instead of the released extension and packages: for CI and
 # contributors trying a change that is not released yet. Build the base image, then point Compose at both files:
 #
-#   docker build -f ../../docker/Dockerfile --target quickstart-php-restate -t restate-php-quickstart/php-restate:local ../..
+#   bin/build-image.sh quickstart-php-restate restate-php-quickstart/php-restate:local   # from the repository root
 #   export COMPOSE_FILE=compose.yaml:compose.local.yaml
 #   docker compose up --build -d
 #

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Decisions 4, 5 and 6 are amended by [Just Recipes](0041-just-recipes.md): the PIE archives are `just extension pie` (`nix build ./extension#pie`), so the dev shell no longer has `outputs.pie`, and it no longer pulls ext-php-rs.cachix.org.
+Accepted. Decisions 4, 5 and 6 are amended by [Just Recipes](0041-just-recipes.md): the PIE archives are `just extension pie` (`nix build ./extension#pie`), so the dev shell no longer has `outputs.pie`, and it no longer pulls ext-php-rs.cachix.org. The last consequence is superseded by [Extension Modules in the Images](0044-extension-modules-in-the-images.md): the Docker-based suites' images install the flake's modules.
 
 ## Context
 

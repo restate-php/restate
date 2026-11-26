@@ -4,7 +4,8 @@
 #
 # Usage: bin/conformance-upstream-local.sh [target] [basic|full]
 #
-#   target  docker/Dockerfile target to build and test (default: upstream-frankenphp)
+#   target  docker/Dockerfile target to build and test (default: upstream-frankenphp; the PHP 8.4
+#           debug image of docker-bake.hcl, built by bin/build-image.sh)
 #   mode    basic runs the `default` suite only, full runs every suite (default: full)
 #
 # Run it in the dev shell (it provides Java 25). Works with Docker and with rootless podman: under
@@ -114,7 +115,7 @@ if docker version 2>/dev/null | grep -q 'Podman Engine'; then
 fi
 
 if [ "${RESTATE_PHP_UPSTREAM_SKIP_BUILD:-0}" != 1 ]; then
-  docker build --target "$TARGET" -f "$ROOT_DIR/docker/Dockerfile" -t "$IMAGE" "$ROOT_DIR"
+  bash "$ROOT_DIR/bin/build-image.sh" "$TARGET" "$IMAGE"
 fi
 
 args=(run "--restate-container-image=$RESTATE_IMAGE" --image-pull-policy=CACHED "--report-dir=$RUN_DIR")

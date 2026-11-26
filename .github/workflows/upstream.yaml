@@ -7,8 +7,10 @@ on:
     branches: [main]
     paths: &paths
       - '.github/workflows/upstream.yaml'
+      - 'bin/build-image.sh'
       - 'composer.json'
       - 'composer.lock'
+      - 'docker-bake.hcl'
       - 'docker/**'
       - 'extension/**'
       - 'packages/**'
@@ -21,7 +23,7 @@ on:
   workflow_call:
     inputs:
       target:
-        description: The docker/Dockerfile target of the test services
+        description: The docker/Dockerfile target of the test services (its PHP 8.4 debug image)
         type: string
         default: upstream-frankenphp
 
@@ -70,9 +72,23 @@ jobs:
           fi
           echo "RESTATE_IMAGE=$image" >> "$GITHUB_ENV"
 
-      # Images tagged restate.local/* are never pulled by the suite, so it uses this build.
+      # Plain Nix for the extension module (the flake, extension/flake.lock), without the dev shell:
+      # restate-php.cachix.org has it for any source CI has built.
+      - name: Install Nix
+        uses: cachix/install-nix-action@bb0495a1086c46893eee56f32fd192dfe4a15bb9 # v32.0.0
+
+      - name: Use the binary caches
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: restate-php
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      # Images tagged restate.local/* are never pulled by the suite, so it uses this build. The
+      # module is built by the runner's Nix (RESTATE_PHP_IMAGE_EXTENSION=host).
       - name: Build the test-services image
-        run: docker build --target "$TARGET" -f docker/Dockerfile -t "$SERVICE_IMAGE" .
+        run: bash bin/build-image.sh "$TARGET" "$SERVICE_IMAGE"
+        env:
+          RESTATE_PHP_IMAGE_EXTENSION: host
 
       # Pinned by tag, not by commit: the action downloads sdk-tests.jar from the release named
       # after the ref it runs at (github.action_ref), so a SHA pin breaks the download. Upstream

@@ -170,15 +170,46 @@
         };
       });
 
-      # Each module of packages.pie on its own, and the debug and diagnostics builds of the
-      # Docker-based suites:
+      # Each module of packages.pie on its own, and the debug and diagnostics builds the
+      # Docker-based suites use (extension/Dockerfile):
       #
       #   nix build .#modules.php84.zts.x86_64-linux-glibc.debug
       #
       # Here rather than in packages, which `nix flake show` and `nix flake check` list.
-      legacyPackages = forAllSystems (pkgs: {
-        modules = modules pkgs;
-      });
+      legacyPackages = forAllSystems (
+        pkgs:
+        let
+          all = modules pkgs;
+        in
+        {
+          modules = all;
+
+          # Everything the glibc modules build with but their source (the toolchain, the PHP
+          # headers, the vendored crates), for extension/Dockerfile to fetch before it copies
+          # the source in: what each module's derivation is given. Not inputDerivation, which
+          # leaves out `env` (the PHP headers and libclang are in PHP_CONFIG and
+          # LIBCLANG_PATH). The variants of a module share their inputs.
+          moduleInputs = pkgs.writeText "restate-module-inputs" (
+            builtins.toJSON (
+              lib.concatMap (
+                php:
+                lib.concatMap
+                  (
+                    ts:
+                    map (target: removeAttrs all.${php}.${ts}.${target}.debug.drvAttrs [ "src" ]) [
+                      "x86_64-linux-glibc"
+                      "aarch64-linux-glibc"
+                    ]
+                  )
+                  [
+                    "nts"
+                    "zts"
+                  ]
+              ) phps
+            )
+          );
+        }
+      );
 
       checks = forAllSystems (
         pkgs:
