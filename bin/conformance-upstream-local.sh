@@ -4,7 +4,7 @@
 #
 # Usage: bin/conformance-upstream-local.sh [target] [basic|full]
 #
-#   target  docker/Dockerfile target to build and test (default: upstream-extension-caddy)
+#   target  docker/Dockerfile target to build and test (default: upstream-frankenphp)
 #   mode    basic runs the `default` suite only, full runs every suite (default: full)
 #
 # Run it in the dev shell (it provides Java 25). Works with Docker and with rootless podman: under
@@ -22,7 +22,7 @@
 set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-TARGET=${1:-upstream-extension-caddy}
+TARGET=${1:-upstream-frankenphp}
 MODE=${2:-full}
 
 SUITE_VERSION=v2.3

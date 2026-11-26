@@ -13,7 +13,7 @@ One file, so the targets share the stages that compile the extension inside each
 
 | Target | Serves | Built by |
 | --- | --- | --- |
-| `upstream-extension-caddy` | `test-services/index.php` under `php -S`, behind Caddy over h2c (the repository baked in) | `just test upstream`, `upstream.yaml` |
+| `upstream-frankenphp` | `test-services/index.php` in FrankenPHP classic mode over h2c (the repository baked in; `frankenphp/upstream.Caddyfile`) | `just test upstream`, `upstream.yaml` |
 | `upstream-fpm-nginx` | `test-services/index.php` under php-fpm behind nginx (the repository baked in) | `just test upstream upstream-fpm-nginx`, `nightly-serving.yaml` |
 | `frankenphp-extension` | the integration router, FrankenPHP classic mode (repository mounted at `/app`); the worker-mode and soak runs start it with `worker.Caddyfile`, and the load tests mount their own Caddyfile | `just test integration frankenphp`, `just test integration frankenphp-worker`; `just load run` (release build); `just test soak` (the `diagnostics` build, release and debug) |
 | `fpm-extension`, `fpm-extension-apache` | any router script under php-fpm behind nginx, Caddy or Apache | `just test integration <fpm server>`, `just test serving-hazards` |
@@ -22,6 +22,5 @@ One file, so the targets share the stages that compile the extension inside each
 ## Configuration
 
 - **`extension/`**: `build.sh`, the extension build of the Dockerfile's `extension-bridge*` stages.
-- **`caddy/`**: the Caddyfile and entrypoint of `upstream-extension-caddy` (Caddy `reverse_proxy` over h2c in front of `php -S`).
 - **`fpm/`**: the php-fpm images. `entrypoint.sh` renders the `*.template` files from `RESTATE_PHP_FPM_*` variables and runs php-fpm behind nginx, Caddy `php_fastcgi` or Apache `mod_proxy_fcgi`, with the settings [docs/serving.md](../docs/serving.md#php-fpm-and-fastcgi) recommends or the front door's defaults ([TESTING.md](../TESTING.md#serving-large-bodies-php-fpm-and-front-door-hazards)). `php.ini` goes on top of `php.ini-production`.
-- **`frankenphp/`**: the FrankenPHP Caddyfiles of the integration suite (`integration`, `worker`). The load tests' Caddyfile and PHP settings are in `tests/load/`, which mounts them. `integration.Caddyfile` is baked into `frankenphp-extension`; `worker.Caddyfile` is read from the mounted repository at run time, so changing it needs no rebuild.
+- **`frankenphp/`**: the FrankenPHP Caddyfiles of the integration suite (`integration`, `worker`) and of `upstream-frankenphp` (`upstream`, baked in). The load tests' Caddyfile and PHP settings are in `tests/load/`, which mounts them. `integration.Caddyfile` is baked into `frankenphp-extension`; `worker.Caddyfile` is read from the mounted repository at run time, so changing it needs no rebuild.
