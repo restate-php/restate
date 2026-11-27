@@ -69,13 +69,6 @@
         };
       };
       inherit (args) extensionName;
-
-      # The PHP minors of composer.json's `php` constraint.
-      phps = [
-        "php84"
-        "php85"
-        "php86"
-      ];
     in
     {
       # The extension for every PHP of nixpkgs, built against the PHP that loads it:
@@ -94,12 +87,19 @@
         pkgs = nixpkgs.legacyPackages.${system}.extend self.overlays.default;
         platform = rustPhpPlatform pkgs;
 
+        # A PHP of each minor of composer.json's `php` constraint.
+        phps = with pkgs; [
+          php84
+          php85
+          php86
+        ];
+
         # <php>.<nts|zts>.<target>.<variant>: the extension for each PHP minor, thread safety,
         # Linux target of the PIE archives and build, cross-compiled from any of the systems. The
         # variants are the profile, and the soak suite's diagnostics feature.
         extensions = platform.buildRustPhpExtensions {
           inherit args;
-          php = map (php: pkgs.${php}) phps;
+          php = phps;
           targets = with platform.targets; [
             x86_64-linux-glibc
             aarch64-linux-glibc
@@ -172,14 +172,18 @@
 
         checks =
           # tests/*.phpt, run with each PHP minor with the extension loaded through the overlay, as
-          # Nix users load it.
-          lib.genAttrs phps (
-            php:
-            platform.runPhpTests {
-              php = pkgs.${php};
-              extensions = [ pkgs.${php}.extensions.${extensionName} ];
-              src = ./tests;
-            }
+          # Nix users load it: php84, … as the extensions are keyed.
+          lib.listToAttrs (
+            map (
+              php:
+              lib.nameValuePair "php${lib.replaceStrings [ "." ] [ "" ] (lib.versions.majorMinor php.version)}" (
+                platform.runPhpTests {
+                  inherit php;
+                  extensions = [ php.extensions.${extensionName} ];
+                  src = ./tests;
+                }
+              )
+            ) phps
           )
           // {
             # tests/*.phpt with a thread-safe (ZTS) PHP, as FrankenPHP and PHP 8.6's official images
