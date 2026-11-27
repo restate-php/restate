@@ -104,6 +104,21 @@ abstract class IntegrationTestCase extends TestCase
         return $row;
     }
 
+    /**
+     * Restate's journal events of the invocation of the given type (`TransientError`, `Paused`, …), oldest first.
+     * Restate records a transient error when an attempt fails, though not every repetition of the same error.
+     *
+     * @return list<array<string, mixed>>
+     */
+    protected static function journalEvents(string $invocationId, string $type): array
+    {
+        return self::restate()->query(sprintf(
+            "SELECT event_type, event_json, appended_at FROM sys_journal_events WHERE id = '%s' AND event_type = '%s' ORDER BY appended_at",
+            $invocationId,
+            $type,
+        ));
+    }
+
     /** Poll `Counter/{key}/get` until it returns the expected value (40 x 0.25 s). */
     protected static function waitForCounter(string $key, string $expected): void
     {

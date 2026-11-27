@@ -173,8 +173,9 @@ docker compose logs greeter | grep SIMULATED
 
 The call still returns `{"message":"You said hi to Alice!"}`. Restate retried the failing step until it succeeded,
 with the same greeting id each time. Once the notification has been sent, a failing reminder never sends it
-again. Any exception retries; throw a `TerminalError` to fail for good
-([Error handling](../../docs/develop/errors.md)).
+again. Restate waits a little longer before each retry; the handler's `InvocationRetryPolicy` caps the wait at
+2 seconds ([Retry policies](../../docs/develop/errors.md#retry-policies)). Any exception retries; throw a
+`TerminalError` to fail for good ([Error handling](../../docs/develop/errors.md)).
 
 ## 6. Kill the service mid-invocation
 

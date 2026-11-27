@@ -33,14 +33,19 @@ final class AbortTimeoutTest extends FaultInjectionTestCase
         // Queued behind the first invocation's lock.
         $next = self::sendInvocation("ChaosObject/{$key}/add", '{}');
 
-        $failure = self::waitForRow($id, static fn (array $row): bool => is_string($row['last_failure'] ?? null) && $row['last_failure'] !== '', what: 'a recorded failure');
-        self::assertStringContainsString("the 'abort timeout' (1s) fired", (string) $failure['last_failure'], 'last_failure: ' . json_encode($failure, JSON_UNESCAPED_SLASHES));
-        self::assertSame('RT0001', $failure['last_failure_error_code'] ?? null);
-
         // The retry's execution is the journaled one: the first, complete but late, was thrown away.
         self::assertSame('2', self::attachInvocation($id)->body);
         self::assertSame('1', self::attachInvocation($next)->body);
         self::assertSame(1, self::journalCounts($id)['Command: Run abortable'] ?? 0);
+
+        // The first attempt's failure, from the journal: `last_failure` shows it only until the retry, which can
+        // complete a few milliseconds later, before a poll sees it.
+        $errors = self::journalEvents($id, 'TransientError');
+        self::assertCount(1, $errors, (string) json_encode($errors, JSON_UNESCAPED_SLASHES));
+        $failure = json_decode((string) $errors[0]['event_json'], true, flags: JSON_THROW_ON_ERROR);
+        self::assertIsArray($failure);
+        self::assertStringContainsString("the 'abort timeout' (1s) fired", (string) ($failure['error_message'] ?? ''), (string) $errors[0]['event_json']);
+        self::assertSame('RT0001', $failure['restate_doc_error_code'] ?? null, (string) $errors[0]['event_json']);
 
         $starts = self::chaos()->effects($id, 'abortable-start');
         $ends = self::chaos()->effects($id, 'abortable-end');

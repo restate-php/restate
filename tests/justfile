@@ -98,7 +98,7 @@ integration server *phpunit:
 serving-hazards *phpunit:
     RESTATE_PHP_TEST_FPM_TARGET=fpm-extension-apache \
         RESTATE_PHP_TEST_FPM_IMAGE=restate.local/restate-php-fpm:extension-apache \
-        {{ quote(just_executable()) }} --justfile {{ quote(justfile()) }} integration nginx-fpm --group serving-hazards "$@"
+        {{ quote(just_executable()) }} --justfile {{ quote(justfile()) }} test integration nginx-fpm --group serving-hazards "$@"
 
 # nightly: frames, concurrency and bailout (the default); frames: FrameReplaySoakTest, about a
 # million requests; concurrency: ConcurrencySoakTest, many PHP threads in one process; bailout:
