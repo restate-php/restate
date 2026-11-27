@@ -197,7 +197,7 @@ Restate's ingress and admin ports are published on `127.0.0.1` ports the harness
 | `withEnvironment(array $variables)` | one partition, compact logs without colors | Restate server configuration as `RESTATE_…` variables, such as `RESTATE_LOG_FILTER=restate=debug`. They replace the harness's defaults of the same name. |
 | `withVolume(string $hostPath, string $containerPath, bool $readOnly = false)` | none | Mounts a file or directory that the configuration points to |
 | `withContainerRuntime(string $command)` | `docker`, else `podman`, from `PATH` | The container CLI, as a name on `PATH` or a path |
-| `withStartupTimeout(int $seconds)` | 60 | How long Restate and the endpoint may take to become ready |
+| `withStartupTimeout(int $seconds)` | 60 | How long Restate and the endpoint may take to become ready. Pulling a missing image comes before it and does not count. |
 | `withRunArguments(array $arguments)` | none | Extra `run` options, such as resource limits. The harness's own options are refused. |
 
 For example, to test [request identity validation](../serving.md#request-identity-validation), mount the private key and point Restate at it:
@@ -223,7 +223,7 @@ Get the binary from [nix-restate](https://github.com/sagikazarmark/nix-restate) 
 | --- | --- | --- |
 | `withBinary(string $binary)` | `restate-server` | The binary, as a name on `PATH` or a path |
 | `withEnvironment(array $variables)` | one partition, compact logs without colors | Restate configuration, as for a container. A file a setting points to is a path on your machine: no volume needed. The variables the harness sets itself (`RestateProcess::HARNESS_VARIABLES`: the data directory, node name, listen mode and addresses) are refused. |
-| `withStartupTimeout(int $seconds)` | 60 | How long Restate and the endpoint may take to become ready |
+| `withStartupTimeout(int $seconds)` | 60 | How long Restate and the endpoint may take to become ready. Pulling a missing image comes before it and does not count. |
 
 The process gets a fresh data directory and its own loopback ports. It sees none of your shell's `RESTATE_…` variables, as a container would not.
 

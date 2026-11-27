@@ -178,6 +178,12 @@ final class CommandsTest extends TestCase
         self::assertSame(['docker', 'rm', '--force', '--volumes', 'restate-1'], Commands::removeContainer('docker', 'restate-1'));
     }
 
+    public function testImageCommands(): void
+    {
+        self::assertSame(['podman', 'image', 'inspect', '--format', '{{.Id}}', 'restate:1.8.1'], Commands::inspectImage('podman', 'restate:1.8.1'));
+        self::assertSame(['podman', 'pull', '--quiet', 'restate:1.8.1'], Commands::pullImage('podman', 'restate:1.8.1'));
+    }
+
     public function testHostAddressesAreBracketedForIpv6AndTheWildcardBecomesLoopback(): void
     {
         self::assertSame('127.0.0.1', Commands::reachableHost('0.0.0.0'));
