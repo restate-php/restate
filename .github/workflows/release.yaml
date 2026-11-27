@@ -37,7 +37,7 @@ concurrency:
 jobs:
   version:
     name: Version
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
@@ -150,7 +150,7 @@ jobs:
   attest:
     name: Attest
     needs: [version, extension]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
@@ -206,7 +206,7 @@ jobs:
   publish:
     name: Publish
     needs: [version, attest]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     # Holds the GitHub App's key; give it required reviewers to approve each release.
     environment: release

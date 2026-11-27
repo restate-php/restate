@@ -9,26 +9,10 @@ name: Quickstart
 on:
   push:
     branches: [main]
-    paths: &paths
-      - '.github/workflows/quickstart.yaml'
-      - 'bin/build-image.sh'
-      - 'docker-bake.hcl'
-      - 'docker/quickstart/**'
-      - 'examples/quickstart/**'
-      - 'extension/**'
-      - 'packages/**'
-      - 'tests/Quickstart/**'
-      - 'tests/Integration/Support/Http*.php'
   pull_request:
-    paths: *paths
   schedule:
-    - cron: '23 4 * * *'
+    - cron: "23 4 * * *"
   workflow_dispatch:
-
-# Pull requests cancel their earlier runs; on main a push never cancels the nightly run.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -45,13 +29,13 @@ defaults:
 
 jobs:
   local:
-    name: local (${{ matrix.runner }})
-    runs-on: ${{ matrix.runner }}
+    name: Local build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+        os: [ubuntu-latest, ubuntu-24.04-arm]
 
     steps:
       - name: Checkout repository
@@ -73,9 +57,9 @@ jobs:
         run: just test quickstart local
 
   released:
-    name: released
+    name: Released version
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
