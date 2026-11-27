@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Run the Restate SDK conformance suite (restatedev/e2e sdk-tests.jar) locally against a test-services image.
-# CI runs the same suite through the restatedev/e2e/sdk-tests action (.github/workflows/conformance.yaml).
+# Run the Restate SDK conformance suite (restatedev/e2e sdk-tests.jar) against a test-services image. CI runs
+# it the same way (.github/workflows/runtime.yaml).
 #
 # Usage: bin/conformance-local.sh [server] [basic|full]
 #
-#   server  frankenphp (the default) or fpm-nginx: the test-services image to build and test is
-#           conformance-<server>, the PHP 8.4 debug image of docker-bake.hcl (bin/build-image.sh)
+#   server  frankenphp (the default), frankenphp-worker, fpm-nginx or fpm-caddy: the test-services image
+#           to build and test is conformance-<server> of docker-bake.hcl (bin/build-image.sh)
 #   mode    basic runs the `default` suite only, full runs every suite (default: full)
 #
 # Run it in the dev shell (it provides Java 25). Works with Docker and with rootless podman: under
@@ -14,18 +14,25 @@
 # var/conformance/<server>/<mode>/.
 #
 # Environment:
+#   RESTATE_PHP_TEST_PHP_VERSION             the image's PHP minor: 8.4 (the default), 8.5 or 8.6
+#   RESTATE_PHP_TEST_EXTENSION_PROFILE       the image's module: release (the default here: what users
+#                                            install) or debug
+#   RESTATE_PHP_TEST_LIBC                    the image's C library: glibc (the default) or musl (Alpine)
 #   RESTATE_PHP_CONFORMANCE_SKIP_BUILD=1     reuse an existing image instead of rebuilding
 #   RESTATE_PHP_CONFORMANCE_TEST_NAME        run only this test class (e.g. ProxyRequestSigning) in each suite
 #   RESTATE_PHP_CONFORMANCE_EXCLUSIONS_FILE  exclusions YAML (default test-services/exclusions.yaml; empty: none)
 #   RESTATE_PHP_CONFORMANCE_SEQUENTIAL=1     run test classes one at a time (default under podman)
 #   RESTATE_PHP_CONFORMANCE_OUTPUT_DIR       artifacts root (default var/conformance)
-#   RESTATE_PHP_RESTATE_IMAGE             Restate image, as for the test harness (default RestateContainer::DEFAULT_IMAGE)
+#   RESTATE_PHP_RESTATE_IMAGE                Restate image, as for the test harness (default RestateContainer::DEFAULT_IMAGE)
 set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 SERVER=${1:-frankenphp}
 TARGET=conformance-$SERVER
 MODE=${2:-full}
+PHP_VERSION=${RESTATE_PHP_TEST_PHP_VERSION:-8.4}
+VARIANT=${RESTATE_PHP_TEST_EXTENSION_PROFILE:-release}
+LIBC=${RESTATE_PHP_TEST_LIBC:-glibc}
 
 SUITE_VERSION=v2.3
 JAR_URL="https://github.com/restatedev/e2e/releases/download/$SUITE_VERSION/sdk-tests.jar"
@@ -39,8 +46,8 @@ case "$MODE" in
     ;;
 esac
 
-if ! docker buildx bake -f "$ROOT_DIR/docker-bake.hcl" --print "$TARGET-84-debug" >/dev/null 2>&1; then
-  echo "Unknown server: $SERVER (frankenphp or fpm-nginx)" >&2
+if ! docker buildx bake -f "$ROOT_DIR/docker-bake.hcl" --print "$TARGET-${PHP_VERSION//./}-$VARIANT" >/dev/null 2>&1; then
+  echo "Unknown server, PHP or variant: $SERVER, $PHP_VERSION, $VARIANT (servers: frankenphp, frankenphp-worker, fpm-nginx, fpm-caddy)" >&2
   exit 64
 fi
 
@@ -116,7 +123,7 @@ if docker version 2>/dev/null | grep -q 'Podman Engine'; then
 fi
 
 if [ "${RESTATE_PHP_CONFORMANCE_SKIP_BUILD:-0}" != 1 ]; then
-  bash "$ROOT_DIR/bin/build-image.sh" "$TARGET" "$IMAGE"
+  bash "$ROOT_DIR/bin/build-image.sh" --php "$PHP_VERSION" --variant "$VARIANT" --libc "$LIBC" "$TARGET" "$IMAGE"
 fi
 
 args=(run "--restate-container-image=$RESTATE_IMAGE" --image-pull-policy=CACHED "--report-dir=$RUN_DIR")

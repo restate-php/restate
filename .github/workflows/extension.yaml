@@ -6,6 +6,11 @@ on:
   pull_request:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      checks:
+        description: Run the flake's checks (the release builds and verifies the archives only)
+        type: boolean
+        default: true
     secrets:
       CACHIX_AUTH_TOKEN:
         description: Pushes the Nix builds to restate-php.cachix.org
@@ -84,15 +89,21 @@ jobs:
 
       # The builds of the Docker-based suites that are not in the archives, for this runner's CPU
       # and every PHP minor, for restate-php.cachix.org: debug NTS (php-fpm) and ZTS (FrankenPHP),
-      # and the soak suite's diagnostics builds (FrankenPHP, debug and release).
+      # glibc and musl (the Alpine images), and the soak suite's diagnostics builds (FrankenPHP,
+      # debug and release).
       - name: Build the Docker suites' modules
         run: |
-          target=$(uname -m)-linux-glibc
           modules=()
           for php in $(nix eval --raw ./extension#extensions --apply 'extensions: toString (builtins.attrNames extensions)'); do
+            for libc in glibc musl; do
+              target=$(uname -m)-linux-$libc
+              modules+=(
+                "./extension#extensions.$php.nts.$target.debug"
+                "./extension#extensions.$php.zts.$target.debug"
+              )
+            done
+            target=$(uname -m)-linux-glibc
             modules+=(
-              "./extension#extensions.$php.nts.$target.debug"
-              "./extension#extensions.$php.zts.$target.debug"
               "./extension#extensions.$php.zts.$target.debug-diagnostics"
               "./extension#extensions.$php.zts.$target.release-diagnostics"
             )
@@ -157,6 +168,7 @@ jobs:
 
   checks:
     name: Checks
+    if: inputs.checks != false
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:

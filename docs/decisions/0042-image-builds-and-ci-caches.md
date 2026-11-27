@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Amends [Worker-Mode and Soak Testing](0035-worker-soak-testing.md) (the soak images) and [Load Tests in Compose](0040-load-tests-in-compose.md) (the endpoint image). Decisions 1 and 3 are superseded and decision 4 amended by [Extension Modules in the Images](0044-extension-modules-in-the-images.md): the images install the extension flake's module instead of compiling it, and each PHP minor has base stages of its own.
+Accepted. Amends [Worker-Mode and Soak Testing](0035-worker-soak-testing.md) (the soak images) and [Load Tests in Compose](0040-load-tests-in-compose.md) (the endpoint image). Decisions 1 and 3 are superseded and decision 4 amended by [Extension Modules in the Images](0044-extension-modules-in-the-images.md): the images install the extension flake's module instead of compiling it, and each PHP minor has base stages of its own. Decision 6 (the reusable conformance workflow) is superseded by [Test Matrix](0045-test-matrix.md): the conformance suite runs in the runtime cells.
 
 ## Context
 

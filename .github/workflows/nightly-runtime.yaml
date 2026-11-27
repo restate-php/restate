@@ -1,0 +1,53 @@
+# Every runtime on every PHP minor (Debian, x86_64) with the whole integration suite and the
+# conformance suite, and every runtime on arm64 and on Alpine with the runtime group: what the pull
+# requests' cells spread out (ci.yaml), crossed. docs/decisions/0045-test-matrix.md.
+name: Nightly runtime
+
+on:
+  schedule:
+    - cron: '7 2 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  cells:
+    name: Cells
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      cells: ${{ steps.cells.outputs.cells }}
+
+    steps:
+      - name: Cross the runtimes
+        id: cells
+        run: |
+          cells=$(jq -cn '
+            [
+              {name: "FrankenPHP", servers: "frankenphp", conformance: "frankenphp"},
+              {name: "FrankenPHP worker", servers: "frankenphp-worker", conformance: "frankenphp-worker"},
+              {name: "nginx + php-fpm", servers: "nginx-fpm nginx-fpm-h2c", conformance: "fpm-nginx"},
+              {name: "Caddy + php-fpm", servers: "caddy-fpm", conformance: "fpm-caddy"}
+            ] as $runtimes
+            | ["8.4", "8.5", "8.6"] as $phps
+            | [$runtimes[] as $runtime | $phps[] as $php
+                | $runtime + {name: "\($runtime.name) (PHP \($php))", group: "", php: $php, libc: "glibc", arch: "x86_64"}]
+              + [$runtimes[] as $runtime
+                | $runtime + {name: "\($runtime.name) (PHP \($phps[-1]), arm64)", group: "runtime", php: $phps[-1], libc: "glibc", arch: "arm64"},
+                  $runtime + {name: "\($runtime.name) (PHP \($phps[-1]), Alpine)", group: "runtime", php: $phps[-1], libc: "musl", arch: "x86_64"}]')
+          echo "cells=$cells" >> "$GITHUB_OUTPUT"
+          jq . <<< "$cells"
+
+  runtime:
+    name: Runtime
+    needs: cells
+    uses: ./.github/workflows/runtime.yaml
+    secrets:
+      CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+    with:
+      cells: ${{ needs.cells.outputs.cells }}

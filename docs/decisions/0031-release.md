@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. The workflow has not run on GitHub yet: nothing is published, and the repositories, the GitHub App and the Packagist entries it needs do not exist yet ([RELEASING.md](../../RELEASING.md)).
+Accepted. The workflow has not run on GitHub yet: nothing is published, and the repositories, the GitHub App and the Packagist entries it needs do not exist yet ([RELEASING.md](../../RELEASING.md)). Since [Test Matrix](0045-test-matrix.md) the release runs no tests (decision 4's ci and conformance steps and the skip-tests input are gone): it reports the release commit's check runs and builds and verifies the archives.
 
 ## Context
 

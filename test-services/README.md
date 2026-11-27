@@ -29,7 +29,9 @@ Each file in `services/` returns one service definition implementing a contract 
 
 ## Entrypoint and exclusions
 
-- **`index.php`** serves every service above with `Endpoint::serve()`, which needs the Restate PHP extension loaded (`php -d extension=…`). `E2E_REQUEST_SIGNING` (comma-separated `publickeyv1_…` keys, set by the conformance suite for `ProxyRequestSigning`) becomes the endpoint's identity keys. `just serve` (which builds the extension first) serves it on port 9080; the `conformance-frankenphp` and `conformance-fpm-nginx` images of [`docker/Dockerfile`](../docker/README.md) serve it to the conformance suite.
+- **`endpoint.php`** builds the endpoint of every service above, which needs the Restate PHP extension loaded (`php -d extension=…`). `E2E_REQUEST_SIGNING` (comma-separated `publickeyv1_…` keys, set by the conformance suite for `ProxyRequestSigning`) becomes the endpoint's identity keys.
+- **`index.php`** builds it for every request and serves it: under `php -S` (`just serve`, which builds the extension first, on port 9080), php-fpm and FrankenPHP's classic mode (the `conformance-frankenphp`, `conformance-fpm-nginx` and `conformance-fpm-caddy` images of [`docker/`](../docker/README.md)).
+- **`worker.php`** builds it once per FrankenPHP worker and serves every request the worker handles (the `conformance-frankenphp-worker` image).
 - **`exclusions.yaml`** lists conformance cases excluded by name. It is empty: the SDK passes every case.
 
 The integration suite does not use `index.php`. Its router, `tests/Integration/Support/endpoint.php`, builds the endpoints of `IntegrationEndpoints` for each request: the services listed in `tests/Integration/Support/services.php` (the "both" rows above plus the integration suite's own), with their configuration, the second endpoint under `/state-preload`, and the fault injector. `RESTATE_PHP_TEST_IDENTITY_KEYS` (comma-separated) sets its identity keys, for `RequestIdentityTest`. A FrankenPHP worker script (`tests/Integration/Support/worker.php`) serves the same endpoints.

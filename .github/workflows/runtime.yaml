@@ -1,0 +1,97 @@
+# One job per runtime cell: the integration suite on the cell's servers (its `group`, or the whole
+# suite), then the SDK conformance suite on its conformance image, with the release build of the
+# extension (what users install), on the cell's PHP, C library and CPU. ci.yaml calls it with the
+# pull request's cells, nightly-runtime.yaml with every combination. docs/decisions/0045-test-matrix.md.
+#
+# A cell:
+#   name         the job's name
+#   servers      the integration servers (RESTATE_PHP_TEST_SERVER), space-separated; one image
+#   group        a PHPUnit group to run (runtime), or empty for the whole suite
+#   conformance  the conformance server (bin/conformance-local.sh), or empty for none
+#   php          the PHP minor of the images
+#   libc         glibc (Debian) or musl (Alpine)
+#   arch         x86_64 or arm64
+#   restate      a Restate image, or empty for RestateContainer::DEFAULT_IMAGE
+name: Runtime
+
+on:
+  workflow_call:
+    inputs:
+      cells:
+        description: The cells, a JSON array
+        type: string
+        required: true
+    secrets:
+      CACHIX_AUTH_TOKEN:
+        description: Pushes the Nix builds to restate-php.cachix.org
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  RESTATE_PHP_IMAGE_EXTENSION: host
+
+defaults:
+  run:
+    shell: devenv shell -- bash -e {0}
+
+jobs:
+  runtime:
+    name: ${{ matrix.cell.name }}
+    runs-on: ${{ matrix.cell.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        cell: ${{ fromJSON(inputs.cells) }}
+    env:
+      RESTATE_PHP_TEST_PHP_VERSION: ${{ matrix.cell.php }}
+      RESTATE_PHP_TEST_LIBC: ${{ matrix.cell.libc }}
+      RESTATE_PHP_RESTATE_IMAGE: ${{ matrix.cell.restate }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up the dev shell
+        uses: ./.github/actions/setup
+        with:
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          cargo-cache: integration
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      # The servers share one image, built for the first.
+      - name: Integration
+        if: matrix.cell.servers != ''
+        env:
+          SERVERS: ${{ matrix.cell.servers }}
+          GROUP: ${{ matrix.cell.group }}
+        run: |
+          args=()
+          if [ -n "$GROUP" ]; then args=(--group "$GROUP"); fi
+          skip=0
+          for server in $SERVERS; do
+            echo "::group::just test integration $server ${args[*]}"
+            RESTATE_PHP_TEST_SKIP_BUILD=$skip just test integration "$server" "${args[@]}"
+            echo "::endgroup::"
+            skip=1
+          done
+
+      - name: Conformance
+        if: matrix.cell.conformance != ''
+        env:
+          CONFORMANCE: ${{ matrix.cell.conformance }}
+        run: just test conformance "$CONFORMANCE"
+
+      - name: Upload the conformance reports
+        if: failure() && matrix.cell.conformance != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: conformance-${{ strategy.job-index }}
+          path: var/conformance
+          if-no-files-found: ignore
