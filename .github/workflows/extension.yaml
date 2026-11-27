@@ -99,13 +99,6 @@ jobs:
           done
           nix build --no-link -L "${modules[@]}"
 
-      # The flake restate-php/ext-restate publishes (the split of extension/): every system's
-      # outputs evaluate, and its checks pass on this one: tests/*.phpt with PHP 8.4, 8.5 and 8.6
-      # and with a ZTS PHP (the extension loaded through its overlay), and an invocation per
-      # request in FrankenPHP's workers and PHP-FPM's children (tests/server/).
-      - name: Check the flake
-        run: nix flake check -L ./extension
-
       # One artifact with every archive, the x86_64 job's: the release downloads php_restate-*.
       - name: Upload the archives
         if: matrix.arch == 'x86_64'
@@ -159,21 +152,17 @@ jobs:
         working-directory: dist
         run: sha256sum -c ./*.sha256
 
-      # The flake's load-test (ext-php-rs.nix's loadPieArchives): each archive of this CPU in the
-      # official image of its PHP minor, thread safety (cli or zts; for PHP 8.6, whose cli images
-      # are ZTS, nts or zts) and C library (Debian trixie or Alpine), which is what a user's
-      # container has. It fails on a name it cannot parse, so it also checks the names PIE matches
-      # exactly.
       - name: Load into PHP's official images
         run: nix run ./extension#load-test -- --arch "$ARCH" dist extension/tests
 
-  # The flake's checks on macOS (arm64), where nixpkgs' PHP loads the module built for it, as Nix
-  # users on a Mac do: tests/*.phpt with PHP 8.4, 8.5 and 8.6 and with a ZTS PHP, FrankenPHP's
-  # workers and PHP-FPM's children. GitHub's macOS runners have no Docker; these need none.
-  flake-macos:
-    name: Check the flake on macOS
-    runs-on: macos-15
+  checks:
+    name: Checks
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
     steps:
       - name: Checkout repository

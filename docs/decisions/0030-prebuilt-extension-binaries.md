@@ -99,9 +99,9 @@ The builds above run in one image per target, on a runner of the target's CPU. e
     - checks every archive's checksum
     - loads each archive of that CPU into a clean official image of its PHP minor, thread safety and C library, with the module alone (`php -n`), and runs `extension/tests/*.phpt` there: the flake's `load-test`, ext-php-rs.nix's `loadPieArchives`, which also fails on a name it cannot parse, the names PIE matches exactly. PHP 8.6's default images are ZTS (`8.6-cli-*`, aliased `8.6-zts-*`); its NTS archives go into the NTS CLI variant, `8.6-nts-*` ([docker-library/php#1722](https://github.com/docker-library/php/pull/1722)).
 
-    A job on macOS runs the flake's checks there ([Extension Flake](0037-extension-flake.md)).
+    A job on Linux and one on macOS run the flake's checks ([Extension Flake](0037-extension-flake.md)).
 
-    It runs on changes to `extension/` (which holds the flake) or the devenv files, by hand, and from the release workflow, and uploads nothing. `.github/workflows/release.yaml` attests the archives, writes `SHA256SUMS` and publishes them on the extension repository's GitHub release, together with the packages ([Release](0031-release.md)). The release is created as a draft, which can take assets even when the repository has immutable releases, and published once complete, since PIE sees published releases only.
+    It runs on every push to `main` and pull request, by hand, and from the release workflow, and uploads nothing. `.github/workflows/release.yaml` attests the archives, writes `SHA256SUMS` and publishes them on the extension repository's GitHub release, together with the packages ([Release](0031-release.md)). The release is created as a draft, which can take assets even when the repository has immutable releases, and published once complete, since PIE sees published releases only.
 11. **Versions and tags.** The extension is released with the packages at one version ([Release](0031-release.md)), and the extension repository's tag is the bare version, `0.1.0`: PIE puts the tag, as Packagist reports it, into the asset name, and the archives are named after `phpversion('restate')`. A tag `v0.1.0` in the extension repository would make PIE look for `php_restate-v0.1.0_…`.
 
 ## Consequences

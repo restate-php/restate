@@ -1,38 +1,16 @@
-# The Restate SDK conformance suite (restatedev/e2e sdk-tests.jar) against the PHP test
-# services, through the action the official SDKs use. Locally: just test conformance.
-name: SDK conformance tests
+name: Conformance
 
 on:
   push:
     branches: [main]
-    paths: &paths
-      - '.github/workflows/conformance.yaml'
-      - 'bin/build-image.sh'
-      - 'composer.json'
-      - 'composer.lock'
-      - 'docker-bake.hcl'
-      - 'docker/**'
-      - 'extension/**'
-      - 'packages/**'
-      - 'test-services/**'
   pull_request:
-    paths: *paths
   workflow_dispatch:
-  # The release (.github/workflows/release.yaml) runs it on the commit it releases, and the
-  # nightly serving tests (nightly-serving.yaml) against php-fpm behind nginx.
   workflow_call:
     inputs:
       target:
         description: The test services image, conformance-frankenphp or conformance-fpm-nginx (its PHP 8.4 debug image)
         type: string
         default: conformance-frankenphp
-
-# Inside a called workflow github.workflow is the caller's name, so the group names this
-# workflow itself; manual runs and the release's call (workflow_dispatch) get a group of their
-# own and are never cancelled by a push.
-concurrency:
-  group: conformance-${{ inputs.target || 'conformance-frankenphp' }}-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event_name }}
-  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -42,14 +20,10 @@ env:
   SERVICE_IMAGE: restate.local/restate-php-test-services:${{ inputs.target || 'conformance-frankenphp' }}
 
 jobs:
-  sdk-tests:
-    name: restatedev/e2e sdk-tests (${{ inputs.target || 'conformance-frankenphp' }})
-    runs-on: ubuntu-24.04
+  tests:
+    name: Tests (${{ inputs.target || 'conformance-frankenphp' }})
+    runs-on: ubuntu-latest
     timeout-minutes: 60
-    # contents: read checks out the repository. The action publishes the JUnit results as a check
-    # run and a pull request comment (EnricoMi/publish-unit-test-result-action), hence checks and
-    # pull-requests write; issues: read lets it find its earlier comment when the repository is
-    # private and is harmless in a public one.
     permissions:
       contents: read
       issues: read

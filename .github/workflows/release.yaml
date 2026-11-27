@@ -133,7 +133,7 @@ jobs:
       CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
   conformance:
-    name: SDK conformance tests
+    name: Conformance
     needs: version
     if: ${{ !inputs.skip-tests }}
     uses: ./.github/workflows/conformance.yaml
@@ -145,7 +145,7 @@ jobs:
       pull-requests: write
 
   extension:
-    name: Extension binaries
+    name: Extension
     needs: version
     uses: ./.github/workflows/extension.yaml
     secrets:

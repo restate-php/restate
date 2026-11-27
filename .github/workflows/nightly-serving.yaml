@@ -87,7 +87,7 @@ jobs:
   # run and looks for a pull request to comment on, which a scheduled or manual run on main never
   # has: conformance.yaml's job asks for these.
   conformance-fpm-nginx:
-    name: SDK conformance tests
+    name: Conformance
     uses: ./.github/workflows/conformance.yaml
     with:
       target: conformance-fpm-nginx

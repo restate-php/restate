@@ -44,7 +44,7 @@ Done once.
   - [ ] The row for `X.Y.Z` in [Compatibility](docs/compatibility.md#versions): shared-core, contract and PHP versions, and "(unreleased)" dropped from it.
   - [ ] The changelog, if one is kept.
 - [ ] `just check` passes locally; for a release that touches the extension or the protocol, also `just test integration php-cli`, `just test integration frankenphp` and `just test conformance`.
-- [ ] Merge to `main` and push. `CI`, `SDK conformance tests` and `Extension binaries` pass on that commit.
+- [ ] Merge to `main` and push. `CI`, `Conformance` and `Extension` pass on that commit.
 - [ ] Rehearse the split on that commit: `just split publish --dry-run --version X.Y.Z --remote https://github.com/restate-php/{repository}.git`. For every repository it reports `main` as created, fast-forwarded, up to date or left alone (ahead: the push split already pushed a later commit's split), and the tag (`X.Y.Z` for the extension, `vX.Y.Z` for the packages) as created; it pushes nothing, and fails on what would stop the release ([Release](docs/decisions/0031-release.md), decision 5).
 
 ### 2. Release
