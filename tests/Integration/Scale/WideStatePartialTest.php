@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Restate\Tests\Integration\Scale;
 
-use PHPUnit\Framework\Attributes\Group;
 use Restate\Testing\RestateContainer;
 use Restate\Testing\RestateProcess;
 
@@ -14,7 +13,6 @@ use Restate\Testing\RestateProcess;
  * fetches the rest, and the key list, on first use. Which keys it sends is Restate's choice; the tests assume none.
  * An empty state fits, so it is sent whole.
  */
-#[Group('managed')]
 final class WideStatePartialTest extends WideStateTestCase
 {
     #[\Override]

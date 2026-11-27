@@ -17,7 +17,6 @@ use Restate\Tests\Support\Faults\FaultProxy;
  * once the network heals, the counter is exactly 11 (no send duplicated) and the journal has one entry of each.
  */
 #[Group('failure-nightly')]
-#[Group('managed')]
 final class NetworkFaultTest extends ProxiedTestCase
 {
     public function testAResetBeforeTheEndpointIsRetriedWithNothingExecuted(): void

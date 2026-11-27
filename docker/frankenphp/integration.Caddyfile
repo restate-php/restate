@@ -8,23 +8,18 @@
 # RequestStallTest stalls 12 bodies and expects /health to keep answering; 16 threads keep that
 # independent of the machine's CPU count.
 #
-# The frankenphp-extension image serves the repository mounted at /app on :8080. devenv.nix's
-# frankenphp profile serves the working tree with the same file (languages.php.frankenphp.serve):
-# RESTATE_PHP_TEST_APP_DIR     the repository (default /app)
-# RESTATE_PHP_TEST_LISTEN      the site address (default :8080)
-# CADDY_GLOBAL_OPTIONS         more global options (the image sets it empty; devenv binds loopback)
+# The frankenphp-extension image serves the repository mounted at /app on :8080.
 {
 	admin off
 	auto_https off
-	{$CADDY_GLOBAL_OPTIONS}
 	frankenphp {
 		num_threads 16
 		php_ini enable_post_data_reading 0
 	}
 }
 
-{$RESTATE_PHP_TEST_LISTEN::8080} {
-	root * {$RESTATE_PHP_TEST_APP_DIR:/app}/tests/Integration/Support
+:8080 {
+	root * /app/tests/Integration/Support
 	rewrite * /endpoint.php
 	php
 }

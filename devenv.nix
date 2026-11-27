@@ -25,96 +25,11 @@ let
     cargoHash = "sha256-KFfQaH4jbfzsi5B6X32MV9CMsIChVBURQ37/uOQYOck=";
   };
 
-  # A profile that serves the integration suite's endpoint outside the test harness, with Restate
-  # next to it (devenv-extras' services.restate): `devenv --profile <name> up` runs both, and
-  # `devenv --profile <name> test` runs the suite against them (`RESTATE_PHP_TEST_RESTATE=external
-  # just test integration <server>`). The shell exports what the suite connects to
-  # (tests/Integration/Support/IntegrationEndpoint.php). The tests that start, stop or configure
-  # Restate or the endpoint themselves (#[Group('managed')]) run under the harness instead:
-  # docs/decisions/0039-external-test-environments.md.
-  #
-  # server: the RESTATE_PHP_TEST_SERVER value of what serves the endpoint; process: its devenv
-  # process; url: where it listens; http2: whether Restate reaches it over h2c.
-  externalSuite =
-    {
-      server,
-      process,
-      url,
-      http2 ? false,
-    }:
-    { config, ... }:
-    let
-      stateDir = "${config.devenv.state}/restate-php-test";
-      # Where devenv's process manager writes a process's output.
-      logs = "${config.devenv.runtime}/processes/logs";
-    in
-    {
-      services.restate = {
-        enable = true;
-        package = restate-bin;
-        # As the harness runs Restate: plain lines, for the log tails of failed tests.
-        settings = {
-          log-format = "compact";
-          log-disable-ansi-codes = true;
-        };
-        # The harness registers the endpoint too (forced, the same URI); this one is for `devenv up`
-        # on its own, with the services in the UI and the CLI.
-        deployments.integration = {
-          uri = url;
-          after = [ "devenv:processes:${process}" ];
-          http1 = !http2;
-        };
-      };
-
-      tasks = {
-        # Restate and the endpoint start empty, as the harness's do: the suite's tests use fixed keys
-        # (Counter/alice, workflow ids), which the state of an earlier run would change. It runs when
-        # the processes start, not when a shell is entered: one run of the suite per `devenv up`, and
-        # every `devenv test` starts afresh.
-        "restate-php:fresh-state" = {
-          exec = ''
-            rm -rf ${
-              lib.escapeShellArgs [
-                config.services.restate.stateDir
-                stateDir
-              ]
-            }
-            mkdir -p ${lib.escapeShellArg stateDir}
-          '';
-          before = [
-            "devenv:restate:setup"
-            "devenv:processes:restate"
-            "devenv:processes:${process}"
-          ];
-        };
-        # The scratch directory the endpoint shares with the tests (RESTATE_PHP_TEST_STATE_DIR), for
-        # a shell whose processes run elsewhere. Not before the processes: fresh-state creates it
-        # then, and a mkdir while it is being removed fails ("File exists" on macOS).
-        "restate-php:state-dir" = {
-          exec = "mkdir -p ${lib.escapeShellArg stateDir}";
-          before = [ "devenv:enterShell" ];
-        };
-      };
-      processes.${process}.env.RESTATE_PHP_TEST_STATE_DIR = stateDir;
-
-      env = {
-        RESTATE_PHP_TEST_ENDPOINT_URL = url;
-        RESTATE_PHP_TEST_ENDPOINT_SERVER = server;
-        RESTATE_PHP_TEST_STATE_DIR = stateDir;
-        RESTATE_PHP_TEST_ENDPOINT_LOG = "${logs}/${process}.stderr.log";
-        RESTATE_PHP_TEST_RESTATE_LOG = "${logs}/restate.stdout.log";
-      };
-
-      enterTest = ''
-        RESTATE_PHP_TEST_RESTATE=external just test integration ${lib.escapeShellArg server}
-      '';
-    };
-
   # FrankenPHP with the extension, rebuilt for its thread-safe PHP from the shell's PHP
-  # (languages.php.version), serving a Caddyfile from the working tree, as the images serve the
-  # same file from /app (RESTATE_PHP_TEST_APP_DIR, RESTATE_PHP_TEST_LISTEN). The extension is the
-  # Nix build (the overlay's, a release build), not the cargo build the harness loads; the shell's
-  # PHP does not load it.
+  # (languages.php.version), serving a Caddyfile from the working tree (RESTATE_PHP_TEST_APP_DIR,
+  # RESTATE_PHP_TEST_LISTEN): the load profile's endpoint. The extension is the Nix build (the
+  # overlay's, a release build), not the cargo build the harness loads; the shell's PHP does not
+  # load it.
   frankenphpServing =
     { root, caddyfile }:
     { config, ... }:
@@ -148,28 +63,6 @@ let
         RESTATE_PHP_TEST_APP_DIR = config.devenv.root;
         RESTATE_PHP_TEST_LISTEN = "http://:${toString config.processes.frankenphp.ports.http.value}";
       };
-    };
-
-  # The integration suite's endpoint (docker/frankenphp/<caddyfile>), as the frankenphp-extension
-  # image serves it, with Restate next to it (externalSuite).
-  frankenphpSuite =
-    {
-      server,
-      caddyfile,
-    }:
-    { config, ... }:
-    {
-      imports = [
-        (frankenphpServing {
-          root = "tests/Integration/Support";
-          caddyfile = "docker/frankenphp/${caddyfile}";
-        })
-        (externalSuite {
-          inherit server;
-          process = "frankenphp";
-          url = "http://127.0.0.1:${toString config.processes.frankenphp.ports.http.value}";
-        })
-      ];
     };
 
   # The load tests (tests/load, TESTING.md) without Docker: Restate and the load endpoint as devenv
@@ -283,20 +176,7 @@ in
     export BINDGEN_EXTRA_CLANG_ARGS="$(< "$NIX_CC/nix-support/libc-cflags") $(< "$NIX_CC/nix-support/cc-cflags") $NIX_CFLAGS_COMPILE"
   '';
 
-  # The integration suite against an endpoint and a Restate that devenv runs (externalSuite above):
-  # `devenv --profile frankenphp test`, with `-O languages.php.version:string 8.4` for another PHP.
   profiles = {
-    # FrankenPHP's classic mode: endpoint.php per request (RESTATE_PHP_TEST_SERVER=frankenphp).
-    frankenphp.module = frankenphpSuite {
-      server = "frankenphp";
-      caddyfile = "integration.Caddyfile";
-    };
-    # FrankenPHP's worker mode: worker.php builds the endpoints once per worker. The recipe adds
-    # the worker suite's WorkerModeTest (WorkerIsolationTest is managed).
-    frankenphp-worker.module = frankenphpSuite {
-      server = "frankenphp-worker";
-      caddyfile = "worker.Caddyfile";
-    };
     # The load tests: Restate and the load endpoint, without Docker (loadSuite above).
     load.module = loadSuite;
   };

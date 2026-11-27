@@ -15,7 +15,6 @@ use Restate\Tests\Support\Faults\FaultProxy;
  * a body cut in half but delivered as a complete request (a `Content-Length` of half the journal).
  */
 #[Group('failure-nightly')]
-#[Group('managed')]
 final class RequestStallTest extends ProxiedTestCase
 {
     public function testAStalledRequestBodyDelaysTheAttemptWithoutARetry(): void

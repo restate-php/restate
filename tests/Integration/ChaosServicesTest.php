@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Restate\Tests\Integration;
 
+use PHPUnit\Framework\Attributes\Group;
+use Restate\Testing\PhpCliServer;
 use Restate\Tests\Integration\Services\ChaosRecorder;
 use Restate\Tests\Integration\Support\IntegrationEndpoint;
 use Restate\Tests\Integration\Support\IntegrationTestCase;
-use Restate\Testing\PhpCliServer;
 
 /**
  * The chaos services (tests/Integration/Services/chaos.php) do what they say, each armed for one execution so the
@@ -15,6 +16,7 @@ use Restate\Testing\PhpCliServer;
  * `display_errors=0` / `log_errors=1` defaults (PhpCliServer) keep PHP's messages out of the responses and in the
  * endpoint log.
  */
+#[Group('runtime')]
 final class ChaosServicesTest extends IntegrationTestCase
 {
     public function testNoisyHandlersAnswerCleanlyAndTheirMessagesGoToTheEndpointLog(): void
@@ -47,15 +49,8 @@ final class ChaosServicesTest extends IntegrationTestCase
         $handler = self::sendInvocation('Chaos/exhaustMemoryInHandler', '{"times":1}');
         self::assertSame('2', self::attachInvocation($handler)->body);
         $busy = self::sendInvocation('Chaos/busyRun', '{"ms":3000,"timeLimit":1,"times":1}');
-        if (PHP_OS_FAMILY === 'Darwin' && str_starts_with(IntegrationEndpoint::server(), 'frankenphp')) {
-            // max_execution_time never fires in FrankenPHP on macOS: a thread-safe PHP there arms it with a
-            // process-wide ITIMER_REAL (no per-thread timers), whose SIGALRM the Go runtime receives. The busy step
-            // completes in its first execution, and attempt 2 replays it to the end.
-            self::assertSame('{"attempt":2,"execution":1}', self::attachInvocation($busy)->body);
-        } else {
-            // Attempt 1 dies of the time limit, attempt 2 runs the busy step again, attempt 3 completes.
-            self::assertSame('{"attempt":3,"execution":2}', self::attachInvocation($busy)->body);
-        }
+        // Attempt 1 dies of the time limit, attempt 2 runs the busy step again, attempt 3 completes.
+        self::assertSame('{"attempt":3,"execution":2}', self::attachInvocation($busy)->body);
 
         if (IntegrationEndpoint::get() instanceof PhpCliServer) {
             self::assertLogEventually($offset, 'Allowed memory size of');

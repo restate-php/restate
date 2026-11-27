@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Restate\Tests\Integration;
 
+use PHPUnit\Framework\Attributes\Group;
 use Restate\Tests\Integration\Support\IntegrationTestCase;
 use Restate\Tests\Integration\Support\JsonLinesLogger;
 
@@ -13,6 +14,7 @@ use Restate\Tests\Integration\Support\JsonLinesLogger;
  * The services (tests/Integration/Services/stray_output.php) print, and the invocations still complete; the endpoint
  * logs what it discarded.
  */
+#[Group('runtime')]
 final class StrayOutputTest extends IntegrationTestCase
 {
     private const string DISCARDED = 'Discarded output printed while handling the request, which would have corrupted the response; log instead of printing, and set display_errors=Off with log_errors=On';

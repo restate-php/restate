@@ -35,7 +35,6 @@ use Restate\Testing\RestateTestEnvironment;
  * gives up, not a visible configuration error.
  */
 #[Group('failure-nightly')]
-#[Group('managed')]
 final class ClockSkewTest extends TestCase
 {
     private ?RestateTestEnvironment $environment = null;
@@ -64,7 +63,7 @@ final class ClockSkewTest extends TestCase
         chmod($pemFile, 0o644);
 
         $this->environment = RestateTestEnvironment::start(
-            IntegrationEndpoint::managed('starts an endpoint with a request identity key')->withEnvironment(['RESTATE_PHP_TEST_IDENTITY_KEYS' => $identityKey]),
+            IntegrationEndpoint::get()->withEnvironment(['RESTATE_PHP_TEST_IDENTITY_KEYS' => $identityKey]),
             IdentityKeys::restate($pemFile),
         );
         $this->proxy = FaultProxy::start('127.0.0.1', $this->environment->endpointPort(), IntegrationEndpoint::stateDir());

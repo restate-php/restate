@@ -18,7 +18,6 @@ use Restate\Testing\PhpCliServer;
  * php-fpm servers only, in an environment of its own.
  */
 #[Group('failure-nightly')]
-#[Group('managed')]
 final class PhpFpmDrainTest extends FaultInjectionTestCase
 {
     use ShutdownScenarios;

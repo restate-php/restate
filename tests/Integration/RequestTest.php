@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace Restate\Tests\Integration;
 
+use PHPUnit\Framework\Attributes\Group;
 use Restate\Tests\Integration\Support\IntegrationTestCase;
 
+#[Group('runtime')]
 final class RequestTest extends IntegrationTestCase
 {
     /**
-     * Restate passes the idempotency key (and scope and limit key, which the ingress does not set here) from
-     * service protocol v7 (Restate 1.8) on; the attempt's content type names the negotiated version.
+     * Restate passes the idempotency key (and scope and limit key, which the ingress does not set here) to the handler.
      */
     public function testHandlerSeesTheRequestItWasInvokedWith(): void
     {
@@ -30,8 +31,7 @@ final class RequestTest extends IntegrationTestCase
         self::assertSame('{"hello":"world"}', $response['body']);
         self::assertIsString($response['contentType']);
         self::assertMatchesRegularExpression('/^application\/vnd\.restate\.invocation\.v(\d+)$/', $response['contentType']);
-        $protocolVersion = (int) substr($response['contentType'], strlen('application/vnd.restate.invocation.v'));
-        self::assertSame($protocolVersion >= 7 ? $idempotencyKey : null, $response['idempotencyKey']);
+        self::assertSame($idempotencyKey, $response['idempotencyKey']);
         self::assertNull($response['scope']);
         self::assertNull($response['limitKey']);
     }

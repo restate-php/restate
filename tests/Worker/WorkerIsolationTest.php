@@ -19,7 +19,7 @@ use Restate\Tests\Support\Workload\Workload;
  * really reach the same PHP thread and the same worker script run (each test checks the run did not change under it,
  * except the last, which restarts it on purpose).
  */
-#[Group('managed')]
+#[Group('runtime')]
 final class WorkerIsolationTest extends WorkerTestCase
 {
     #[\Override]

@@ -19,7 +19,6 @@ use Restate\Tests\Support\Faults\FaultProxy;
  * machine's speed.
  */
 #[Group('failure-nightly')]
-#[Group('managed')]
 final class BackPressureTest extends ProxiedTestCase
 {
     /** @return iterable<string, array{int}> */

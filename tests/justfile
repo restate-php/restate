@@ -6,9 +6,11 @@ set working-directory := '..'
 
 # The images' build settings, for every recipe (bin/build-image.sh builds them):
 # RESTATE_PHP_TEST_SKIP_BUILD=1 reuses the images; RESTATE_PHP_TEST_PHP_VERSION (8.4, the default,
-# 8.5 or 8.6) chooses the PHP minor of the fpm and frankenphp images, and
-# RESTATE_PHP_TEST_EXTENSION_PROFILE (debug, the default, or release) their extension build;
-# RESTATE_PHP_IMAGE_EXTENSION (container, the default, or host) where Nix builds that module.
+# 8.5 or 8.6) chooses the PHP minor of the fpm and frankenphp images,
+# RESTATE_PHP_TEST_EXTENSION_PROFILE their extension build (debug, the default, or release;
+# conformance defaults to release) and RESTATE_PHP_TEST_LIBC their C library (glibc, the default:
+# Debian, or musl: Alpine); RESTATE_PHP_IMAGE_EXTENSION (container, the default, or host) where Nix
+# builds that module.
 
 # The unit suite's `extension` group runs the extension (tests/Extension) in child processes.
 [doc("Build the extension, then run the unit suite; arguments go to phpunit")]
@@ -38,14 +40,9 @@ release *phpunit:
 # (the tags), RESTATE_PHP_TEST_FPM_TARGET (fpm-extension; serving-hazards builds
 # fpm-extension-apache).
 #
-# RESTATE_PHP_TEST_RESTATE chooses Restate: container (the default; RESTATE_PHP_RESTATE_IMAGE),
-# process (restate-server from the dev shell: no container runtime needed, macOS included) or
-# external (a Restate and an endpoint that run outside the harness, which only connects to them:
-# those of a devenv.nix profile, `devenv --profile frankenphp test`, or `devenv --profile
-# frankenphp up` and this recipe in its shell). With process and external, examples/testing is
-# left out: it shows a user the default, a container. With external, nothing is built, and the
-# tests that start, stop or configure Restate or the endpoint themselves (group `managed`) are left
-# out with the groups phpunit.xml.dist excludes (a command-line --exclude-group replaces that list).
+# RESTATE_PHP_TEST_RESTATE chooses Restate: container (the default; RESTATE_PHP_RESTATE_IMAGE) or
+# process (restate-server from the dev shell: no container runtime needed, macOS included). With
+# process, examples/testing is left out: it shows a user the default, a container.
 [doc("Integration suite on one server: php-cli, frankenphp, frankenphp-worker, nginx-fpm, nginx-fpm-h2c or caddy-fpm; arguments after the server go to phpunit")]
 [positional-arguments]
 [script('bash')]
@@ -65,22 +62,15 @@ integration server *phpunit:
             tests=(--testsuite integration)
             if [ "$server" = frankenphp-worker ]; then tests=(--testsuite integration,worker); fi
             ;;
-        process | external)
+        process)
             tests=(tests/Integration)
             if [ "$server" = frankenphp-worker ]; then tests+=(tests/Worker); fi
             ;;
-        *) echo "integration: RESTATE_PHP_TEST_RESTATE is container, process or external, not '$restate'" >&2 && exit 64 ;;
+        *) echo "integration: RESTATE_PHP_TEST_RESTATE is container or process, not '$restate'" >&2 && exit 64 ;;
     esac
-    if [ "$restate" = external ]; then
-        build=0
-        for group in managed large-bodies serving-hazards failure-nightly scale release; do
-            tests+=(--exclude-group "$group")
-        done
-    else
-        # The host's extension (debug), which the suite's own php -S endpoints load next to the image's.
-        {{ quote(just_executable()) }} --justfile {{ quote(justfile()) }} extension build >/dev/null
-    fi
-    image_settings=(--php "${RESTATE_PHP_TEST_PHP_VERSION:-8.4}" --variant "${RESTATE_PHP_TEST_EXTENSION_PROFILE:-debug}")
+    # The host's extension (debug), which the suite's own php -S endpoints load next to the image's.
+    {{ quote(just_executable()) }} --justfile {{ quote(justfile()) }} extension build >/dev/null
+    image_settings=(--php "${RESTATE_PHP_TEST_PHP_VERSION:-8.4}" --variant "${RESTATE_PHP_TEST_EXTENSION_PROFILE:-debug}" --libc "${RESTATE_PHP_TEST_LIBC:-glibc}")
     case $server in
         frankenphp | frankenphp-worker)
             image=${RESTATE_PHP_TEST_FRANKENPHP_IMAGE:-restate.local/restate-php-frankenphp:extension-zts}

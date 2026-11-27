@@ -36,6 +36,7 @@ use Restate\Testing\RestateTestEnvironment;
  * Peak memory (RSS, which counts the Rust copies) of the large cases is printed with RESTATE_PHP_TEST_REPORT_MEMORY=1
  * and checked against a generous bound.
  */
+#[Group('runtime')]
 final class LargeBodyTest extends IntegrationTestCase
 {
     private const int MIB = 1 << 20;
