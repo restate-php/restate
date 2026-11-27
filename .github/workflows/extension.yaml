@@ -171,7 +171,7 @@ jobs:
 
       # Plain Nix for the flake (extension/flake.lock), without the whole dev shell.
       - name: Install Nix
-        uses: cachix/install-nix-action@bb0495a1086c46893eee56f32fd192dfe4a15bb9 # v32.0.0
+        uses: cachix/install-nix-action@382a9ed9481c7c1f94f68b72ef105b3417c73877 # v32.1.0
 
       - name: Use the binary caches
         uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
@@ -235,7 +235,7 @@ jobs:
           persist-credentials: false
 
       - name: Install Nix
-        uses: cachix/install-nix-action@bb0495a1086c46893eee56f32fd192dfe4a15bb9 # v32.0.0
+        uses: cachix/install-nix-action@382a9ed9481c7c1f94f68b72ef105b3417c73877 # v32.1.0
 
       - name: Use the binary caches
         uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
