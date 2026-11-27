@@ -10,8 +10,8 @@
 # flake's portable build). No target compiles the extension.
 #
 # BASE_IMAGE is PHP's official php-fpm image (trixie: its nginx, 1.26, serves h2c and HTTP/1.1 on
-# one port; NTS, except PHP 8.6's, which is ZTS only): one of the base stages below, by name, or
-# any image.
+# one port; NTS, except PHP 8.6's, which is ZTS: its NTS images, php:8.6-nts-*, are CLI only):
+# one of the base stages below, by name, or any image.
 ARG BASE_IMAGE=php-fpm-8.4
 
 # The bases of each PHP minor, as stages of their own so that Dependabot, which reads FROM lines

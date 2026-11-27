@@ -10,7 +10,7 @@
   };
 
   inputs = {
-    ext-php-rs.url = "github:sagikazarmark/ext-php-rs.nix/v0.4.0";
+    ext-php-rs.url = "github:sagikazarmark/ext-php-rs.nix/v0.4.1";
     # ext-php-rs's nixpkgs, as its template recommends. The dev shell of restate-php/restate
     # follows this one too (its devenv.yaml), so the shell and every Nix build share one nixpkgs.
     # TODO: use unstable?
@@ -134,7 +134,7 @@
 
           # Loads the Linux archives for this machine's CPU into PHP's official Docker images and
           # runs tests/*.phpt there: `nix build .#pie && nix run .#load-test -- result tests`. PHP
-          # 8.6's official images are ZTS only, so it skips the 8.6 NTS archives.
+          # 8.6's NTS archives go into its nts images (php:8.6-nts-*), its ZTS ones into php:8.6-zts-*.
           load-test = platform.loadPieArchives;
 
           # PIE's prebuilt binaries for a release (docs/decisions/0030-prebuilt-extension-binaries.md in
@@ -183,8 +183,8 @@
             ) phps
           )
           // {
-            # tests/*.phpt with a thread-safe (ZTS) PHP, as FrankenPHP and PHP 8.6's official images
-            # have: FrankenPHP's (nixpkgs' default PHP version, from its binary cache).
+            # tests/*.phpt with a thread-safe (ZTS) PHP, as FrankenPHP and PHP 8.6's default official
+            # images have: FrankenPHP's (nixpkgs' default PHP version, from its binary cache).
             zts = platform.runPhpTests {
               name = "php-tests-zts";
               inherit (pkgs.frankenphp) php;

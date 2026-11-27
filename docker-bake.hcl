@@ -31,7 +31,8 @@ function "minor" {
   result = replace(php, ".", "")
 }
 
-# PHP 8.6's official images (php:8.6-cli-*, php:8.6-fpm-*) are ZTS only.
+# PHP 8.6's official cli and fpm images (php:8.6-cli-*, php:8.6-fpm-*) are ZTS; its NTS variant
+# (php:8.6-nts-*) is CLI only, and the quickstart keeps php:8.6-cli, the image users get.
 function "official_ts" {
   params = [php]
   result = php == "8.6" ? "zts" : "nts"

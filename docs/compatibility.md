@@ -47,7 +47,7 @@ The packages and the extension support PHP 8.4, 8.5 and 8.6, NTS and ZTS:
 | --- | --- | --- | --- |
 | 8.4 | Supported, most tested | Supported | Every suite runs on 8.4 NTS; the integration and worker suites on 8.4 ZTS under FrankenPHP. |
 | 8.5 | Supported | Supported | Less tested |
-| 8.6 | Supported | Supported | Least tested. The official PHP 8.6 images are ZTS only. Under `php -S`, raise `post_max_size` ([PHP settings](serving.md#php-settings)). |
+| 8.6 | Supported | Supported | Least tested. PHP 8.6's official images are ZTS (`php:8.6-cli-*`, `php:8.6-fpm-*`), except the NTS CLI variant `php:8.6-nts-*`. Under `php -S`, raise `post_max_size` ([PHP settings](serving.md#php-settings)). |
 
 Prebuilt extension binaries, which PIE installs, exist for:
 

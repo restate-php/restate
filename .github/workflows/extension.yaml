@@ -1,28 +1,9 @@
-# Prebuilt binaries of the Restate PHP extension for PIE (`pie install restate/ext-restate`):
-# one gzipped tar per PHP minor x thread safety x CPU x libc, named as PIE looks for it.
-# docs/decisions/0030-prebuilt-extension-binaries.md has the design.
-#
-# A job per CPU cross-compiles all of them with Nix in the dev shell (`just extension pie`, the
-# extension flake's packages.pie, extension/flake.nix), which also checks each module's shared
-# libraries and glibc floor, and checks the flake. The x86_64 job's archives are the ones kept;
-# the arm64 job builds the same for restate-php.cachix.org, because Nix caches a build per system
-# it runs on: an aarch64-linux Nix (Docker on an Apple silicon Mac, an arm64 Linux machine) finds
-# nothing an x86_64 runner built, even for the same target. Each job also builds the modules the
-# Docker-based suites use for its own CPU. Then a job per CPU loads each archive of that CPU into
-# a clean PHP and runs extension/tests/*.phpt there, and a macOS job runs the flake's checks on
-# macOS. Keeps the archives as a workflow artifact; it never publishes anything.
-# Runs on changes to the extension or its build, by hand, and as part of a release:
-# .github/workflows/release.yaml calls it and publishes the archives it builds.
-name: Extension binaries
+name: Extension
 
 on:
   push:
     branches: [main]
-    paths: &paths
-      - '.github/workflows/extension.yaml'
-      - 'extension/**'
   pull_request:
-    paths: *paths
   workflow_dispatch:
   workflow_call:
     secrets:
@@ -34,20 +15,13 @@ on:
         description: The extension version the archives are named after (the crate version)
         value: ${{ jobs.version.outputs.version }}
 
-# Inside a called workflow github.workflow is the caller's name, so the group names this
-# workflow itself; manual runs and the release's call (workflow_dispatch) get a group of their
-# own and are never cancelled.
-concurrency:
-  group: extension-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event_name }}
-  cancel-in-progress: true
-
 permissions:
   contents: read
 
 jobs:
   version:
-    name: Extension version
-    runs-on: ubuntu-24.04
+    name: Version
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -71,9 +45,9 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
   build:
-    name: Build the archives on ${{ matrix.arch }}
+    name: Build (${{ matrix.arch }})
     needs: version
-    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -96,9 +70,6 @@ jobs:
         with:
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      # Every target on this runner (just extension pie: nix build ./extension#pie). An earlier
-      # run's archives and modules for the same sources and runner CPU come from
-      # restate-php.cachix.org, the rest are built here and pushed there.
       - name: Build the archives
         run: just extension pie dist
 
@@ -151,16 +122,15 @@ jobs:
   # extension/tests/*.phpt there. The Nix build already checked each module's shared libraries
   # (only the C library: PIE cannot install others) and its glibc floor.
   verify:
-    name: Load the ${{ matrix.arch }} archives
+    name: Verify (${{ matrix.arch }})
     needs: [version, build]
-    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         arch: [x86_64, arm64]
     env:
-      VERSION: ${{ needs.version.outputs.version }}
       ARCH: ${{ matrix.arch }}
 
     steps:
@@ -190,35 +160,12 @@ jobs:
         run: sha256sum -c ./*.sha256
 
       # The flake's load-test (ext-php-rs.nix's loadPieArchives): each archive of this CPU in the
-      # official image of its PHP minor, thread safety (cli or zts) and C library (Debian trixie
-      # or Alpine), which is what a user's container has. It fails on a name it cannot parse, so
-      # it also checks the names PIE matches exactly. PHP 8.6's official images are ZTS only
-      # (`8.6-cli-*` is ZTS, there is no `8.6-zts-*`): it skips the 8.6 NTS archives.
+      # official image of its PHP minor, thread safety (cli or zts; for PHP 8.6, whose cli images
+      # are ZTS, nts or zts) and C library (Debian trixie or Alpine), which is what a user's
+      # container has. It fails on a name it cannot parse, so it also checks the names PIE matches
+      # exactly.
       - name: Load into PHP's official images
         run: nix run ./extension#load-test -- --arch "$ARCH" dist extension/tests
-
-      # No official NTS image of PHP 8.6: nixpkgs' PHP 8.6 (NTS, glibc), at the nixpkgs the
-      # archives were built with, runs the same tests with its own run-tests.php. Nothing packages
-      # an NTS PHP 8.6 for musl yet, so the 8.6 NTS musl archives are not loaded anywhere.
-      - name: Load the PHP 8.6 NTS glibc archive into nixpkgs' PHP 8.6
-        run: |
-          rev=$(jq -r .nodes.nixpkgs.locked.rev extension/flake.lock)
-          php="github:NixOS/nixpkgs/$rev#php86"
-          work=$(mktemp -d)
-          tar -xzf "dist/php_restate-${VERSION}_php8.6-${ARCH}-linux-glibc-nts.tgz" -C "$work"
-          tar -xf "$(nix build --no-link --print-out-paths "$php.unwrapped.src")" -C "$work" --strip-components=1 --wildcards '*/run-tests.php'
-          cp -r extension/tests "$work/tests"
-          bin=$(nix build --no-link --print-out-paths "$php")/bin
-          load=(-n -d "extension=$work/restate.so")
-          # PHP must start without a word: a module that does not load only warns, and a test that
-          # names it in --EXTENSIONS-- would then be skipped, not failed.
-          out=$("$bin/php" "${load[@]}" -r '' 2>&1) || { printf '%s\n' "$out"; exit 1; }
-          if [ -n "$out" ]; then
-            printf '%s\n' "$out"
-            echo "::error::PHP 8.6 did not start cleanly with the module"
-            exit 1
-          fi
-          NO_INTERACTION=1 REPORT_EXIT_STATUS=1 "$bin/php" "$work/run-tests.php" -P -q --show-diff "${load[@]}" "$work/tests"
 
   # The flake's checks on macOS (arm64), where nixpkgs' PHP loads the module built for it, as Nix
   # users on a Mac do: tests/*.phpt with PHP 8.4, 8.5 and 8.6 and with a ZTS PHP, FrankenPHP's

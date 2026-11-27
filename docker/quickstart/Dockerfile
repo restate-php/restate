@@ -10,8 +10,9 @@
 # that PHP minor and thread safety as the restate-extension context (extension/Dockerfile, the
 # extension flake's portable build).
 #
-# BASE_IMAGE is PHP's official CLI image (NTS, except PHP 8.6's, which is ZTS only): one of the
-# base stages below, by name, or any image.
+# BASE_IMAGE is PHP's official CLI image (NTS, except PHP 8.6's, which is ZTS: what a user of
+# php:8.6-cli gets, not the NTS variant php:8.6-nts-*): one of the base stages below, by name, or
+# any image.
 ARG BASE_IMAGE=php-cli-8.4
 
 # The bases of each PHP minor, as stages of their own so that Dependabot, which reads FROM lines
