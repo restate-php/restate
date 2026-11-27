@@ -1,6 +1,4 @@
 {
-  description = "The Restate PHP extension (module restate): for every PHP of nixpkgs, and PIE's prebuilt binaries";
-
   # What restate-php/restate's CI builds: the PIE archives, the extension for each PHP, the Rust
   # toolchain. Nix uses it for trusted users who accept the flake's configuration (prompted, or
   # `accept-flake-config = true`); CI configures the cache itself.
@@ -15,9 +13,8 @@
     ext-php-rs.url = "github:sagikazarmark/ext-php-rs.nix/v0.4.0";
     # ext-php-rs's nixpkgs, as its template recommends. The dev shell of restate-php/restate
     # follows this one too (its devenv.yaml), so the shell and every Nix build share one nixpkgs.
+    # TODO: use unstable?
     nixpkgs.follows = "ext-php-rs/nixpkgs";
-    # The toolchain rust-toolchain.toml pins, which portable builds add each target's standard
-    # library to.
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";

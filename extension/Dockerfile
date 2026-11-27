@@ -35,17 +35,14 @@ WORKDIR /src
 # not the source. This layer lasts until a lock file, the toolchain or a manifest changes.
 FROM nix AS inputs
 
-COPY flake.nix flake.lock rust-toolchain.toml composer.json Cargo.toml Cargo.lock ./
-COPY extension/Cargo.toml extension/
+COPY --parents flake.nix flake.lock rust-toolchain.toml composer.json Cargo.toml Cargo.lock extension/Cargo.toml ./
 
 RUN nix build --no-link --print-build-logs .#extension-inputs
 
 FROM inputs AS build
 
 # The source, as the flake's fileset has it: changes elsewhere (tests, docs) do not rebuild it.
-COPY .cargo .cargo
-COPY core core
-COPY extension extension
+COPY --parents .cargo core extension ./
 
 ARG PHP_VERSION=8.4
 ARG THREAD_SAFETY=nts
@@ -59,9 +56,9 @@ RUN case $TARGETARCH in \
     esac \
     && module=".#extensions.php${PHP_VERSION/./}.$THREAD_SAFETY.$arch-linux-glibc.$VARIANT" \
     && echo "building $module" \
-    && nix build --print-build-logs --out-link /result "$module" \
+    && nix build --print-build-logs "$module" \
     && mkdir /out \
-    && cp /result/lib/php/extensions/restate.so /out/restate.so
+    && cp result/lib/php/extensions/restate.so /out/restate.so
 
 FROM scratch
 
