@@ -32,14 +32,16 @@ updates:
           - "*"
 
   # The base images of the endpoint, test-service and quickstart images: Dependabot reads FROM lines
-  # only, so docker/Dockerfile names its default bases in *-default stages. Not the compose files:
-  # their Restate image is RestateContainer::DEFAULT_IMAGE, which the unit suite checks them
-  # against, so it moves with the harness. The FrankenPHP images that ci.yaml's matrix names per
-  # PHP minor are bumped by hand with the Dockerfile's.
+  # only, so docker/*/Dockerfile name their bases in stages of their own, one per PHP minor
+  # (frankenphp-<minor>, php-fpm-<minor>, php-cli-<minor>), which docker-bake.hcl picks by name.
+  # Not the compose files: their Restate image is RestateContainer::DEFAULT_IMAGE, which the unit
+  # suite checks them against, so it moves with the harness.
   - package-ecosystem: docker
     directories:
-      - /docker
+      - /docker/*
       - /examples/quickstart
+      # nixos/nix, which builds the extension module (extension/Dockerfile).
+      - /extension
     schedule:
       interval: weekly
     groups:
@@ -47,7 +49,6 @@ updates:
         patterns:
           - "*"
     ignore:
-      # PHP 8.4 is the oldest supported minor, which the images build against by default; the
-      # newer ones are --build-arg overrides (ci.yaml).
+      # Each php stage is one PHP minor on purpose (php-cli-8.4 is php:8.4-cli-bookworm).
       - dependency-name: php
         update-types: [version-update:semver-major, version-update:semver-minor]

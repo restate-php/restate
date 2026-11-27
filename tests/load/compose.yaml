@@ -1,7 +1,8 @@
 # The load tests' environment (TESTING.md, Load tests): Restate, signing its requests, and the load
 # endpoint, on fixed loopback ports that k6 (tests/load/k6.js) reaches from the host:
 #
-#   docker compose -f tests/load/compose.yaml up -d --build
+#   bin/build-image.sh --variant release frankenphp-extension restate.local/restate-php-frankenphp:extension-zts-release
+#   docker compose -f tests/load/compose.yaml up -d
 #   k6 run -e LOAD_SCENARIO=noop tests/load/k6.js
 #   docker compose -f tests/load/compose.yaml down -v
 #
@@ -30,21 +31,13 @@ services:
       - 127.0.0.1:${LOAD_ADMIN_PORT:-19070}:9070
     cpuset: ${LOAD_CPUSET_RESTATE:-}
 
-  # FrankenPHP with the release ZTS extension (the Dockerfile's frankenphp-extension target,
-  # EXTENSION_PROFILE=release), in classic mode with OPcache on (Caddyfile and php.ini next to
-  # this file), serving endpoint.php from the repository. Restate reaches it as
-  # http://endpoint:8080, k6 its /load-stats on the host port. Changing either file needs a
-  # restart, not a rebuild.
+  # FrankenPHP with the release ZTS extension (the frankenphp-extension target of
+  # docker/frankenphp/Dockerfile, the release build: `just load run` builds it with
+  # bin/build-image.sh), in classic mode with OPcache on (Caddyfile and php.ini next to this file),
+  # serving endpoint.php from the repository. Restate reaches it as http://endpoint:8080, k6 its
+  # /load-stats on the host port. Changing either file needs a restart, not a rebuild.
   endpoint:
     image: ${LOAD_ENDPOINT_IMAGE:-restate.local/restate-php-frankenphp:extension-zts-release}
-    build:
-      context: ../..
-      dockerfile: docker/Dockerfile
-      target: frankenphp-extension
-      args:
-        EXTENSION_PROFILE: release
-        # The FrankenPHP base image; empty: the Dockerfile's.
-        FRANKENPHP_IMAGE: ${RESTATE_PHP_TEST_FRANKENPHP_BASE_IMAGE:-}
     environment:
       # FrankenPHP's PHP threads; 0: its default, twice the CPUs it sees.
       LOAD_NUM_THREADS: ${LOAD_NUM_THREADS:-0}

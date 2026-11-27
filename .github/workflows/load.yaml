@@ -28,6 +28,11 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # The images' extension module is built by the runner's Nix (bin/build-image.sh), which downloads
+  # it from restate-php.cachix.org for any source CI has built.
+  RESTATE_PHP_IMAGE_EXTENSION: host
+
 defaults:
   run:
     # Every step runs in the devenv shell, with the project's toolchain.

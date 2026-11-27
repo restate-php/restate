@@ -24,6 +24,11 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # The images' extension module is built by the runner's Nix (bin/build-image.sh), which downloads
+  # it from restate-php.cachix.org for any source CI has built.
+  RESTATE_PHP_IMAGE_EXTENSION: host
+
 defaults:
   run:
     # Every step runs in the devenv shell, with the project's toolchain.
@@ -145,16 +150,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # Empty: the FRANKENPHP_IMAGE default of docker/Dockerfile.
-          - php: '8.4'
-            base-image: ''
-          # Keep the FrankenPHP version in step with that default.
-          - php: '8.5'
-            base-image: docker.io/dunglas/frankenphp:1.13.5-php8.5-bookworm
-          # 1.13.5 has no PHP 8.6 image; 1.13.6 is the first.
-          - php: '8.6'
-            base-image: docker.io/dunglas/frankenphp:1.13.6-php8.6-bookworm
+        # docker/frankenphp/Dockerfile's base of each minor (frankenphp-<minor>).
+        php: ['8.4', '8.5', '8.6']
 
     steps:
       - name: Checkout repository
@@ -171,12 +168,12 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
 
-      # Builds the frankenphp-extension image (the extension compiled against FrankenPHP's
-      # thread-safe PHP) and runs the integration suite against it.
+      # Builds the frankenphp-extension image (FrankenPHP's thread-safe PHP of the matrix minor, with
+      # the ZTS extension module for it) and runs the integration suite against it.
       - name: Test
         run: just test integration frankenphp
         env:
-          RESTATE_PHP_TEST_FRANKENPHP_BASE_IMAGE: ${{ matrix.base-image }}
+          RESTATE_PHP_TEST_PHP_VERSION: ${{ matrix.php }}
 
   frankenphp-worker:
     name: just test integration frankenphp-worker (PHP 8.4 ZTS)
@@ -229,7 +226,7 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
 
-      # Builds the fpm-extension image (the extension compiled inside the official php-fpm image)
+      # Builds the fpm-extension image (the official php-fpm image with the extension module for it)
       # and runs the integration suite against php-fpm behind this matrix entry's front door.
       - name: Test
         run: just test integration ${{ matrix.server }}

@@ -4,10 +4,11 @@ set ignore-comments
 # The suites run from the repository root, as phpunit.xml.dist expects.
 set working-directory := '..'
 
-# The images' build settings, for every recipe: RESTATE_PHP_TEST_SKIP_BUILD=1 reuses the images;
-# RESTATE_PHP_TEST_EXTENSION_PROFILE (debug, the default, or release) chooses the extension build
-# of the fpm and frankenphp images; RESTATE_PHP_TEST_FRANKENPHP_BASE_IMAGE and
-# RESTATE_PHP_TEST_FPM_BASE_IMAGE replace the Dockerfile's FrankenPHP and php-fpm bases.
+# The images' build settings, for every recipe (bin/build-image.sh builds them):
+# RESTATE_PHP_TEST_SKIP_BUILD=1 reuses the images; RESTATE_PHP_TEST_PHP_VERSION (8.4, the default,
+# 8.5 or 8.6) chooses the PHP minor of the fpm and frankenphp images, and
+# RESTATE_PHP_TEST_EXTENSION_PROFILE (debug, the default, or release) their extension build;
+# RESTATE_PHP_IMAGE_EXTENSION (container, the default, or host) where Nix builds that module.
 
 # The unit suite's `extension` group runs the extension (tests/Extension) in child processes.
 [doc("Build the extension, then run the unit suite; arguments go to phpunit")]
@@ -79,23 +80,20 @@ integration server *phpunit:
         # The host's extension (debug), which the suite's own php -S endpoints load next to the image's.
         {{ quote(just_executable()) }} --justfile {{ quote(justfile()) }} extension build >/dev/null
     fi
+    image_settings=(--php "${RESTATE_PHP_TEST_PHP_VERSION:-8.4}" --variant "${RESTATE_PHP_TEST_EXTENSION_PROFILE:-debug}")
     case $server in
         frankenphp | frankenphp-worker)
             image=${RESTATE_PHP_TEST_FRANKENPHP_IMAGE:-restate.local/restate-php-frankenphp:extension-zts}
             export RESTATE_PHP_TEST_FRANKENPHP_IMAGE=$image
             if [ "$build" = 1 ]; then
-                docker build --build-arg "FRANKENPHP_IMAGE=${RESTATE_PHP_TEST_FRANKENPHP_BASE_IMAGE:-}" \
-                    --build-arg "EXTENSION_PROFILE=${RESTATE_PHP_TEST_EXTENSION_PROFILE:-}" \
-                    --target frankenphp-extension -f docker/Dockerfile -t "$image" .
+                bash bin/build-image.sh "${image_settings[@]}" frankenphp-extension "$image"
             fi
             ;;
         nginx-fpm | nginx-fpm-h2c | caddy-fpm)
             image=${RESTATE_PHP_TEST_FPM_IMAGE:-restate.local/restate-php-fpm:extension}
             export RESTATE_PHP_TEST_FPM_IMAGE=$image
             if [ "$build" = 1 ]; then
-                docker build --build-arg "PHP_FPM_IMAGE=${RESTATE_PHP_TEST_FPM_BASE_IMAGE:-}" \
-                    --build-arg "EXTENSION_PROFILE=${RESTATE_PHP_TEST_EXTENSION_PROFILE:-}" \
-                    --target "${RESTATE_PHP_TEST_FPM_TARGET:-fpm-extension}" -f docker/Dockerfile -t "$image" .
+                bash bin/build-image.sh "${image_settings[@]}" "${RESTATE_PHP_TEST_FPM_TARGET:-fpm-extension}" "$image"
             fi
             ;;
     esac
@@ -117,8 +115,8 @@ serving-hazards *phpunit:
 # BailoutSoakTest, fatal errors and worker restarts; restate: RestateSoakTest, about 300,000
 # invocations through Restate (RESTATE_PHP_SOAK_INVOCATIONS); all: everything. --quick runs a few
 # percent of the requests (RSS reported, not gated). Builds the frankenphp-extension image with
-# the diagnostics feature, in release and debug builds as the tests need; reports go to
-# var/soak/. RESTATE_PHP_SOAK_RELEASE_IMAGE, RESTATE_PHP_SOAK_DEBUG_IMAGE (the tags).
+# the diagnostics builds, release and debug as the tests need; reports go to var/soak/.
+# RESTATE_PHP_SOAK_RELEASE_IMAGE, RESTATE_PHP_SOAK_DEBUG_IMAGE (the tags).
 [arg('quick', long='quick', value='1', help="a few percent of the requests, for a local run")]
 [doc("Soak suite (tests/Soak) on FrankenPHP worker mode with the diagnostics build: nightly (default), frames, concurrency, bailout, restate or all; phpunit arguments after --")]
 [positional-arguments]
@@ -140,9 +138,8 @@ soak quick='0' suite='nightly' *phpunit:
     if [ "${RESTATE_PHP_TEST_SKIP_BUILD:-0}" != 1 ]; then
         for profile in "${profiles[@]}"; do
             if [ "$profile" = release ]; then tag=$release; else tag=$debug; fi
-            docker build --build-arg "FRANKENPHP_IMAGE=${RESTATE_PHP_TEST_FRANKENPHP_BASE_IMAGE:-}" \
-                --build-arg "EXTENSION_PROFILE=$profile" --build-arg EXTENSION_FEATURES=diagnostics \
-                --target frankenphp-extension -f docker/Dockerfile -t "$tag" .
+            bash bin/build-image.sh --php "${RESTATE_PHP_TEST_PHP_VERSION:-8.4}" --variant "$profile-diagnostics" \
+                frankenphp-extension "$tag"
         done
     fi
     RESTATE_PHP_SOAK_QUICK={{ quick }} RESTATE_PHP_SOAK_RELEASE_IMAGE=$release RESTATE_PHP_SOAK_DEBUG_IMAGE=$debug \
@@ -162,8 +159,7 @@ quickstart source='local' *phpunit:
     case {{ quote(source) }} in
         local)
             if [ "${RESTATE_PHP_TEST_SKIP_BUILD:-0}" != 1 ]; then
-                docker build --target quickstart-php-restate -f docker/Dockerfile \
-                    -t restate-php-quickstart/php-restate:local .
+                bash bin/build-image.sh quickstart-php-restate restate-php-quickstart/php-restate:local
             fi
             ;;
         released) ;;

@@ -1,7 +1,5 @@
 {
-  description = "The Restate PHP extension (module restate): for every PHP of nixpkgs, and PIE's prebuilt binaries";
-
-  # What restate-php/restate's CI builds: the PIE archives, the modules for each PHP, the Rust
+  # What restate-php/restate's CI builds: the PIE archives, the extension for each PHP, the Rust
   # toolchain. Nix uses it for trusted users who accept the flake's configuration (prompted, or
   # `accept-flake-config = true`); CI configures the cache itself.
   nixConfig = {
@@ -12,12 +10,11 @@
   };
 
   inputs = {
-    ext-php-rs.url = "github:sagikazarmark/ext-php-rs.nix/v0.2.0";
+    ext-php-rs.url = "github:sagikazarmark/ext-php-rs.nix/v0.4.0";
     # ext-php-rs's nixpkgs, as its template recommends. The dev shell of restate-php/restate
     # follows this one too (its devenv.yaml), so the shell and every Nix build share one nixpkgs.
+    # TODO: use unstable?
     nixpkgs.follows = "ext-php-rs/nixpkgs";
-    # The toolchain rust-toolchain.toml pins, which portable builds add each target's standard
-    # library to.
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -34,14 +31,16 @@
     let
       inherit (nixpkgs) lib;
 
-      # nixpkgs with this flake's overlay: the extension in every PHP.
-      forAllSystems =
-        f:
-        lib.genAttrs [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ] (
-          system: f (nixpkgs.legacyPackages.${system}.extend self.overlays.default)
+      # The outputs of each system: `f system` returns { packages = …; checks = …; … }, which
+      # becomes { packages.<system> = …; checks.<system> = …; … }.
+      eachSystem =
+        systems: f:
+        lib.foldAttrs lib.mergeAttrs { } (
+          map (system: lib.mapAttrs (_: value: { ${system} = value; }) (f system)) systems
         );
 
-      # Every build uses the toolchain of rust-toolchain.toml, as cargo and the Docker images do.
+      # Every build uses the toolchain of rust-toolchain.toml, as cargo does. A function of the
+      # package set: the overlay applies it to whichever nixpkgs it's used with.
       rustPhpPlatform =
         pkgs:
         ext-php-rs.lib.makeRustPhpPlatform {
@@ -67,65 +66,6 @@
         };
       };
       inherit (args) extensionName;
-
-      # The PHP minors of composer.json's `php` constraint.
-      phps = [
-        "php84"
-        "php85"
-        "php86"
-      ];
-
-      # The Linux targets of the PIE archives.
-      pieTargets = [
-        "x86_64-linux-glibc"
-        "aarch64-linux-glibc"
-        "x86_64-linux-musl"
-        "aarch64-linux-musl"
-      ];
-
-      # The builds of each module: the profile, and the soak suite's diagnostics feature.
-      variants = {
-        debug = {
-          buildType = "debug";
-        };
-        release = { };
-        debug-diagnostics = {
-          buildType = "debug";
-          buildFeatures = [ "diagnostics" ];
-        };
-        release-diagnostics = {
-          buildFeatures = [ "diagnostics" ];
-        };
-      };
-
-      # modules.<php>.<nts|zts>.<target>.<variant>: one portable module, cross-compiled from
-      # any of the systems.
-      modules =
-        pkgs:
-        let
-          platform = rustPhpPlatform pkgs;
-        in
-        lib.genAttrs phps (
-          php:
-          lib.genAttrs [ "nts" "zts" ] (
-            ts:
-            lib.genAttrs pieTargets (
-              target:
-              lib.mapAttrs (
-                _: variant:
-                platform.buildRustPhpExtension (
-                  args
-                  // variant
-                  // {
-                    php = pkgs.${php};
-                    target = platform.targets.${target};
-                    zts = ts == "zts";
-                  }
-                )
-              ) variants
-            )
-          )
-        );
     in
     {
       # The extension for every PHP of nixpkgs, built against the PHP that loads it:
@@ -136,112 +76,158 @@
         extensions = [ args ];
         inherit rustPhpPlatform;
       };
+    }
+    // eachSystem [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ] (
+      system:
+      let
+        # nixpkgs with this flake's overlay: the extension in every PHP.
+        pkgs = nixpkgs.legacyPackages.${system}.extend self.overlays.default;
+        platform = rustPhpPlatform pkgs;
 
-      packages = forAllSystems (pkgs: {
-        # lib/php/extensions/restate.so, for nixpkgs' default PHP.
-        default = pkgs.php.extensions.${extensionName};
+        # A PHP of each minor of composer.json's `php` constraint.
+        phps = with pkgs; [
+          php84
+          php85
+          php86
+        ];
 
-        # nixpkgs' default PHP with the extension: `nix run .#php -- --ri restate`.
+        # <php>.<nts|zts>.<target>.<variant>: the extension for each PHP minor, thread safety,
+        # Linux target of the PIE archives and build, cross-compiled from any of the systems. The
+        # variants are the profile, and the soak suite's diagnostics feature.
+        extensions = platform.buildRustPhpExtensions {
+          inherit args;
+          php = phps;
+          targets = with platform.targets; [
+            x86_64-linux-glibc
+            aarch64-linux-glibc
+            x86_64-linux-musl
+            aarch64-linux-musl
+          ];
+          variants = {
+            debug = {
+              buildType = "debug";
+            };
+            release = { };
+            debug-diagnostics = {
+              buildType = "debug";
+              buildFeatures = [ "diagnostics" ];
+            };
+            release-diagnostics = {
+              buildFeatures = [ "diagnostics" ];
+            };
+          };
+        };
+
+        # nixpkgs' default PHP with the extension, and FrankenPHP with it, rebuilt for its
+        # thread-safe PHP.
         php = pkgs.php.withExtensions ({ enabled, all }: enabled ++ [ all.${extensionName} ]);
+        frankenphp = pkgs.frankenphp.override { inherit php; };
+      in
+      {
+        packages = {
+          # lib/php/extensions/restate.so, for nixpkgs' default PHP.
+          default = pkgs.php.extensions.${extensionName};
 
-        # FrankenPHP with the extension, rebuilt for its thread-safe PHP:
-        # `nix run .#frankenphp -- php-server --root tests/server --worker tests/server/worker.php`.
-        frankenphp = pkgs.frankenphp.override {
-          php = pkgs.php.withExtensions ({ enabled, all }: enabled ++ [ all.${extensionName} ]);
+          # `nix run .#php -- --ri restate`;
+          # `nix run .#frankenphp -- php-server --root tests/server --worker tests/server/worker.php`.
+          inherit php frankenphp;
+
+          # Loads the Linux archives for this machine's CPU into PHP's official Docker images and
+          # runs tests/*.phpt there: `nix build .#pie && nix run .#load-test -- result tests`. PHP
+          # 8.6's official images are ZTS only, so it skips the 8.6 NTS archives.
+          load-test = platform.loadPieArchives;
+
+          # PIE's prebuilt binaries for a release (docs/decisions/0030-prebuilt-extension-binaries.md in
+          # restate-php/restate): every PHP minor × NTS and ZTS × x86_64 and arm64 × Linux with
+          # glibc 2.28 or newer and with musl, 24 archives with SHA256SUMS. Cross-compiled on any
+          # of the systems.
+          pie = platform.mkPieRelease {
+            extensions = platform.collectExtensions extensions { variant = "release"; };
+          };
         };
 
-        # Loads the Linux archives for this machine's CPU into PHP's official Docker images and
-        # runs tests/*.phpt there: `nix build .#pie && nix run .#load-test -- result tests`. PHP
-        # 8.6's official images are ZTS only, so it skips the 8.6 NTS archives.
-        load-test = (rustPhpPlatform pkgs).loadPieArchives;
+        # Each extension of packages.pie on its own, and the debug and diagnostics builds the
+        # Docker-based suites use (extension/Dockerfile):
+        #
+        #   nix build .#extensions.php84.zts.x86_64-linux-glibc.debug
+        #
+        # Here rather than in packages, which `nix flake show` and `nix flake check` list.
+        legacyPackages = {
+          inherit extensions;
 
-        # PIE's prebuilt binaries for a release (docs/decisions/0030-prebuilt-extension-binaries.md in
-        # restate-php/restate): every PHP minor × NTS and ZTS × x86_64 and arm64 × Linux with
-        # glibc 2.28 or newer and with musl, 24 archives with SHA256SUMS. Cross-compiled on any
-        # of the systems.
-        pie = (rustPhpPlatform pkgs).mkPieRelease {
-          extensions = lib.concatMap (
-            php:
-            lib.concatMap (ts: map (target: (modules pkgs).${php}.${ts}.${target}.release) pieTargets) [
-              "nts"
-              "zts"
-            ]
-          ) phps;
+          # Everything the glibc extensions build with but their source (the toolchain, the PHP
+          # headers, the vendored crates), for extension/Dockerfile to fetch before it copies
+          # the source in. The variants of an extension share their inputs.
+          extension-inputs = platform.mkExtensionInputs {
+            name = "restate-extension-inputs";
+            extensions = platform.collectExtensions extensions {
+              variant = "debug";
+              libc = "glibc";
+            };
+          };
         };
-      });
 
-      # Each module of packages.pie on its own, and the debug and diagnostics builds of the
-      # Docker-based suites:
-      #
-      #   nix build .#modules.php84.zts.x86_64-linux-glibc.debug
-      #
-      # Here rather than in packages, which `nix flake show` and `nix flake check` list.
-      legacyPackages = forAllSystems (pkgs: {
-        modules = modules pkgs;
-      });
+        checks =
+          # tests/*.phpt, run with each PHP minor with the extension loaded through the overlay, as
+          # Nix users load it: php84, … as the extensions are keyed.
+          lib.listToAttrs (
+            map (
+              php:
+              lib.nameValuePair "php${lib.replaceStrings [ "." ] [ "" ] (lib.versions.majorMinor php.version)}" (
+                platform.runPhpTests {
+                  inherit php;
+                  extensions = [ php.extensions.${extensionName} ];
+                  src = ./tests;
+                }
+              )
+            ) phps
+          )
+          // {
+            # tests/*.phpt with a thread-safe (ZTS) PHP, as FrankenPHP and PHP 8.6's official images
+            # have: FrankenPHP's (nixpkgs' default PHP version, from its binary cache).
+            zts = platform.runPhpTests {
+              name = "php-tests-zts";
+              inherit (pkgs.frankenphp) php;
+              extensions = [ pkgs.frankenphp.php.extensions.${extensionName} ];
+              src = ./tests;
+            };
 
-      checks = forAllSystems (
-        pkgs:
-        let
-          platform = rustPhpPlatform pkgs;
-          inherit (self.packages.${pkgs.stdenv.hostPlatform.system}) php frankenphp;
-        in
-        # tests/*.phpt, run with each PHP minor with the extension loaded through the overlay, as
-        # Nix users load it.
-        lib.genAttrs phps (
-          php:
-          platform.runPhpTests {
-            php = pkgs.${php};
-            extensions = [ pkgs.${php}.extensions.${extensionName} ];
-            src = ./tests;
-          }
-        )
-        // {
-          # tests/*.phpt with a thread-safe (ZTS) PHP, as FrankenPHP and PHP 8.6's official images
-          # have: FrankenPHP's (nixpkgs' default PHP version, from its binary cache).
-          zts = platform.runPhpTests {
-            name = "php-tests-zts";
-            inherit (pkgs.frankenphp) php;
-            extensions = [ pkgs.frankenphp.php.extensions.${extensionName} ];
-            src = ./tests;
+            # An invocation per request in FrankenPHP's workers (tests/server/worker.php): across
+            # requests, after the workers restart (the module shut down and started again in the
+            # same process), and with requests at once on PHP's threads.
+            frankenphp = platform.runFrankenphpTests {
+              inherit frankenphp;
+              src = ./tests/server;
+              worker = "worker.php";
+              script = ''
+                expect "/?name=Nix" 'inv-1 "Mary" => "Hello, Nix!"'
+                for i in 1 2 3; do
+                  restart_workers
+                  expect "/?name=restart$i" "inv-1 \"Mary\" => \"Hello, restart$i!\""
+                done
+                concurrently 50 "/?name=Nix"
+                expect "/?name=after" 'inv-1 "Mary" => "Hello, after!"'
+              '';
+            };
+
+            # An invocation per request in PHP-FPM's children (tests/server/index.php), which it forks
+            # after loading the extension: across requests, in the children it forks to replace the
+            # ones that exit after 5 requests (each shutting the module down), and after FPM reloads.
+            fpm = platform.runFpmTests {
+              inherit php;
+              src = ./tests/server;
+              maxRequests = 5;
+              script = ''
+                expect "/?name=Nix" 'inv-1 "Mary" => "Hello, Nix!"'
+                concurrently 50 "/?name=Nix"
+                reload
+                expect "/?name=reload" 'inv-1 "Mary" => "Hello, reload!"'
+                concurrently 50 "/?name=Nix"
+              '';
+            };
           };
 
-          # An invocation per request in FrankenPHP's workers (tests/server/worker.php): across
-          # requests, after the workers restart (the module shut down and started again in the
-          # same process), and with requests at once on PHP's threads.
-          frankenphp = platform.runFrankenphpTests {
-            inherit frankenphp;
-            src = ./tests/server;
-            worker = "worker.php";
-            script = ''
-              expect "/?name=Nix" 'inv-1 "Mary" => "Hello, Nix!"'
-              for i in 1 2 3; do
-                restart_workers
-                expect "/?name=restart$i" "inv-1 \"Mary\" => \"Hello, restart$i!\""
-              done
-              concurrently 50 "/?name=Nix"
-              expect "/?name=after" 'inv-1 "Mary" => "Hello, after!"'
-            '';
-          };
-
-          # An invocation per request in PHP-FPM's children (tests/server/index.php), which it forks
-          # after loading the extension: across requests, in the children it forks to replace the
-          # ones that exit after 5 requests (each shutting the module down), and after FPM reloads.
-          fpm = platform.runFpmTests {
-            inherit php;
-            src = ./tests/server;
-            maxRequests = 5;
-            script = ''
-              expect "/?name=Nix" 'inv-1 "Mary" => "Hello, Nix!"'
-              concurrently 50 "/?name=Nix"
-              reload
-              expect "/?name=reload" 'inv-1 "Mary" => "Hello, reload!"'
-              concurrently 50 "/?name=Nix"
-            '';
-          };
-        }
-      );
-
-      formatter = forAllSystems (pkgs: pkgs.nixfmt-tree);
-    };
+        formatter = pkgs.nixfmt-tree;
+      }
+    );
 }

@@ -59,7 +59,7 @@ inputs:
 
 Then load it in `devenv.nix` with `languages.php.extensions = [ "restate" ];`.
 
-`nix run github:restate-php/ext-restate/0.1.0#php -- --ri restate` runs nixpkgs' PHP with it. The flake also builds the PIE archives of a release (`nix build .#pie`), and each module on its own, for any PHP minor, thread safety, target and build: `nix build .#modules.php84.zts.x86_64-linux-glibc.release` (also `debug`, and the soak tests' `debug-diagnostics` and `release-diagnostics`).
+`nix run github:restate-php/ext-restate/0.1.0#php -- --ri restate` runs nixpkgs' PHP with it. The flake also builds the PIE archives of a release (`nix build .#pie`), and each build on its own, for any PHP minor, thread safety, target and build: `nix build .#extensions.php84.zts.x86_64-linux-glibc.release` (also `debug`, and the soak tests' `debug-diagnostics` and `release-diagnostics`).
 
 ## Version compatibility
 

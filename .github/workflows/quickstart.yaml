@@ -1,7 +1,7 @@
 # The Docker quickstart (examples/quickstart): starts it with Docker Compose and runs every step of its
 # walkthrough, so the README's first experience doesn't rot (tests/Quickstart). Locally: just test quickstart.
 #
-# - local: against this commit (the extension built from source, the packages from packages/), on both CPUs
+# - local: against this commit (the extension module built from it, the packages from packages/), on both CPUs
 #   the prebuilt extension targets: x86_64 and arm64.
 # - released: what users get (PIE and Packagist), nightly; skipped while no version is released.
 name: Quickstart
@@ -11,7 +11,9 @@ on:
     branches: [main]
     paths: &paths
       - '.github/workflows/quickstart.yaml'
-      - 'docker/Dockerfile'
+      - 'bin/build-image.sh'
+      - 'docker-bake.hcl'
+      - 'docker/quickstart/**'
       - 'examples/quickstart/**'
       - 'extension/**'
       - 'packages/**'
@@ -30,6 +32,11 @@ concurrency:
 
 permissions:
   contents: read
+
+env:
+  # The images' extension module is built by the runner's Nix (bin/build-image.sh), which downloads
+  # it from restate-php.cachix.org for any source CI has built.
+  RESTATE_PHP_IMAGE_EXTENSION: host
 
 defaults:
   run:

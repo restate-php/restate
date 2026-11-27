@@ -69,3 +69,4 @@ Why the SDK works the way it does: one record per decision, with its context, th
 | [0041](0041-just-recipes.md) | Just Recipes |
 | [0042](0042-image-builds-and-ci-caches.md) | Image Builds and CI Caches |
 | [0043](0043-just-for-every-task.md) | Just for Every Task |
+| [0044](0044-extension-modules-in-the-images.md) | Extension Modules in the Images |
