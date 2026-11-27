@@ -3,7 +3,7 @@
 #
 # - compose.yaml mounts it over the image's Caddyfile, with the repository at /app, on :8080: the
 #   defaults below.
-# - devenv's load profile (devenv.nix, loadSuite) serves the working tree with it:
+# - devenv's load profile (nix/modules/load.nix) serves the working tree with it:
 #   RESTATE_PHP_TEST_APP_DIR     the repository (default /app)
 #   RESTATE_PHP_TEST_LISTEN      the site address (default :8080)
 #   CADDY_GLOBAL_OPTIONS         more global options (devenv binds loopback)

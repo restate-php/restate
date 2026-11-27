@@ -1,10 +1,10 @@
 # Contributing
 
-This repository holds the whole SDK: the Composer packages in `packages/`, the Restate PHP extension in `extension/` (Rust, on [`restate-sdk-shared-core`](https://crates.io/crates/restate-sdk-shared-core) and `ext-php-rs`), the tests, the services the SDK conformance suite drives ([`test-services/`](test-services/README.md)), and the images and server configuration the suites serve endpoints with ([`docker/`](docker/README.md)).
+This repository holds the whole SDK: the Composer packages in `packages/`, the Restate PHP extension in `extension/` (Rust, on [`restate-sdk-shared-core`](https://crates.io/crates/restate-sdk-shared-core) and `ext-php-rs`), the tests, the services the SDK conformance suite drives ([`test-services/`](test-services/README.md)), and the images and server configuration the suites serve endpoints with ([`docker/`](docker/README.md)). `nix/` holds the dev shell's own packages (`nix/packages`, applied through `nix/overlay.nix`) and devenv modules (`nix/modules`).
 
 ## Setting up
 
-You need [devenv](https://devenv.sh) and a container runtime: Docker, or rootless podman with its `docker` CLI. The dev shell provides everything else: nixpkgs' default PHP (8.5 now; `devenv -O languages.php.version:string 8.4 shell` for another supported minor) with its headers and `php-config`, Composer, the Rust toolchain pinned in `extension/rust-toolchain.toml`, libclang and the flags the extension build needs, Java 25 and the jar of the conformance suite, just, k6 and jq, and the linters ([Development Environment](docs/decisions/0001-dev-environment.md)). The integration tests start Restate in a container, so the runtime stays on the host.
+You need [devenv](https://devenv.sh) and a container runtime: Docker, or rootless podman with its `docker` CLI. The dev shell provides everything else: nixpkgs' default PHP (8.5 now; `devenv -O languages.php.version:string 8.4 shell` for another supported minor) with its headers and `php-config`, Composer, the Rust toolchain pinned in `extension/rust-toolchain.toml`, libclang and the flags the extension build needs, the conformance suite with its Java (`restate-sdk-tests`), just, k6 and jq, and the linters ([Development Environment](docs/decisions/0001-dev-environment.md)). The integration tests start Restate in a container, so the runtime stays on the host.
 
 ```bash
 devenv shell

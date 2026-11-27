@@ -8,8 +8,8 @@
 #           to build and test is conformance-<server> of docker-bake.hcl (bin/build-image.sh)
 #   mode    basic runs the `default` suite only, full runs every suite (default: full)
 #
-# Run it in the dev shell: it provides the suite's jar (RESTATE_PHP_CONFORMANCE_JAR, devenv.nix, pinned by
-# hash) and the Java it needs (languages.java). Works with Docker and with rootless podman: under
+# Run it in the dev shell: it provides the suite as `restate-sdk-tests` (nix/packages/restate-sdk-tests: the
+# jar, pinned by hash, with the Java it needs). Works with Docker and with rootless podman: under
 # podman it starts a private podman API service for Testcontainers, disables Ryuk, and runs the
 # suite sequentially. Artifacts (JUnit XML, container logs, the suite's output) go to
 # var/conformance/<server>/<mode>/.
@@ -24,7 +24,6 @@
 #   RESTATE_PHP_CONFORMANCE_EXCLUSIONS_FILE  exclusions YAML (default test-services/exclusions.yaml; empty: none)
 #   RESTATE_PHP_CONFORMANCE_SEQUENTIAL=1     run test classes one at a time (default under podman)
 #   RESTATE_PHP_CONFORMANCE_OUTPUT_DIR       artifacts root (default var/conformance)
-#   RESTATE_PHP_CONFORMANCE_JAR              the suite's jar (the dev shell sets it; another jar to try one)
 #   RESTATE_PHP_RESTATE_IMAGE                Restate image, as for the test harness (default RestateContainer::DEFAULT_IMAGE)
 set -euo pipefail
 
@@ -49,9 +48,8 @@ if ! docker buildx bake -f "$ROOT_DIR/docker-bake.hcl" --print "$TARGET-${PHP_VE
   exit 64
 fi
 
-JAR=${RESTATE_PHP_CONFORMANCE_JAR:-}
-if [ -z "$JAR" ] || [ ! -r "$JAR" ]; then
-  echo "RESTATE_PHP_CONFORMANCE_JAR is not set or not readable: run this inside \`devenv shell\`, which provides the suite's jar and Java." >&2
+if ! command -v restate-sdk-tests >/dev/null 2>&1; then
+  echo "restate-sdk-tests not found: run this inside \`devenv shell\`, which provides the suite with its Java." >&2
   exit 1
 fi
 
@@ -124,10 +122,10 @@ args+=("--service-container-image=$IMAGE")
 
 rm -rf "$RUN_DIR"
 mkdir -p "$RUN_DIR"
-echo "java -jar $JAR ${args[*]}" >&2
+echo "restate-sdk-tests ${args[*]}" >&2
 
 status=0
-java -jar "$JAR" "${args[@]}" 2>&1 | tee "$RUN_DIR/sdk-tests.log" || status=$?
+restate-sdk-tests "${args[@]}" 2>&1 | tee "$RUN_DIR/sdk-tests.log" || status=$?
 
 echo
 echo "Image: $IMAGE ($(docker image inspect --format '{{.Id}}' "$IMAGE"))"
