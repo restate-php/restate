@@ -70,6 +70,12 @@ bench-compare *args:
 split *args:
     bash bin/split.sh "$@"
 
+# The version in extension/Cargo.toml (every crate's), extension/Cargo.lock and restate/sdk's
+# ext-restate constraint; the release does the same before it builds.
+[doc("Set the release version X.Y.Z in the tree as a release does (bin/bump-version.sh)")]
+bump-version version:
+    bash bin/bump-version.sh {{ quote(version) }}
+
 # The host's extension build (debug), which the PHP tools load.
 [private]
 host-extension:

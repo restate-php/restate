@@ -7,8 +7,8 @@ members = [
 ]
 
 # What every crate inherits (`version.workspace = true`, …). The version is the extension
-# version (`Restate\Extension\version()`, `phpversion('restate')`); RELEASING.md says when to
-# bump it.
+# version (`Restate\Extension\version()`, `phpversion('restate')`); the release sets it
+# (bin/bump-version.sh, RELEASING.md).
 [workspace.package]
 version = "0.1.0"
 edition = "2021"

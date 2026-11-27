@@ -1,15 +1,18 @@
 # Releases every package and the extension at one version (docs/decisions/0031-release.md).
 #
-# Run it by hand on main. It releases the version in the tree, the extension's crate version
-# (the workspace's, extension/Cargo.toml): bump that first, in a commit with
-# extension/Cargo.lock and, for a new minor, restate/sdk's ext-restate constraint. Then:
+# Run it by hand on main, with the version: bump the latest vX.Y.Z by patch, minor or major, or
+# give it exactly (bump: version). Then:
 #
-#   1. version   checks the version (new, newer than the last release) and the tree, and lists the
-#                release commit's check runs on main in the summary (they don't block the release:
+#   1. version   picks the version (new, newer than the last release) and checks the tree, and
+#                lists the commit's check runs in the summary (they don't block the release:
 #                whether to release despite a failure is the person's call);
-#   2. extension, attest
+#   2. bump      sets the version in the tree (bin/bump-version.sh: extension/Cargo.toml,
+#                extension/Cargo.lock, restate/sdk's ext-restate constraint) and pushes it to main
+#                as "Release X.Y.Z", the commit everything after builds, splits and tags; with
+#                the tree at the version already (a run again after a fix), there is no commit;
+#   3. extension, attest
 #                build and verify the 24 extension archives, then checksum and attest them;
-#   3. publish   pushes, in this order: the extension repository (split, tag X.Y.Z, a release
+#   4. publish   pushes, in this order: the extension repository (split, tag X.Y.Z, a release
 #                with the archives), each package repository (split, tag vX.Y.Z), and this
 #                repository's release vX.Y.Z.
 #
@@ -20,6 +23,16 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      bump:
+        description: Bump the latest release, or release the exact version below (version)
+        type: choice
+        options: [version, patch, minor, major]
+        default: version
+      version:
+        description: Exact version to release, X.Y.Z (only with bump set to version)
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -64,18 +77,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Read the version
-        id: crate
-        run: |
-          version=$(sed -n '/^\[workspace\.package\]$/,/^\[/s/^version = "\(.*\)"$/\1/p' extension/Cargo.toml)
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
       # Fails when the version is already a tag or not newer than the latest vX.Y.Z.
-      - name: Check the version
+      - name: Pick the version
         id: pick
         uses: sagikazarmark/next-version@fc0401d3719a172991c36ec41f5e43419c30e90f # v0.3.0
         with:
-          version: ${{ steps.crate.outputs.version }}
+          bump: ${{ inputs.bump }}
+          version: ${{ inputs.version }}
 
       - name: Check the tree
         env:
@@ -85,11 +93,13 @@ jobs:
           failed=0
           IFS=. read -r major minor _ <<< "$VERSION"
 
-          # restate/sdk requires the extension of its own minor version (just check-packages
-          # checks the same against the crate version).
-          constraint=$(jq -r '.require["ext-restate"]' packages/sdk/composer.json)
-          if [ "$constraint" != "~$major.$minor.0" ]; then
-            echo "::error file=packages/sdk/composer.json::restate/sdk must require ext-restate ~$major.$minor.0 to release $VERSION, not $constraint"
+          # The bump only moves the version forward: a tree already past it was bumped by hand.
+          tree=$(sed -n '/^\[workspace\.package\]$/,/^\[/s/^version = "\(.*\)"$/\1/p' extension/Cargo.toml)
+          if [ -z "$tree" ]; then
+            echo "::error file=extension/Cargo.toml::No version in [workspace.package]"
+            failed=1
+          elif [ "$tree" != "$VERSION" ] && [ "$(printf '%s\n' "$tree" "$VERSION" | sort -V | tail -n 1)" = "$tree" ]; then
+            echo "::error file=extension/Cargo.toml::The tree is at $tree, past $VERSION"
             failed=1
           fi
 
@@ -123,7 +133,8 @@ jobs:
         id: repositories
         run: echo "repositories=$(bash bin/split.sh list | awk '{ print $2 }' | paste -sd, -)" >> "$GITHUB_OUTPUT"
 
-      # What ran on the release commit, for the person releasing: never fails the release.
+      # What ran on the commit the release starts from (the version commit only changes the
+      # version), for the person releasing: never fails the release.
       - name: Report the commit's checks
         env:
           GH_TOKEN: ${{ github.token }}
@@ -137,13 +148,60 @@ jobs:
               --jq '.check_runs[] | "| \(.name) | \(.conclusion // .status) |"' | sort || echo "| (could not list the check runs) | |"
           } >> "$GITHUB_STEP_SUMMARY"
 
+  # Before anything is built: the module compiles the version in, and the tags go on commits
+  # whose sources say it (PIE builds from them too).
+  bump:
+    name: Bump
+    needs: version
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      # Pushes the version commit to main.
+      contents: write
+    outputs:
+      sha: ${{ steps.bump.outputs.sha }}
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+
+    steps:
+      # The commit the version job checked, not main's tip: when main moved on since, the push
+      # below is refused.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: true
+
+      # The toolchain of rust-toolchain.toml, whose cargo updates extension/Cargo.lock.
+      - name: Install the Rust toolchain
+        working-directory: extension
+        run: rustup toolchain install
+
+      - name: Bump the version
+        id: bump
+        run: |
+          bash bin/bump-version.sh "$VERSION"
+
+          if ! git diff --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit --quiet --all --message "Release $VERSION"
+            # Fast-forward only, never forced.
+            if ! git push origin "HEAD:refs/heads/main"; then
+              echo "::error::Cannot push the version commit: main moved on since $GITHUB_SHA. Run the release again, on the new main."
+              exit 1
+            fi
+          fi
+
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
   extension:
     name: Extension
-    needs: version
+    needs: bump
     uses: ./.github/workflows/extension.yaml
     # The archives only: the flake's checks are tests, which ran on main.
     with:
       checks: false
+      ref: ${{ needs.bump.outputs.sha }}
     secrets:
       CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
@@ -205,7 +263,7 @@ jobs:
 
   publish:
     name: Publish
-    needs: [version, attest]
+    needs: [version, bump, attest]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Holds the GitHub App's key; give it required reviewers to approve each release.
@@ -218,6 +276,7 @@ jobs:
       TAG: ${{ needs.version.outputs.tag }}
       PREVIOUS: ${{ needs.version.outputs.previous }}
       MAKE_LATEST: ${{ needs.version.outputs.make-latest }}
+      RELEASE_SHA: ${{ needs.bump.outputs.sha }}
       OWNER: ${{ vars.RELEASE_OWNER }}
 
     steps:
@@ -225,6 +284,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.bump.outputs.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -306,6 +366,6 @@ jobs:
             echo "$TAG is already released"
             exit 0
           fi
-          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$TAG" \
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$RELEASE_SHA" --title "$TAG" \
             --latest="$MAKE_LATEST" --generate-notes ${PREVIOUS:+--notes-start-tag "$PREVIOUS"} \
             --notes "Install the packages with Composer (\`composer require restate/sdk:$VERSION\`) and the extension with PIE (\`pie install restate/ext-restate:$VERSION\`)."
