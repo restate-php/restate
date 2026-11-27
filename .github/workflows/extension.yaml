@@ -11,6 +11,10 @@ on:
         description: Run the flake's checks (the release builds and verifies the archives only)
         type: boolean
         default: true
+      ref:
+        description: The commit to build (the release's version commit); default the caller's
+        type: string
+        default: ""
     secrets:
       CACHIX_AUTH_TOKEN:
         description: Pushes the Nix builds to restate-php.cachix.org
@@ -35,16 +39,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.ref }}
           persist-credentials: false
 
-      # The crate version (extension/extension/Cargo.toml): what the module reports
+      # The crate version (the workspace's, extension/Cargo.toml): what the module reports
       # and PIE puts in the asset names. The release checks it is the version it releases.
       - name: Read the version
         id: version
         run: |
-          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' extension/extension/Cargo.toml | head -n 1)
+          version=$(sed -n '/^\[workspace\.package\]$/,/^\[/s/^version = "\(.*\)"$/\1/p' extension/Cargo.toml)
           if [ -z "$version" ]; then
-            echo "::error::No version in extension/extension/Cargo.toml"
+            echo "::error::No version in extension/Cargo.toml"
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -68,6 +73,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.ref }}
           persist-credentials: false
 
       - name: Set up the dev shell
@@ -141,6 +147,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.ref }}
           persist-credentials: false
 
       # Plain Nix for the flake (extension/flake.lock), without the whole dev shell.
@@ -181,6 +188,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.ref }}
           persist-credentials: false
 
       - name: Install Nix

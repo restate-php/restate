@@ -37,11 +37,11 @@ RUN mv /tmp/restate.so "$(php -r 'echo ini_get("extension_dir");')/" \
     && docker-php-ext-enable restate \
     && php --ri restate > /dev/null
 COPY packages /opt/restate/packages
-COPY extension/extension/Cargo.toml /tmp/restate-extension-Cargo.toml
+COPY extension/Cargo.toml /tmp/restate-extension-Cargo.toml
 
 ENV COMPOSER_HOME=/opt/composer
 
-RUN version=$(sed -n 's/^version = "\(.*\)"/\1/p' /tmp/restate-extension-Cargo.toml) \
+RUN version=$(sed -n '/^\[workspace\.package\]$/,/^\[/s/^version = "\(.*\)"$/\1/p' /tmp/restate-extension-Cargo.toml) \
     && mkdir -p "$COMPOSER_HOME" \
     && printf '{"repositories": {"restate": {"type": "path", "url": "/opt/restate/packages/*", "options": {"symlink": false, "versions": {"restate/sdk": "%s", "restate/common": "%s", "restate/ingress": "%s", "restate/testing": "%s"}}}}}\n' \
         "$version" "$version" "$version" "$version" > "$COMPOSER_HOME/config.json" \

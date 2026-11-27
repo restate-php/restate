@@ -48,7 +48,7 @@
           rustToolchain = (rust-overlay.lib.mkRustBin { } pkgs).fromRustupToolchainFile ./rust-toolchain.toml;
         };
 
-      # buildRustPhpExtension's arguments: pname (restate) and version from the crate's Cargo.toml,
+      # buildRustPhpExtension's arguments: pname (restate) from the crate's Cargo.toml, the version it inherits from the workspace's,
       # the module name from composer.json, and only the files the build reads, so that changing
       # anything else (this flake, tests, docs) rebuilds nothing.
       args = ext-php-rs.lib.extensionArgs {
