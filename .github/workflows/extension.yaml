@@ -168,7 +168,8 @@ jobs:
 
   checks:
     name: Checks
-    if: inputs.checks != false
+    # Not inputs.checks != false: on a push or pull request it is null, which compares equal to false.
+    if: format('{0}', inputs.checks) != 'false'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
