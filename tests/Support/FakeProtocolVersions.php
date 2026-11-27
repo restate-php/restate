@@ -10,5 +10,5 @@ namespace Restate\Tests\Support;
  */
 final class FakeProtocolVersions
 {
-    public const array RANGE = ['min' => 5, 'max' => 8];
+    public const array RANGE = ['min' => 7, 'max' => 8];
 }

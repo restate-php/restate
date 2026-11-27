@@ -197,7 +197,7 @@ final class DiscoveryTest extends TestCase
         $manifest = json_decode(Discovery::manifestJson($registry, FakeProtocolVersions::RANGE), true, flags: JSON_THROW_ON_ERROR);
 
         self::assertSame('REQUEST_RESPONSE', $manifest['protocolMode']);
-        self::assertSame(5, $manifest['minProtocolVersion']);
+        self::assertSame(7, $manifest['minProtocolVersion']);
         self::assertSame(8, $manifest['maxProtocolVersion']);
         self::assertSame('Greeter', $manifest['services'][0]['name']);
         self::assertSame('SERVICE', $manifest['services'][0]['ty']);
@@ -460,7 +460,7 @@ final class DiscoveryTest extends TestCase
     {
         // Restate sends every manifest version it reads, oldest first, comma separated.
         yield 'Restate 1.8 (v1 to v5)' => [self::accept(1, 2, 3, 4, 5), 5];
-        yield 'Restate 1.6 and 1.7 (v1 to v4)' => [self::accept(1, 2, 3, 4), 4];
+        yield 'an older server (v1 to v4)' => [self::accept(1, 2, 3, 4), 4];
         yield 'v3' => [self::accept(3), 3];
         yield 'v2' => [self::accept(2), 2];
         yield 'newest first' => [self::accept(5, 4, 3), 5];

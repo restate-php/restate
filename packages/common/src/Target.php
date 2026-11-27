@@ -54,8 +54,7 @@ final readonly class Target
      * everything in one scope. Restate's concurrency rules match the scope, and the limit key a call or send gives
      * within it (`limitKey:`), so a scope is also what concurrency limits apply to.
      *
-     * A scope is 1 to 36 characters from `[a-zA-Z0-9_.-]`. Calls and sends to a scoped target need service protocol v7
-     * (Restate 1.8 or newer); on an older version the attempt fails and Restate retries it.
+     * A scope is 1 to 36 characters from `[a-zA-Z0-9_.-]`.
      */
     public function scoped(string $scope): self
     {

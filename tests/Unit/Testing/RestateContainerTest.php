@@ -55,14 +55,14 @@ final class RestateContainerTest extends TestCase
 
     public function testTheImageVariableReplacesTheDefaultImage(): void
     {
-        putenv('RESTATE_PHP_RESTATE_IMAGE=docker.restate.dev/restatedev/restate:1.7.14');
+        putenv('RESTATE_PHP_RESTATE_IMAGE=docker.restate.dev/restatedev/restate:1.8.0');
 
-        self::assertSame('docker.restate.dev/restatedev/restate:1.7.14', RestateContainer::default()->image);
+        self::assertSame('docker.restate.dev/restatedev/restate:1.8.0', RestateContainer::default()->image);
     }
 
     public function testAnExplicitImageWinsOverTheImageVariable(): void
     {
-        putenv('RESTATE_PHP_RESTATE_IMAGE=docker.restate.dev/restatedev/restate:1.7.14');
+        putenv('RESTATE_PHP_RESTATE_IMAGE=docker.restate.dev/restatedev/restate:1.8.0');
 
         self::assertSame('example.com/restate:dev', RestateContainer::forImage('example.com/restate:dev')->image);
     }

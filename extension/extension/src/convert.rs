@@ -362,7 +362,8 @@ pub fn response_head(head: &ResponseHead) -> ExtensionResult<Array> {
 /// `['invocation_id' => …, 'random_seed' => int, 'key' => …, 'headers' => …,
 /// 'input' => binary string, 'scope' => ?string, 'limit_key' => ?string,
 /// 'idempotency_key' => ?string]`. The seed is the core's `u64` reinterpreted
-/// as PHP's signed integer. The last three are `null` before protocol v7.
+/// as PHP's signed integer. The last three are what the invocation was called
+/// with (Restate sends them from protocol v7).
 pub fn input(input: &InvocationInput) -> ExtensionResult<Array> {
     let mut array = ZendHashTable::new();
     array.insert("invocation_id", input.invocation_id.as_str())?;

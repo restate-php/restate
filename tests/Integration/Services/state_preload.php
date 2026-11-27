@@ -10,8 +10,8 @@ use Restate\VirtualObject;
 // Selective state preloading (StatePreloadTest): Restate sends only `hot` with each invocation; any other key is fetched
 // when read, which in request/response mode suspends the attempt, so the read completes on the next attempt. The read
 // handlers count their attempts in a state file to tell the two apart. Served by its own endpoint under
-// /state-preload (tests/Integration/Support/endpoint.php): a key list needs discovery manifest v5 (Restate 1.8), and
-// Restate 1.7 must still register the main endpoint.
+// /state-preload (tests/Integration/Support/IntegrationEndpoints.php): a key list needs discovery manifest v5, and the
+// main endpoint's manifest is also read at older manifest versions.
 
 $attempts = static function (ObjectSharedContext $ctx, string $handler): int {
     $stateDir = getenv('RESTATE_PHP_TEST_STATE_DIR');

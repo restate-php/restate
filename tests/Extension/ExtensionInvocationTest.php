@@ -71,20 +71,21 @@ final class ExtensionInvocationTest extends ExtensionTestCase
         self::assertSame([null, null, null], $input(self::V5));
     }
 
-    public function testProtocolVersionsAreTheRangeTheVmNegotiates(): void
+    /** Discovery advertises v7 (Restate 1.8) and newer; the VM still negotiates what shared-core speaks, v5 and v6 too. */
+    public function testProtocolVersionsStartAtV7AndTheVmNegotiatesThem(): void
     {
         $versions = \Restate\Extension\protocol_versions();
 
-        self::assertSame(['min' => 5, 'max' => 8], $versions);
+        self::assertSame(['min' => 7, 'max' => 8], $versions);
         // What discovery advertises.
         self::assertSame($versions, new Backend()->protocolVersions());
-        foreach (range($versions['min'], $versions['max']) as $version) {
+        foreach (range(5, $versions['max']) as $version) {
             self::assertContains(
                 ['content-type', "application/vnd.restate.invocation.v{$version}"],
                 self::newInvocation("application/vnd.restate.invocation.v{$version}")->responseHead()->headers,
             );
         }
-        foreach ([$versions['min'] - 1, $versions['max'] + 1] as $version) {
+        foreach ([4, $versions['max'] + 1] as $version) {
             $exception = self::backendException(static fn () => self::newInvocation("application/vnd.restate.invocation.v{$version}"));
             self::assertSame(415, $exception->getCode(), "v{$version}");
         }

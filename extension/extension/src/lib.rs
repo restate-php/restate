@@ -21,8 +21,8 @@
 //! - `Restate\Extension\version()` and
 //!   `Restate\Extension\contract_version()` are the version handshake the
 //!   Composer package checks before it uses the extension.
-//! - `Restate\Extension\protocol_versions()` is the service protocol range the
-//!   core speaks, for discovery.
+//! - `Restate\Extension\protocol_versions()` is the service protocol range
+//!   discovery advertises (from v7, Restate 1.8).
 //! - `Restate\Extension\diagnostics()`, only with the `diagnostics` cargo
 //!   feature: resource counters for soak tests (see [`diagnostics`]).
 //!
@@ -261,7 +261,7 @@ impl PhpVm {
     }
 
     /// Ends the attempt asking Restate to pause the invocation instead of
-    /// retrying it (protocol v7; below it the attempt fails with 573).
+    /// retrying it.
     pub fn notify_pause(
         &mut self,
         message: Binary<u8>,
@@ -399,8 +399,8 @@ impl PhpVm {
     }
 
     /// Ends the run's attempt, and the invocation's, asking Restate to pause
-    /// the invocation instead of retrying (protocol v7; below it this fails
-    /// with 573). The run executes again once the invocation is resumed.
+    /// the invocation instead of retrying. The run executes again once the
+    /// invocation is resumed.
     pub fn propose_run_pause(
         &mut self,
         handle: i64,

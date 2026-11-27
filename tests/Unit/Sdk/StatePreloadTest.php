@@ -108,7 +108,7 @@ final class StatePreloadTest extends TestCase
         self::assertArrayNotHasKey('eagerStateKeysWhitelist', $signup['handlers'][1]);
     }
 
-    /** Restate 1.7 reads manifests up to v4, which has no whitelist: like the TypeScript and Python SDKs, discovery fails. */
+    /** Manifest v4 has no whitelist: like the TypeScript and Python SDKs, discovery fails. */
     public function testManifestBeforeVersionFiveRejectsAServiceKeyList(): void
     {
         $registry = new ServiceRegistry([
@@ -138,7 +138,7 @@ final class StatePreloadTest extends TestCase
         Discovery::manifestJson($registry, FakeProtocolVersions::RANGE, 4);
     }
 
-    /** `true`, `false` and the empty list need only `enableLazyState` (manifest v3), so they work on Restate 1.7 too. */
+    /** `true`, `false` and the empty list need only `enableLazyState` (manifest v3), so they work with manifest v4 too. */
     public function testManifestVersionFourAcceptsAllOrNothing(): void
     {
         $registry = new ServiceRegistry([

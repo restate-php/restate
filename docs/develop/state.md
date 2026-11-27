@@ -154,9 +154,6 @@ A read that is not preloaded is a round trip to Restate. In request/response mod
 
 The list must contain strings only; anything else throws `InvalidArgumentException`. Basic Services have no state, so defining one with `statePreload` throws `InvalidArgumentException` too.
 
-> [!NOTE]
-> A list of keys needs Restate 1.8 or newer. On 1.7 registering the deployment fails with a message saying so; `true`, `false` and `[]` work on 1.7 too ([Compatibility](../compatibility.md#restate-17)).
-
 ## Custom serializers for state
 
 `get()` and `set()` take an optional serializer: a `Restate\Serde` instance or class name. Use the same one for reading and writing a key:

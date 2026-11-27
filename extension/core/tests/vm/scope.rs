@@ -1,18 +1,13 @@
 //! Scope and limit key on calls, sends and attach targets (protocol v7,
-//! Restate 1.8): v7 journals them on the command; below v7 the attempt fails
-//! with 573 (unsupported feature), which Restate retries like any error.
+//! Restate 1.8): v7 journals them on the command.
 
 use crate::protocol::{
     attach_invocation_command_message, get_invocation_output_command_message,
-    AttachInvocationCommandMessage, CallCommandMessage, ErrorBehavior, ErrorMessage,
-    GetInvocationOutputCommandMessage, IdempotentRequestTarget, OneWayCallCommandMessage,
-    WorkflowTarget,
+    AttachInvocationCommandMessage, CallCommandMessage, GetInvocationOutputCommandMessage,
+    IdempotentRequestTarget, OneWayCallCommandMessage, WorkflowTarget,
 };
 use crate::support::*;
-use restate_php_core::{AttachTarget, Bytes, CallTarget, ErrorCategory, TargetKind, Vm};
-
-/// shared-core's "unsupported feature for the negotiated protocol version".
-const UNSUPPORTED_FEATURE: u32 = 573;
+use restate_php_core::{AttachTarget, Bytes, CallTarget, ErrorCategory, TargetKind};
 
 fn scoped_counter(limit_key: Option<&str>) -> CallTarget {
     CallTarget {
@@ -42,25 +37,6 @@ fn scoped_idempotent_request() -> AttachTarget {
         idempotency_key: "once".to_string(),
         scope: Some("tenant-1".to_string()),
     }
-}
-
-/// The attempt failed with 573 for Restate to retry, naming what needed v7.
-fn assert_refused(vm: &mut Vm, error: restate_php_core::Error, version: u32, what: &str) {
-    let message = format!(
-        "{what} needs service protocol v7 (Restate 1.8 or newer), but this invocation \
-         negotiated v{version}"
-    );
-    assert_eq!(error.category(), ErrorCategory::Protocol);
-    assert_eq!(error.code(), Some(573));
-    assert_eq!(error.message(), format!("(573) {message}"));
-
-    let reported: ErrorMessage = single(&output(vm));
-    assert_eq!(reported.code, UNSUPPORTED_FEATURE, "{reported:?}");
-    assert_eq!(reported.message, message);
-    if version >= 7 {
-        assert_eq!(reported.behavior, ErrorBehavior::Retry as i32);
-    }
-    assert!(vm.take_output().is_none(), "the response is complete");
 }
 
 #[test]
@@ -140,74 +116,6 @@ fn attach_and_get_output_journal_the_scope_of_their_target() {
             )
         )
     );
-}
-
-#[test]
-fn a_scoped_call_or_send_is_refused_below_v7() {
-    for (content_type, version) in [(V5, 5), (V6, 6)] {
-        let mut vm = Invocation::new().content_type(content_type).running();
-        let error = vm
-            .sys_call(scoped_counter(Some("user")), Bytes::new(), None)
-            .unwrap_err();
-        assert_refused(
-            &mut vm,
-            error,
-            version,
-            "A call to Counter/alice/add in scope 'tenant-1'",
-        );
-
-        let mut vm = Invocation::new().content_type(content_type).running();
-        let error = vm
-            .sys_send(scoped_counter(None), Bytes::new(), None, None)
-            .unwrap_err();
-        assert_refused(
-            &mut vm,
-            error,
-            version,
-            "A send to Counter/alice/add in scope 'tenant-1'",
-        );
-    }
-}
-
-#[test]
-fn a_scoped_attach_target_is_refused_below_v7() {
-    let mut vm = Invocation::new().content_type(V6).running();
-    let error = vm.sys_attach_invocation(scoped_workflow()).unwrap_err();
-    assert_refused(
-        &mut vm,
-        error,
-        6,
-        "Attaching to the workflow Checkout/order-1 in scope 'tenant-1'",
-    );
-
-    let mut vm = Invocation::new().content_type(V6).running();
-    let error = vm
-        .sys_get_invocation_output(scoped_idempotent_request())
-        .unwrap_err();
-    assert_refused(
-        &mut vm,
-        error,
-        6,
-        "Getting the output of the request to Greeter/greet with idempotency key 'once' in scope 'tenant-1'",
-    );
-}
-
-#[test]
-fn unscoped_targets_work_below_v7() {
-    let mut vm = Invocation::new().content_type(V6).running();
-
-    vm.sys_call(
-        CallTarget {
-            scope: None,
-            ..scoped_counter(None)
-        },
-        Bytes::new(),
-        None,
-    )
-    .unwrap();
-
-    let command: CallCommandMessage = single(&output(&mut vm));
-    assert_eq!((command.scope, command.limit_key), (None, None));
 }
 
 #[test]

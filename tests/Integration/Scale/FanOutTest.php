@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Group;
  * DurableFuturesUnordered (FanOut, tests/Integration/Services/scale.php).
  *
  * Attempt bounds, each plus the attempts that failed (those Restate recorded a transient error for):
- * - all(): one tree, which on protocol v7 Restate resumes only once it can resolve, so 2 attempts. Protocol v6 (Restate
- *   1.7) resumes on any completion: up to n + 1.
+ * - all(): one tree, which on protocol v7 Restate resumes only once it can resolve, so 2 attempts.
  * - select() loops and DurableFuturesUnordered: at most n + 1, exactly n + 1 when each completion arrives on its own.
  *
  * A select() is one extension call (the tree await reports which futures completed), but it still passes
@@ -95,7 +94,7 @@ final class FanOutTest extends ScaleTestCase
 
         self::assertSame(range(0, $n - 1), $result['values'], 'all() returns the values in key order.');
         $this->assertCalleesExecuted($id, $n);
-        $attempts = $this->assertAttempts($id, 'all', $n, self::protocolVersion($id) >= 7 ? 2 : null);
+        $attempts = $this->assertAttempts($id, 'all', $n, 2);
         self::reportFanOut('all-calls', $id, $n, $attempts, $started);
     }
 
@@ -142,7 +141,7 @@ final class FanOutTest extends ScaleTestCase
         $result = self::completed($id, $n);
 
         self::assertSame(array_map(static fn (int $i): string => "value-{$i}", range(0, $n - 1)), $result['values']);
-        $attempts = $this->assertAttempts($id, 'all', $n, self::protocolVersion($id) >= 7 ? 2 : null);
+        $attempts = $this->assertAttempts($id, 'all', $n, 2);
         self::reportFanOut('all-awakeables', $id, $n, $attempts, $started);
     }
 

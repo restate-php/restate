@@ -230,9 +230,6 @@ $request->limitKey;        // the limit key it was submitted with, or null
 
 Everything except `attemptHeaders` is the same on every attempt. Because the attempt headers change, do not base handler logic on them; they are meant for things like tracing ([Tracing](logging-and-hooks.md#tracing)).
 
-> [!NOTE]
-> `idempotencyKey`, `scope` and `limitKey` need Restate 1.8 or newer. On 1.7 they are always `null` ([Compatibility](../compatibility.md#restate-17)).
-
 ## Documentation and metadata
 
 Services and handlers can carry documentation and metadata. Restate shows both in its UI and admin API after you register the deployment, and generates OpenAPI from them; the SDK itself only publishes them during discovery.

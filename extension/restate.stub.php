@@ -35,7 +35,8 @@ function contract_version(): int
 }
 
 /**
- * The service protocol versions this build speaks (inclusive): the range discovery advertises.
+ * The service protocol versions discovery advertises (inclusive): from v7 (Restate 1.8) to the newest this build
+ * speaks.
  *
  * @internal
  *
@@ -196,8 +197,8 @@ final class Vm
 
     /**
      * The invocation's input; `random_seed` is the unsigned 64-bit seed reinterpreted as a signed integer. `scope`,
-     * `limit_key` and `idempotency_key` are what the invocation was called with; Restate sends them from protocol v7
-     * on, so they are always null on v5 and v6.
+     * `limit_key` and `idempotency_key` are what the invocation was called with (Restate sends them from protocol v7
+     * on).
      *
      * @return array{invocation_id: string, random_seed: int, key: string, headers: Headers, input: string, scope: ?string, limit_key: ?string, idempotency_key: ?string}
      */
@@ -222,10 +223,7 @@ final class Vm
     {
     }
 
-    /**
-     * Ends the attempt asking Restate to pause the invocation instead of retrying it. Needs protocol v7: below it the
-     * attempt fails with 573 (unsupported feature) instead, which Restate retries.
-     */
+    /** Ends the attempt asking Restate to pause the invocation instead of retrying it. */
     public function notifyPause(string $message, string $stacktrace): void
     {
     }
@@ -304,10 +302,10 @@ final class Vm
 
     /**
      * Once the policy is exhausted the failure is the run's terminal result with $code (500 unless it is 400–599 and
-     * not 570) and $metadata — or, under a policy with `on_max_attempts: 'pause'`, the invocation pauses (protocol v7;
-     * below it a retryable failure under such a policy fails with 573). $retry_after_millis replaces the policy's delay
-     * before the next attempt. `attempt_ended`: the run did not complete and the attempt must stop (a retry was
-     * scheduled or, under a pausing policy, the invocation pauses; the two cannot be told apart).
+     * not 570) and $metadata — or, under a policy with `on_max_attempts: 'pause'`, the invocation pauses.
+     * $retry_after_millis replaces the policy's delay before the next attempt. `attempt_ended`: the run did not
+     * complete and the attempt must stop (a retry was scheduled or, under a pausing policy, the invocation pauses; the
+     * two cannot be told apart).
      *
      * @param Metadata $metadata
      * @param RetryPolicy|null $retry_policy null means infinite
@@ -320,8 +318,7 @@ final class Vm
 
     /**
      * Ends the run's attempt, and the invocation's, asking Restate to pause the invocation instead of retrying; the run
-     * executes again once the invocation is resumed. Needs protocol v7: below it this throws (573) and the attempt
-     * fails for Restate to retry.
+     * executes again once the invocation is resumed.
      */
     public function proposeRunPause(int $handle, string $message, int $attempt_duration_millis): void
     {
@@ -374,8 +371,8 @@ final class Vm
     }
 
     /**
-     * Starts a call. A `scope` or `limit_key` on the target needs protocol v7: below it the attempt fails with 573 and
-     * this throws (`protocol`); an empty one, or a limit key without a scope, throws `invalid_argument`.
+     * Starts a call. An empty `scope` or `limit_key` on the target, or a limit key without a scope, throws
+     * `invalid_argument`.
      *
      * @param CallTarget $target
      */
@@ -393,8 +390,8 @@ final class Vm
     }
 
     /**
-     * Starts attaching to an invocation. A `scope` on a workflow or idempotency target needs protocol v7, as for
-     * sysCall().
+     * Starts attaching to an invocation. An empty `scope` on a workflow or idempotency target throws
+     * `invalid_argument`.
      *
      * @param AttachTarget $target
      */

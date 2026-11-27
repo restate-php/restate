@@ -13,7 +13,7 @@ final class IdentityKeys
     /** Where the tests mount the private key in a Restate container (a Restate process reads it where it is). */
     public const string PEM_PATH_IN_CONTAINER = '/etc/restate/request-identity.pem';
 
-    /** Restate's setting for that file (the conformance suite's top-level one is deprecated on 1.7.14 and 1.8.1). */
+    /** Restate's setting for that file (the conformance suite's top-level one is deprecated on 1.8.1). */
     public const string PEM_FILE_VARIABLE = 'RESTATE_WORKER__INVOKER__REQUEST_IDENTITY_PRIVATE_KEY_PEM_FILE';
 
     private const string BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';

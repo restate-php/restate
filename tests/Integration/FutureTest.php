@@ -34,8 +34,8 @@ final class FutureTest extends IntegrationTestCase
     }
 
     /**
-     * Awakeables completed by delayed sends, so the invocation suspends and Restate resumes it on the tree it awaits
-     * (protocol v7) or on any completion (v6). An outcome without `ok` or `fail` never completes. Restate fires delayed
+     * Awakeables completed by delayed sends, so the invocation suspends and Restate resumes it once the tree it awaits
+     * can make progress. An outcome without `ok` or `fail` never completes. Restate fires delayed
      * sends on a tick of about a second, so outcomes whose order matters are more than a second apart.
      *
      * @return iterable<string, array{string, array<string, array{delay_ms?: int, ok?: string, fail?: string}>, string}>

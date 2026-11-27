@@ -57,7 +57,7 @@ The layers below the public API:
 
 ### Server and protocol requirements
 
-None beyond the SDK's own: named signals work on every protocol version the SDK negotiates (v5 to v7 with a released server), so they work on Restate 1.7 (v6) as on 1.8 (v7). The integration suite's `SignalTest` runs unchanged on both (`just test integration php-cli`, with and without `RESTATE_PHP_RESTATE_IMAGE=docker.restate.dev/restatedev/restate:1.7.14`). Failure metadata on a rejection needs v6, like every terminal failure with metadata.
+None beyond the SDK's own (Restate 1.8): named signals are part of every protocol version shared-core speaks. The integration suite's `SignalTest` runs them against Restate 1.8.1 (`just test integration php-cli`). Failure metadata on a rejection needs v6, like every terminal failure with metadata.
 
 ## Consequences
 

@@ -20,23 +20,22 @@ To bump it:
 2. Recheck every workaround below against the new source, and run its pinning tests. Remove a workaround only when shared-core now does the job, and update the version the code comments name.
 3. If the generated protocol module changed, replace the test copy (`extension/core/tests/vm/protocol/`, see `tests/vm/protocol.rs`) with the new version's file.
 4. Confirm that `extension/Cargo.lock` changes only in the shared-core entry, or account for every new dependency.
-5. Run `just check`, the integration suite against Restate 1.8 and 1.7, the FrankenPHP suite and the conformance suite ([TESTING.md](../../TESTING.md)), and update the row in [Extension Versions](../compatibility.md).
+5. Run `just check`, the integration suite against Restate 1.8, the FrankenPHP suite and the conformance suite ([TESTING.md](../../TESTING.md)), and update the row in [Extension Versions](../compatibility.md).
 
 A bump that changes no API the core uses needs no code change; that was the case from 8.6.0 to 8.7.2, where the new code (`ExplicitRecoveryVM`, which needs a bidirectional stream, and the `sql` feature) is unreachable from the core.
 
 ### Protocol versions
 
-shared-core 8.x speaks service protocol v5 to v8. Discovery advertises the range the core reports (`Backend::protocolVersions()`, answered by `Restate\Extension\protocol_versions()`), not a hard-coded one. Restate accepts a deployment whose range overlaps its own and picks the highest version both speak: Restate 1.8 negotiates **v7**, Restate 1.7 **v6**. v8 is advertised, but no released server speaks it; its only addition, `ephemeral_state_get`, is a command the SDK never issues, so nothing on the SDK's path changes with it.
+shared-core 8.x speaks service protocol v5 to v8. Discovery advertises the range the core reports (`Backend::protocolVersions()`, answered by `Restate\Extension\protocol_versions()`), not a hard-coded one: shared-core's maximum, and v7 as the minimum (the core clamps shared-core's minimum, while `Vm::new` still accepts every version shared-core speaks). Restate accepts a deployment whose range overlaps its own and picks the highest version both speak: Restate 1.8 negotiates **v7**. Restate 1.7.14 accepts the registration (its range reaches v7, which it negotiates only with `RESTATE_EXPERIMENTAL_ENABLE_PROTOCOL_V7=true`) but fails every invocation with `RT0013` "service protocol versions [7, 8] are incompatible with the server's service protocol versions [1, 7]", and retries it. v8 is advertised, but no released server speaks it; its only addition, `ephemeral_state_get`, is a command the SDK never issues, so nothing on the SDK's path changes with it.
 
 What each version adds on the SDK's path: v6 carries terminal-failure metadata and takes the random seed from Restate. v7 adds the pause behaviour and `OnMaxAttempts::Pause`, scope and limit key on calls, sends and attach targets, the scope, limit key and idempotency key in the invocation input, acknowledged run completions (`ProposeRunCompletionAckMessage`), suspensions and `AwaitingOnMessage` carrying the await tree, and the pause-or-fail option on journal mismatch. shared-core refuses a v7-only feature on v6 with 573 "unsupported feature"; it does not degrade.
 
-The endpoint manifest is negotiated like the TypeScript SDK does it: the newest version from v5 down to v2 that the request's `Accept` header names, `415` when it names none. v5 adds one optional field, `eagerStateKeysWhitelist` ([Selective State Preloading](0020-selective-state-preloading.md)); Restate 1.8 accepts v1–v5, 1.7 v1–v4.
+The endpoint manifest is negotiated like the TypeScript SDK does it: the newest version from v5 down to v2 that the request's `Accept` header names, `415` when it names none. v5 adds one optional field, `eagerStateKeysWhitelist` ([Selective State Preloading](0020-selective-state-preloading.md)); Restate 1.8 accepts v1–v5. The manifest negotiation stays generic: older manifest versions are still served.
 
 ### Server compatibility
 
 - **Restate 1.8 is the minimum supported server:** protocol v7 and manifest v5 by default. Its ingress drops client-supplied `x-restate-*` headers; the only `x-restate-*` headers the SDK relies on are those Restate itself sends to the endpoint (request identity, invocation id). The integration suite runs against 1.8.1 (`RestateContainer::DEFAULT_IMAGE`), and the conformance suite (`restatedev/e2e` `sdk-tests` v2.3) only against 1.8, since it needs 1.8's admin API.
-- **Restate 1.7 is best-effort:** protocol v6 (v7 only with `RESTATE_EXPERIMENTAL_ENABLE_PROTOCOL_V7=true`), manifest up to v4. On v6 the input's scope, limit key and idempotency key are absent, and every v7-only feature fails the attempt with 573 and a message naming the operation and the Restate version it needs (pause: [Pause](0021-pause.md); scope and limit key: [Scope and Limit Key](0024-scope-and-limit-key.md)); a list of preloaded state keys fails registration ([Selective State Preloading](0020-selective-state-preloading.md)). Everything else works; the integration suite with `RESTATE_PHP_RESTATE_IMAGE=docker.restate.dev/restatedev/restate:1.7.14` runs against 1.7.14 as the regression check for protocol v6.
-- **Restate 1.6 and older** negotiate v6 and manifest v4 too, but are not tested.
+- **Restate 1.7 and older are not supported:** the SDK advertises service protocol v7 as its minimum, so they cannot invoke it: Restate 1.7.14 registers the deployment, then fails every invocation with `RT0013` (incompatible service protocol versions) and keeps retrying it.
 
 ### Run completion heuristic
 
@@ -60,7 +59,7 @@ With eager state, shared-core records a cleared key as cleared rather than remov
 
 ### The SDK's own version checks
 
-For a pause, a scoped call or send, and a scoped attach on v6, shared-core's refusal names its internal feature ("error behavior", "scope") and drops the caller's message. The core checks the negotiated version first (`Vm::refuse_pause_below_v7`, `Vm::require_v7`) and fails the attempt with the same 573 and a message naming the operation, the target and the Restate version needed. These are not workarounds for bugs; they stay as long as the messages are better.
+Removed: Restate 1.8 is required (the SDK advertises v7 as its minimum). The core used to check the negotiated version before a pause, a scoped call or send and a scoped attach (`Vm::refuse_pause_below_v7`, `Vm::require_v7`), to fail the attempt on v6 with a 573 naming the operation instead of shared-core's message naming its internal feature. No supported server negotiates v6 any more.
 
 ### Combinators on the await tree
 
@@ -75,11 +74,11 @@ shared-core resolves a tree by first checking results already in view, then movi
 | `race()`, `select()`, `waitCompleted()`, `DurableFuturesUnordered::next()` | `FirstCompleted` | PHP takes the first completed future in key order. |
 | `any()` | a loop of `FirstCompleted` trees | `DurableFutureAggregateException::failures()` lists failures in completion order, which a `FirstSucceededOrAllFailed` tree cannot report. |
 
-A completed await reports which of the tree's handles it completed ([Tree Awaits Report Their Completed Handles](0036-tree-await-completed-handles.md)). Reducing the whole remaining tree once per result makes wide fan-out quadratic per attempt inside shared-core ([Wide Fan-out](../serving.md#wide-fan-out-costs-quadratic-time-per-attempt)); an upstream fix, [restatedev/sdk-shared-core#122](https://github.com/restatedev/sdk-shared-core/pull/122), is open and not in 8.7.2. `tests/vm/combinators.rs` (v5, v6, v7) and the integration `FutureTest` (Restate 1.8.1 and 1.7.14) cover when each combinator resolves, what a suspension carries, cancellation, and invalid trees.
+A completed await reports which of the tree's handles it completed ([Tree Awaits Report Their Completed Handles](0036-tree-await-completed-handles.md)). Reducing the whole remaining tree once per result makes wide fan-out quadratic per attempt inside shared-core ([Wide Fan-out](../serving.md#wide-fan-out-costs-quadratic-time-per-attempt)); an upstream fix, [restatedev/sdk-shared-core#122](https://github.com/restatedev/sdk-shared-core/pull/122), is open and not in 8.7.2. `tests/vm/combinators.rs` (v5, v6, v7) and the integration `FutureTest` (Restate 1.8.1) cover when each combinator resolves, what a suspension carries, cancellation, and invalid trees.
 
 ## Consequences
 
 - Protocol fixes and new protocol features arrive by bumping the pin, after the checks above; a bump never happens implicitly.
-- The four workarounds (run completion heuristic, retry-after emulation, cleared eager state keys, own version checks) depend on shared-core internals that are not a documented contract, which is why every bump rechecks them. Asking upstream for a structured run-completion result would remove the heuristic.
-- Restate 1.8 is required for the v7 features; on 1.7 they fail visibly instead of degrading.
+- The three workarounds (run completion heuristic, retry-after emulation, cleared eager state keys) depend on shared-core internals that are not a documented contract, which is why every bump rechecks them. Asking upstream for a structured run-completion result would remove the heuristic.
+- Restate 1.8 is required: discovery advertises v7 as the minimum, so an older server fails every invocation of it (`RT0013`) instead of failing v7 features one at a time.
 - In request/response mode the input is closed before the handler runs, so a v7 run completion, which waits for its acknowledgement, still ends the attempt as on v5 and v6.

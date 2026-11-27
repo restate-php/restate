@@ -147,10 +147,10 @@ pub struct CallTarget {
     pub headers: Vec<(String, String)>,
     /// The scope the target is addressed in: part of its identity (object and
     /// workflow instances, idempotency keys), and what Restate's concurrency
-    /// rules match. Needs protocol v7.
+    /// rules match.
     pub scope: Option<String>,
     /// The concurrency limit key within the scope; not part of the identity.
-    /// Needs a scope and protocol v7.
+    /// Needs a scope.
     pub limit_key: Option<String>,
 }
 
@@ -194,8 +194,7 @@ impl CallTarget {
 }
 
 /// The invocation an attach or get-output operation refers to. A workflow run
-/// and an idempotent invocation are identified within their scope, if any
-/// (protocol v7).
+/// and an idempotent invocation are identified within their scope, if any.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AttachTarget {
     Invocation {
@@ -257,8 +256,7 @@ pub enum OnMaxAttempts {
     #[default]
     Fail,
     /// The attempt ends and Restate pauses the invocation until someone
-    /// resumes it (protocol v7; on older versions proposing a retryable
-    /// failure under such a policy fails the attempt with 573).
+    /// resumes it.
     Pause,
 }
 
@@ -323,52 +321,13 @@ impl RetryPolicy {
     /// The policy that pauses the invocation at the first failure: what a
     /// pause request from a run proposes (see [`crate::Vm::propose_run_pause`]).
     /// No attempt is allowed, so shared-core's `next_retry` always answers
-    /// "pause"; and because the policy pauses, shared-core refuses it below
-    /// protocol v7, exactly as it refuses a handler's pause request.
+    /// "pause".
     pub(crate) fn pause_now() -> Self {
         Self::FixedDelay {
             interval: None,
             max_attempts: Some(0),
             max_duration: None,
             on_max_attempts: OnMaxAttempts::Pause,
-        }
-    }
-
-    /// The policy for proposing a success or a terminal failure, which
-    /// shared-core never retries: the same policy, but one that does not
-    /// pause. shared-core refuses any proposal under a pausing policy below
-    /// protocol v7, even one that does not use the policy; this keeps a run
-    /// that pauses once exhausted from failing on Restate 1.7 when it
-    /// succeeds.
-    pub(crate) fn for_final_result(self) -> Self {
-        match self {
-            Self::FixedDelay {
-                interval,
-                max_attempts,
-                max_duration,
-                ..
-            } => Self::FixedDelay {
-                interval,
-                max_attempts,
-                max_duration,
-                on_max_attempts: OnMaxAttempts::Fail,
-            },
-            Self::Exponential {
-                initial_interval,
-                factor,
-                max_interval,
-                max_attempts,
-                max_duration,
-                ..
-            } => Self::Exponential {
-                initial_interval,
-                factor,
-                max_interval,
-                max_attempts,
-                max_duration,
-                on_max_attempts: OnMaxAttempts::Fail,
-            },
-            policy => policy,
         }
     }
 }
@@ -442,8 +401,12 @@ pub struct InvocationInput {
     pub idempotency_key: Option<String>,
 }
 
-/// The range of service protocol versions the core speaks, inclusive: what
-/// discovery advertises and what [`crate::Vm::new`] accepts.
+/// The range of service protocol versions discovery advertises, inclusive.
+/// The maximum is shared-core's; the minimum is v7 (Restate 1.8), the oldest
+/// version the SDK supports, even though [`crate::Vm::new`] accepts every
+/// version shared-core speaks: Restate 1.7 (v6 by default) then cannot invoke
+/// the deployment (1.7.14 registers it and fails every invocation with
+/// RT0013).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ProtocolVersions {
     pub min: u32,
@@ -451,8 +414,9 @@ pub struct ProtocolVersions {
 }
 
 pub fn protocol_versions() -> ProtocolVersions {
+    let minimum = shared::Version::minimum_supported_version().max(shared::Version::V7);
     ProtocolVersions {
-        min: shared::Version::minimum_supported_version() as u32,
+        min: minimum as u32,
         max: shared::Version::maximum_supported_version() as u32,
     }
 }
@@ -501,8 +465,7 @@ mod tests {
     }
 
     /// A bounded policy pauses once exhausted only when asked to, also after
-    /// a retry-after replaced its interval; a success or terminal failure is
-    /// never proposed under a pausing policy. (`run::retryable_outcome` cannot
+    /// a retry-after replaced its interval. (`run::retryable_outcome` cannot
     /// tell such a pause from a scheduled retry; see `RunRetryOutcome`.)
     #[test]
     fn a_policy_pauses_once_exhausted_only_when_asked() {
@@ -531,11 +494,6 @@ mod tests {
                     shared_on_max_attempts(&retry_after),
                     expected,
                     "{retry_after:?}"
-                );
-                assert_eq!(
-                    shared_on_max_attempts(&policy.clone().for_final_result()),
-                    Some(shared::OnMaxAttempts::FailAsTerminal),
-                    "{policy:?}"
                 );
             }
         }

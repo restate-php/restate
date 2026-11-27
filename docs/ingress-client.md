@@ -195,9 +195,6 @@ The client checks scopes and limit keys when you build the request, with the sam
 
 A scoped workflow's `attach()` and `output()`, and `idempotentInvocation()` of a scoped target, first look up the invocation id that Restate computes for it: one more request.
 
-> [!NOTE]
-> Needs Restate 1.8 or newer. On 1.7 the ingress rejects scoped requests with status 400 ("scoped invocations require vqueues to be enabled") ([Compatibility](compatibility.md#restate-17)).
-
 ## Errors
 
 When the invocation itself fails, the client throws its `Restate\TerminalError`, with the status code, message and metadata that the handler threw, as `$ctx->call()` does in a handler.

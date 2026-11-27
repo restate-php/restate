@@ -12,9 +12,10 @@ use restate_sdk_shared_core::{NotificationHandle, UnresolvedFuture};
 /// tree **or any combinator nested in it** resolves, and reports which of the
 /// tree's handles are then completed (as [`crate::Vm::is_completed`] would);
 /// the caller decides itself whether its own result is settled. The tree is also the await point the VM
-/// reports to Restate when it suspends: on protocol v7 Restate resumes the
-/// invocation only once the tree can make progress, on v5/v6 when any handle
-/// in it completes.
+/// reports to Restate when it suspends: on protocol v7 (what Restate 1.8
+/// negotiates) Restate resumes the invocation only once the tree can make
+/// progress; shared-core's v5/v6 suspension resumes it when any handle in it
+/// completes.
 ///
 /// The VM moves arrived results into view one at a time, in the order they
 /// arrived, and stops as soon as the tree resolves; results that arrived
