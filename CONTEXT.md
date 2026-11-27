@@ -122,11 +122,11 @@ An API description produced by Restate after a service endpoint is registered. P
 
 Alignment between the PHP SDK and the reference Restate SDK capability surface. A capability is feature-parity complete only when the public PHP API exists, the backend protocol behavior exists, and local evidence verifies the behavior.
 
-Upstream Conformance Evidence complements feature parity but does not establish it: the upstream suite exercises the protocol through the test services, not every public PHP API.
+Conformance Evidence complements feature parity but does not establish it: the conformance suite exercises the protocol through the test services, not every public PHP API.
 
-### Upstream Conformance Evidence
+### Conformance Evidence
 
-Evidence from the upstream Restate SDK test suite. Exclusions (`test-services/exclusions.yaml`) can classify failures, but an excluded case is not evidence that a feature works.
+Evidence from the Restate SDK conformance suite. Exclusions (`test-services/exclusions.yaml`) can classify failures, but an excluded case is not evidence that a feature works.
 
 ### Integration Harness
 
@@ -178,7 +178,7 @@ The version of the PHP extension itself: its crate version (`extension/extension
 
 ### Release
 
-One version of the SDK, published by one manual run of `.github/workflows/release.yaml` on `main`: every Package and the extension at the version in the extension crate, after CI, the upstream suite and the extension builds pass on that commit. Each package directory and `extension/` is pushed to a read-only repository of its own (a Split Repository, which Packagist and PIE read; `.github/workflows/split.yaml` also pushes its `main` on every push to this repository's `main`, so `dev-main` follows it), tagged `vX.Y.Z` (the extension's bare `X.Y.Z`); this repository gets the release `vX.Y.Z`. See `docs/decisions/0031-release.md`.
+One version of the SDK, published by one manual run of `.github/workflows/release.yaml` on `main`: every Package and the extension at the version in the extension crate, after CI, the conformance suite and the extension builds pass on that commit. Each package directory and `extension/` is pushed to a read-only repository of its own (a Split Repository, which Packagist and PIE read; `.github/workflows/split.yaml` also pushes its `main` on every push to this repository's `main`, so `dev-main` follows it), tagged `vX.Y.Z` (the extension's bare `X.Y.Z`); this repository gets the release `vX.Y.Z`. See `docs/decisions/0031-release.md`.
 
 ### Thread-Safe Extension Build
 

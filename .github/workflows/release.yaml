@@ -5,8 +5,8 @@
 # extension/Cargo.lock and, for a new minor, restate/sdk's ext-restate constraint. Then:
 #
 #   1. version   checks the version (new, newer than the last release) and the tree;
-#   2. ci, upstream
-#                run CI and the upstream SDK suite on the release commit (skip-tests skips them);
+#   2. ci, conformance
+#                run CI and the SDK conformance suite on the release commit (skip-tests skips them);
 #   3. extension, attest
 #                build and check the 24 extension archives, then checksum and attest them;
 #   4. publish   pushes, in this order: the extension repository (split, tag X.Y.Z, a release
@@ -22,7 +22,7 @@ on:
   workflow_dispatch:
     inputs:
       skip-tests:
-        description: Skip CI and the upstream suite on the release commit (escape hatch; the extension archives are still built and checked)
+        description: Skip CI and the conformance suite on the release commit (escape hatch; the extension archives are still built and checked)
         type: boolean
         default: false
 
@@ -132,12 +132,12 @@ jobs:
     secrets:
       CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-  upstream:
-    name: Upstream SDK tests
+  conformance:
+    name: SDK conformance tests
     needs: version
     if: ${{ !inputs.skip-tests }}
-    uses: ./.github/workflows/upstream.yaml
-    # What the upstream workflow needs to publish its test results.
+    uses: ./.github/workflows/conformance.yaml
+    # What the conformance workflow needs to publish its test results.
     permissions:
       contents: read
       issues: read
@@ -209,8 +209,8 @@ jobs:
 
   publish:
     name: Publish
-    needs: [version, ci, upstream, attest]
-    # ci and upstream are skipped with skip-tests; anything failed or cancelled stops the release.
+    needs: [version, ci, conformance, attest]
+    # ci and conformance are skipped with skip-tests; anything failed or cancelled stops the release.
     if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30

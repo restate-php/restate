@@ -15,7 +15,7 @@ use Restate\Tests\Integration\Support\IntegrationTestCase;
  * Restate 1.8 (service protocol v7) takes them. Restate 1.7 (v6) cannot: the attempt fails with 573 and a message
  * saying why, and Restate keeps retrying.
  *
- * The concurrency limit itself (a rule on `scope/limitKey` holding back invocations) is the upstream suite's
+ * The concurrency limit itself (a rule on `scope/limitKey` holding back invocations) is the conformance suite's
  * `ServiceToServiceScopeConcurrency`, which runs the test services' `Proxy` against the same SDK code.
  */
 final class ScopeTest extends IntegrationTestCase

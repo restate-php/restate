@@ -19,7 +19,7 @@ Measured on an Apple silicon Mac (Docker Desktop), for the PHP 8.4 ZTS debug Fra
 | Empty caches, the source built by CI | 21 s of Cargo | no compile: a 10 MiB download, after the ~1 GiB inputs layer once |
 | The other CPU (amd64) | 53 s of Cargo under Rosetta | 32 s, cross-compiled natively |
 
-A full compile costs about the same either way. What the cache mounts gave was rustc's incremental compilation of the workspace's own crates, which a Nix build does not keep. That matters while working on the extension, which `just extension build` covers. The images are for the integration, load, soak and upstream suites, which run less often.
+A full compile costs about the same either way. What the cache mounts gave was rustc's incremental compilation of the workspace's own crates, which a Nix build does not keep. That matters while working on the extension, which `just extension build` covers. The images are for the integration, load, soak and conformance suites, which run less often.
 
 ## Decision
 
@@ -29,7 +29,7 @@ A full compile costs about the same either way. What the cache mounts gave was r
 4. **`extension/Dockerfile` builds a module in a container,** for anyone without Nix: Nix on the build platform, cross-compiling for the target platform. A first layer fetches what every module builds with (the flake's `extension-inputs`) from the lock files, the toolchain file and the manifests only. It needs only `extension/`, so it goes with the split to `restate-php/ext-restate`.
 5. **`RESTATE_PHP_IMAGE_EXTENSION=host` builds the module with Nix on the host** and hands it to bake as `EXTENSION_DIR`. CI does: for any source CI has built, the runner downloads the module from Cachix, and never builds the container's ~1 GiB inputs layer. `bin/build-image.sh [--php <minor>] [--variant <variant>] <target> <tag>` is the one way the recipes and workflows build an image, either way.
 6. **One base stage per PHP minor.** `FROM docker.io/dunglas/frankenphp:1.14.0-php8.5-bookworm AS frankenphp-8.5`, and likewise `php-cli-<minor>` and `php-fpm-<minor>`. Bake passes the stage's name (`BASE_IMAGE=frankenphp-8.5`). Dependabot reads the `FROM` lines and bumps every minor's FrankenPHP in one pull request; nothing is bumped by hand. `RESTATE_PHP_TEST_PHP_VERSION` chooses the minor of the suites' images, replacing `RESTATE_PHP_TEST_FRANKENPHP_BASE_IMAGE` and `RESTATE_PHP_TEST_FPM_BASE_IMAGE`.
-7. **One Dockerfile per server,** next to its configuration: `docker/frankenphp/Dockerfile` (`frankenphp-extension`, `upstream-frankenphp`), `docker/fpm/Dockerfile` (`fpm-extension`, `fpm-extension-apache`, `upstream-fpm-nginx`) and `docker/quickstart/Dockerfile` (`quickstart-php-restate`), each with its own base stages and one `BASE_IMAGE` argument. One file shared the stages that compiled the extension; with none left, the targets share nothing but the `restate-extension` context, which bake sets.
+7. **One Dockerfile per server,** next to its configuration: `docker/frankenphp/Dockerfile` (`frankenphp-extension`, `conformance-frankenphp`), `docker/fpm/Dockerfile` (`fpm-extension`, `fpm-extension-apache`, `conformance-fpm-nginx`) and `docker/quickstart/Dockerfile` (`quickstart-php-restate`), each with its own base stages and one `BASE_IMAGE` argument. One file shared the stages that compiled the extension; with none left, the targets share nothing but the `restate-extension` context, which bake sets.
 
 ### Rejected
 

@@ -6,7 +6,7 @@
 # Usage: bin/build-image.sh [--php <minor>] [--variant <variant>] <target> <tag>
 #
 #   target     a target of docker/*/Dockerfile: frankenphp-extension, fpm-extension,
-#              fpm-extension-apache, upstream-frankenphp, upstream-fpm-nginx or
+#              fpm-extension-apache, conformance-frankenphp, conformance-fpm-nginx or
 #              quickstart-php-restate
 #   tag        the image's name
 #   --php      the PHP minor, one of docker-bake.hcl's PHP_VERSIONS (default 8.4)

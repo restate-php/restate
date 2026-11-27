@@ -6,7 +6,7 @@ Accepted. Amends [Worker-Mode and Soak Testing](0035-worker-soak-testing.md) (th
 
 ## Context
 
-`docker/Dockerfile` compiled the extension in five stages for FrankenPHP's ZTS PHP alone: a debug build, a release build, and a `diagnostics` build of each for the soak suite. Each fed an image target of its own, and three of those images differed only in the module they copied. Every stage installed rustup and the toolchain again, every build compiled every crate from scratch, and `COPY . /app` came before `apt-get` in the upstream images, so any source change installed the packages again.
+`docker/Dockerfile` compiled the extension in five stages for FrankenPHP's ZTS PHP alone: a debug build, a release build, and a `diagnostics` build of each for the soak suite. Each fed an image target of its own, and three of those images differed only in the module they copied. Every stage installed rustup and the toolchain again, every build compiled every crate from scratch, and `COPY . /app` came before `apt-get` in the conformance images, so any source change installed the packages again.
 
 The base images were `ARG` defaults (`FROM ${FRANKENPHP_IMAGE}`). Dependabot reads `FROM` lines only and never expands an `ARG`, so it had never proposed an update to the PHP, FrankenPHP or php-fpm bases. The recipes passed a base image as a build argument only when its setting was set, since an empty argument replaced the default.
 
@@ -19,7 +19,7 @@ In CI, fifteen copies of a ten-line `actions/cache` step cached `extension/targe
 3. **Cache mounts for Cargo.** The build mounts Cargo's registry and a target directory as BuildKit caches. The target directory has a subdirectory per Debian release, PHP version and thread safety, because ext-php-rs generates its bindings again only when `PHP`, `PHP_CONFIG` or `PATH` change, and those are the same in every PHP image. A local Rust change recompiles only the extension's crates.
 4. **Default bases as stages.** Each default base is a stage of its own (`FROM docker.io/dunglas/frankenphp:… AS frankenphp-default`), which Dependabot reads. `FROM ${FRANKENPHP_IMAGE:-frankenphp-default}` picks an override when one is set, so the recipes always pass their setting, empty or not. Dependabot ignores minor and major updates of `php`: 8.4, the oldest supported minor, is the default on purpose.
 5. **One setup action in CI.** `.github/actions/setup` runs setup-devenv, restores Composer's download cache, and, with `cargo-cache: <key>`, restores Cargo's through `Swatinem/rust-cache`. rust-cache runs `cargo` and `rustc` in the job's dev shell (`cmd-format`), drops the workspace's own crates before saving, and saves on `main` only. Jobs that build alike share a key: `check-php<minor>`, `integration`, `bench`, `bench-extension`.
-6. **The upstream workflow is reusable per target.** `upstream.yaml` takes a `target` input and reads its Restate image from `RestateContainer::DEFAULT_IMAGE`. The nightly php-fpm run calls it instead of repeating its steps.
+6. **The conformance workflow is reusable per target.** `conformance.yaml` takes a `target` input and reads its Restate image from `RestateContainer::DEFAULT_IMAGE`. The nightly php-fpm run calls it instead of repeating its steps.
 
 ### Rejected
 

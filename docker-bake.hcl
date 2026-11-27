@@ -86,21 +86,21 @@ target "frankenphp-extension" {
   tags = ["restate.local/restate-php-frankenphp:php${php}-${variant}"]
 }
 
-target "upstream-frankenphp" {
-  name = "upstream-frankenphp-${minor(php)}-${variant}"
+target "conformance-frankenphp" {
+  name = "conformance-frankenphp-${minor(php)}-${variant}"
   matrix = {
     php     = PHP_VERSIONS
     variant = ["debug", "release"]
   }
   dockerfile = "docker/frankenphp/Dockerfile"
-  target     = "upstream-frankenphp"
+  target     = "conformance-frankenphp"
   contexts = {
     restate-extension = extension_context(php, "zts", variant)
   }
   args = {
     BASE_IMAGE = "frankenphp-${php}"
   }
-  tags = ["restate.local/restate-php-test-services:upstream-frankenphp-php${php}-${variant}"]
+  tags = ["restate.local/restate-php-test-services:conformance-frankenphp-php${php}-${variant}"]
 }
 
 target "fpm-extension" {
@@ -137,21 +137,21 @@ target "fpm-extension-apache" {
   tags = ["restate.local/restate-php-fpm:apache-php${php}-${variant}"]
 }
 
-target "upstream-fpm-nginx" {
-  name = "upstream-fpm-nginx-${minor(php)}-${variant}"
+target "conformance-fpm-nginx" {
+  name = "conformance-fpm-nginx-${minor(php)}-${variant}"
   matrix = {
     php     = PHP_VERSIONS
     variant = ["debug", "release"]
   }
   dockerfile = "docker/fpm/Dockerfile"
-  target     = "upstream-fpm-nginx"
+  target     = "conformance-fpm-nginx"
   contexts = {
     restate-extension = extension_context(php, official_ts(php), variant)
   }
   args = {
     BASE_IMAGE = "php-fpm-${php}"
   }
-  tags = ["restate.local/restate-php-test-services:upstream-fpm-nginx-php${php}-${variant}"]
+  tags = ["restate.local/restate-php-test-services:conformance-fpm-nginx-php${php}-${variant}"]
 }
 
 target "quickstart-php-restate" {

@@ -1,12 +1,12 @@
-# The upstream Restate SDK test suite (restatedev/e2e sdk-tests.jar) against the PHP test
-# services, through the action the official SDKs use. Locally: just test upstream.
-name: Upstream SDK tests
+# The Restate SDK conformance suite (restatedev/e2e sdk-tests.jar) against the PHP test
+# services, through the action the official SDKs use. Locally: just test conformance.
+name: SDK conformance tests
 
 on:
   push:
     branches: [main]
     paths: &paths
-      - '.github/workflows/upstream.yaml'
+      - '.github/workflows/conformance.yaml'
       - 'bin/build-image.sh'
       - 'composer.json'
       - 'composer.lock'
@@ -23,27 +23,27 @@ on:
   workflow_call:
     inputs:
       target:
-        description: The test services image, upstream-frankenphp or upstream-fpm-nginx (its PHP 8.4 debug image)
+        description: The test services image, conformance-frankenphp or conformance-fpm-nginx (its PHP 8.4 debug image)
         type: string
-        default: upstream-frankenphp
+        default: conformance-frankenphp
 
 # Inside a called workflow github.workflow is the caller's name, so the group names this
 # workflow itself; manual runs and the release's call (workflow_dispatch) get a group of their
 # own and are never cancelled by a push.
 concurrency:
-  group: upstream-${{ inputs.target || 'upstream-frankenphp' }}-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event_name }}
+  group: conformance-${{ inputs.target || 'conformance-frankenphp' }}-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event_name }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 env:
-  TARGET: ${{ inputs.target || 'upstream-frankenphp' }}
-  SERVICE_IMAGE: restate.local/restate-php-test-services:${{ inputs.target || 'upstream-frankenphp' }}
+  TARGET: ${{ inputs.target || 'conformance-frankenphp' }}
+  SERVICE_IMAGE: restate.local/restate-php-test-services:${{ inputs.target || 'conformance-frankenphp' }}
 
 jobs:
   sdk-tests:
-    name: restatedev/e2e sdk-tests (${{ inputs.target || 'upstream-frankenphp' }})
+    name: restatedev/e2e sdk-tests (${{ inputs.target || 'conformance-frankenphp' }})
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     # contents: read checks out the repository. The action publishes the JUnit results as a check
@@ -91,10 +91,10 @@ jobs:
           RESTATE_PHP_IMAGE_EXTENSION: host
 
       # Pinned by tag, not by commit: the action downloads sdk-tests.jar from the release named
-      # after the ref it runs at (github.action_ref), so a SHA pin breaks the download. Upstream
+      # after the ref it runs at (github.action_ref), so a SHA pin breaks the download. Restate
       # has moved the v2.3 tag after the release (the jar asset stayed the same); locally
-      # bin/conformance-upstream-local.sh pins the jar by SHA-256.
-      - name: Run the upstream SDK tests
+      # bin/conformance-local.sh pins the jar by SHA-256.
+      - name: Run the SDK conformance tests
         uses: restatedev/e2e/sdk-tests@v2.3
         with:
           serviceContainerImage: ${{ env.SERVICE_IMAGE }}

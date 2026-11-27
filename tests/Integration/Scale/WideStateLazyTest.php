@@ -10,7 +10,7 @@ use Restate\Testing\RestateProcess;
 
 /**
  * Wide state, lazy: a Restate server of its own with eager state disabled (`RESTATE_WORKER__INVOKER__DISABLE_EAGER_STATE`,
- * the switch the upstream e2e suite uses). stateKeys() and every get() ask Restate, one attempt each, so reading K keys
+ * the switch the conformance suite uses). stateKeys() and every get() ask Restate, one attempt each, so reading K keys
  * takes K + 2 attempts with stateKeys() and K + 1 without. clearAll() makes the state known: reads after it are local.
  */
 #[Group('managed')]

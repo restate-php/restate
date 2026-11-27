@@ -1,29 +1,30 @@
 #!/usr/bin/env bash
-# Run the upstream Restate SDK test suite (restatedev/e2e sdk-tests.jar) locally against a test-services image.
-# CI runs the same suite through the restatedev/e2e/sdk-tests action (.github/workflows/upstream.yaml).
+# Run the Restate SDK conformance suite (restatedev/e2e sdk-tests.jar) locally against a test-services image.
+# CI runs the same suite through the restatedev/e2e/sdk-tests action (.github/workflows/conformance.yaml).
 #
-# Usage: bin/conformance-upstream-local.sh [target] [basic|full]
+# Usage: bin/conformance-local.sh [server] [basic|full]
 #
-#   target  test-services image to build and test: upstream-frankenphp (the default) or
-#           upstream-fpm-nginx, the PHP 8.4 debug image of docker-bake.hcl (bin/build-image.sh)
+#   server  frankenphp (the default) or fpm-nginx: the test-services image to build and test is
+#           conformance-<server>, the PHP 8.4 debug image of docker-bake.hcl (bin/build-image.sh)
 #   mode    basic runs the `default` suite only, full runs every suite (default: full)
 #
 # Run it in the dev shell (it provides Java 25). Works with Docker and with rootless podman: under
 # podman it starts a private podman API service for Testcontainers, disables Ryuk, and runs the
 # suite sequentially. Artifacts (the jar, JUnit XML, container logs, the suite's output) go to
-# var/conformance/upstream/<target>/<mode>/.
+# var/conformance/<server>/<mode>/.
 #
 # Environment:
-#   RESTATE_PHP_UPSTREAM_SKIP_BUILD=1     reuse an existing image instead of rebuilding
-#   RESTATE_PHP_UPSTREAM_TEST_NAME        run only this test class (e.g. ProxyRequestSigning) in each suite
-#   RESTATE_PHP_UPSTREAM_EXCLUSIONS_FILE  exclusions YAML (default test-services/exclusions.yaml; empty: none)
-#   RESTATE_PHP_UPSTREAM_SEQUENTIAL=1     run test classes one at a time (default under podman)
-#   RESTATE_PHP_UPSTREAM_OUTPUT_DIR       artifacts root (default var/conformance/upstream)
+#   RESTATE_PHP_CONFORMANCE_SKIP_BUILD=1     reuse an existing image instead of rebuilding
+#   RESTATE_PHP_CONFORMANCE_TEST_NAME        run only this test class (e.g. ProxyRequestSigning) in each suite
+#   RESTATE_PHP_CONFORMANCE_EXCLUSIONS_FILE  exclusions YAML (default test-services/exclusions.yaml; empty: none)
+#   RESTATE_PHP_CONFORMANCE_SEQUENTIAL=1     run test classes one at a time (default under podman)
+#   RESTATE_PHP_CONFORMANCE_OUTPUT_DIR       artifacts root (default var/conformance)
 #   RESTATE_PHP_RESTATE_IMAGE             Restate image, as for the test harness (default RestateContainer::DEFAULT_IMAGE)
 set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-TARGET=${1:-upstream-frankenphp}
+SERVER=${1:-frankenphp}
+TARGET=conformance-$SERVER
 MODE=${2:-full}
 
 SUITE_VERSION=v2.3
@@ -33,13 +34,13 @@ JAR_SHA256="f4452477a5f80a599da04175a7de1c1192d9165b46b445964df820ea1b117ffa"
 case "$MODE" in
   basic|full) ;;
   *)
-    echo "Usage: $0 [target] [basic|full]" >&2
+    echo "Usage: $0 [server] [basic|full]" >&2
     exit 64
     ;;
 esac
 
 if ! docker buildx bake -f "$ROOT_DIR/docker-bake.hcl" --print "$TARGET-84-debug" >/dev/null 2>&1; then
-  echo "Unknown test-services target: $TARGET (upstream-frankenphp or upstream-fpm-nginx)" >&2
+  echo "Unknown server: $SERVER (frankenphp or fpm-nginx)" >&2
   exit 64
 fi
 
@@ -47,22 +48,22 @@ fi
 # instead of failing, so check up front.
 REQUIRED_JAVA_MAJOR=25
 if ! command -v java >/dev/null 2>&1; then
-  echo "java not found; the upstream suite needs Java $REQUIRED_JAVA_MAJOR+. Run this inside \`devenv shell\`." >&2
+  echo "java not found; the conformance suite needs Java $REQUIRED_JAVA_MAJOR+. Run this inside \`devenv shell\`." >&2
   exit 1
 fi
 JAVA_MAJOR=$(java -XshowSettings:properties -version 2>&1 | sed -n 's/^ *java\.specification\.version = //p' | head -n 1)
 JAVA_MAJOR=${JAVA_MAJOR#1.}
 JAVA_MAJOR=${JAVA_MAJOR%%.*}
 if ! [[ "$JAVA_MAJOR" =~ ^[0-9]+$ ]] || [ "$JAVA_MAJOR" -lt "$REQUIRED_JAVA_MAJOR" ]; then
-  echo "java on PATH ($(command -v java)) is Java ${JAVA_MAJOR:-unknown}; the upstream suite needs Java $REQUIRED_JAVA_MAJOR+." >&2
+  echo "java on PATH ($(command -v java)) is Java ${JAVA_MAJOR:-unknown}; the conformance suite needs Java $REQUIRED_JAVA_MAJOR+." >&2
   echo "Run this inside \`devenv shell\` (it provides JDK $REQUIRED_JAVA_MAJOR)." >&2
   exit 1
 fi
 
-OUTPUT_DIR=${RESTATE_PHP_UPSTREAM_OUTPUT_DIR:-"$ROOT_DIR/var/conformance/upstream"}
-RUN_DIR="$OUTPUT_DIR/$TARGET/$MODE"
+OUTPUT_DIR=${RESTATE_PHP_CONFORMANCE_OUTPUT_DIR:-"$ROOT_DIR/var/conformance"}
+RUN_DIR="$OUTPUT_DIR/$SERVER/$MODE"
 IMAGE="restate.local/restate-php-test-services:$TARGET"
-EXCLUSIONS_FILE=${RESTATE_PHP_UPSTREAM_EXCLUSIONS_FILE-"$ROOT_DIR/test-services/exclusions.yaml"}
+EXCLUSIONS_FILE=${RESTATE_PHP_CONFORMANCE_EXCLUSIONS_FILE-"$ROOT_DIR/test-services/exclusions.yaml"}
 RESTATE_IMAGE=${RESTATE_PHP_RESTATE_IMAGE:-$(sed -n "s/.*DEFAULT_IMAGE = '\(.*\)';.*/\1/p" "$ROOT_DIR/packages/testing/src/RestateContainer.php")}
 if [ -z "$RESTATE_IMAGE" ]; then
   echo "Could not read RestateContainer::DEFAULT_IMAGE; set RESTATE_PHP_RESTATE_IMAGE." >&2
@@ -91,13 +92,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
-SEQUENTIAL=${RESTATE_PHP_UPSTREAM_SEQUENTIAL:-0}
+SEQUENTIAL=${RESTATE_PHP_CONFORMANCE_SEQUENTIAL:-0}
 if docker version 2>/dev/null | grep -q 'Podman Engine'; then
   if [ -z "${DOCKER_HOST:-}" ]; then
     # Run a private API service without an idle timeout. The socket-activated
     # podman.service exits after 5 s idle, which leaves Testcontainers' pooled
     # connections dead ("java.io.IOException: Broken pipe") between test classes.
-    PODMAN_SOCKET="${XDG_RUNTIME_DIR:-/tmp}/restate-php-upstream-$$.sock"
+    PODMAN_SOCKET="${XDG_RUNTIME_DIR:-/tmp}/restate-php-conformance-$$.sock"
     podman system service --time=0 "unix://$PODMAN_SOCKET" &
     PODMAN_SERVICE_PID=$!
     for _ in $(seq 1 50); do
@@ -111,10 +112,10 @@ if docker version 2>/dev/null | grep -q 'Podman Engine'; then
     export DOCKER_HOST="unix://$PODMAN_SOCKET"
   fi
   export TESTCONTAINERS_RYUK_DISABLED=${TESTCONTAINERS_RYUK_DISABLED:-true}
-  SEQUENTIAL=${RESTATE_PHP_UPSTREAM_SEQUENTIAL:-1}
+  SEQUENTIAL=${RESTATE_PHP_CONFORMANCE_SEQUENTIAL:-1}
 fi
 
-if [ "${RESTATE_PHP_UPSTREAM_SKIP_BUILD:-0}" != 1 ]; then
+if [ "${RESTATE_PHP_CONFORMANCE_SKIP_BUILD:-0}" != 1 ]; then
   bash "$ROOT_DIR/bin/build-image.sh" "$TARGET" "$IMAGE"
 fi
 
@@ -125,10 +126,10 @@ fi
 if [ "$MODE" = basic ]; then
   args+=(--test-suite=default)
 fi
-if [ -n "${RESTATE_PHP_UPSTREAM_TEST_NAME:-}" ]; then
+if [ -n "${RESTATE_PHP_CONFORMANCE_TEST_NAME:-}" ]; then
   # The suite tool only takes --test-name together with --test-suite.
   [ "$MODE" = full ] && args+=(--test-suite=all)
-  args+=("--test-name=$RESTATE_PHP_UPSTREAM_TEST_NAME")
+  args+=("--test-name=$RESTATE_PHP_CONFORMANCE_TEST_NAME")
 fi
 if [ -n "$EXCLUSIONS_FILE" ]; then
   args+=("--exclusions-file=$EXCLUSIONS_FILE")

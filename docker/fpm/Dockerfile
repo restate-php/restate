@@ -2,7 +2,7 @@
 # The PHP-FPM images: the endpoint of the integration suite behind nginx or Caddy (fpm-extension;
 # just test integration nginx-fpm, nginx-fpm-h2c, caddy-fpm), with Apache as well for the
 # serving-hazards tests (fpm-extension-apache; just test serving-hazards), and the test services
-# of the upstream SDK suite behind nginx (upstream-fpm-nginx; just test upstream upstream-fpm-nginx).
+# of the SDK conformance suite behind nginx (conformance-fpm-nginx; just test conformance fpm-nginx).
 #
 # Build them with docker-bake.hcl (bin/build-image.sh, which the recipes run), from the repository
 # root: it picks the base for a PHP minor and gives it the extension module built for that PHP
@@ -70,10 +70,10 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && apache2 -v
 
-# The upstream suite against php-fpm behind nginx (h2c and HTTP/1.1 on :9080, the port the suite
+# The conformance suite against php-fpm behind nginx (h2c and HTTP/1.1 on :9080, the port the suite
 # uses), serving test-services/index.php from the baked-in repository. clear_env = no forwards
 # E2E_REQUEST_SIGNING, which the suite's ProxyRequestSigning case sets.
-FROM fpm-extension AS upstream-fpm-nginx
+FROM fpm-extension AS conformance-fpm-nginx
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git unzip \

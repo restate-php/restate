@@ -12,7 +12,7 @@ Restate delivers named signals to an invocation: another handler resolves or rej
   - TypeScript: `ctx.signal<T>(name, serde?)` returns a `RestatePromise<T>` usable in the combinators; `ctx.invocation(id)` returns an `InvocationReference` whose `signal(name, serde?)` is a `SignalReference` with `resolve(payload?)` and `reject(reason: string | TerminalError)`.
   - Java: `ctx.signal(name, Class|TypeTag)` returns a `DurableFuture<T>`; `InvocationHandle.signal(name)` returns a `SignalHandle` with `resolve(TypeTag, payload)` and `reject(String reason)`.
   - Python: `ctx.signal(name, serde)` returns a `RestateDurableFuture`; `ctx.resolve_signal(invocation_id, name, value)` and `ctx.reject_signal(invocation_id, name, message, code=500)`.
-- **The upstream suite requires them**: `restatedev/e2e` v2.3 has 12 signal cases (`Signals.*`, `SignalsFuzz.randomAwaitsAndSignals`, and the `signal*` / `mixed*` cases of `Combinators`), driven through `VirtualObjectCommandInterpreter`'s `createSignal` awaitable and `TestUtilsService.resolveSignal` / `rejectSignal`.
+- **The conformance suite requires them**: `restatedev/e2e` v2.3 has 12 signal cases (`Signals.*`, `SignalsFuzz.randomAwaitsAndSignals`, and the `signal*` / `mixed*` cases of `Combinators`), driven through `VirtualObjectCommandInterpreter`'s `createSignal` awaitable and `TestUtilsService.resolveSignal` / `rejectSignal`.
 
 `restate-sdk-shared-core` 8.x provides the operations: `create_signal_handle(name) -> NotificationHandle` (journals nothing; maps the handle to `NotificationId::SignalName`) and `sys_complete_signal(target_invocation_id, name, NonEmptyValue)` (journals a `SendSignalCommandMessage` with `SignalId::Name`; failure metadata needs v6 like every other failure). Repeated deliveries of one signal are governed by `VMOptions::signal_delivery`; the default `SignalDelivery::Queued` keeps every delivery and hands them out in journal order, one per handle (sdk-shared-core#99), which is what `Signals.sameSignalDeliveredTwiceWhileAwaitingSomethingElse` checks. Neither operation checks the protocol version: named signals (`SignalId::Name` in `SignalNotificationMessage`, `SendSignalCommandMessage`, `SuspensionMessage.waiting_named_signals`) are part of every protocol version shared-core speaks (v5 to v8), and on v7 a suspension or awaiting-on tree carries them in `Future.waiting_named_signals`.
 
@@ -61,5 +61,5 @@ None beyond the SDK's own: named signals work on every protocol version the SDK 
 
 ## Consequences
 
-- The 12 signal cases of the upstream suite pass.
+- The 12 signal cases of the conformance suite pass.
 - Test doubles implementing `Context` or `InvocationHandle` implement `signal()` too (the compatibility promise lets SDK-implemented interfaces grow, [Public API Boundary](0016-public-api-boundary.md#compatibility-promise)).

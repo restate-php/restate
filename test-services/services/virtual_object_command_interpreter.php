@@ -11,7 +11,7 @@ use Restate\Payload;
 use Restate\TerminalError;
 use Restate\VirtualObject;
 
-// VirtualObjectCommandInterpreter from the upstream SDK test suite (restatedev/e2e, sdk-tests v2.3,
+// VirtualObjectCommandInterpreter from the SDK conformance suite (restatedev/e2e, sdk-tests v2.3,
 // contracts/VirtualObjectCommandInterpreter.kt).
 //
 // An awaitable command becomes one of:

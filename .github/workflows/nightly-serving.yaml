@@ -1,7 +1,7 @@
 # Serving tests too slow or heavy for every pull request (TESTING.md, "Serving: large bodies,
 # PHP-FPM and front-door hazards"): the large-bodies group on every server, the serving-hazards
-# group (front doors at their defaults, front-door timeouts, clear_env), and the upstream Restate
-# SDK test suite against php-fpm behind nginx. Each job runs the same command as locally.
+# group (front doors at their defaults, front-door timeouts, clear_env), and the Restate SDK
+# conformance suite against php-fpm behind nginx. Each job runs the same command as locally.
 name: Nightly serving
 
 on:
@@ -83,14 +83,14 @@ jobs:
       - name: Test
         run: just test serving-hazards
 
-  # upstream.yaml against php-fpm behind nginx. The action publishes the JUnit results as a check
+  # conformance.yaml against php-fpm behind nginx. The action publishes the JUnit results as a check
   # run and looks for a pull request to comment on, which a scheduled or manual run on main never
-  # has: upstream.yaml's job asks for these.
-  upstream-fpm-nginx:
-    name: Upstream SDK tests
-    uses: ./.github/workflows/upstream.yaml
+  # has: conformance.yaml's job asks for these.
+  conformance-fpm-nginx:
+    name: SDK conformance tests
+    uses: ./.github/workflows/conformance.yaml
     with:
-      target: upstream-fpm-nginx
+      target: conformance-fpm-nginx
     permissions:
       contents: read
       issues: read

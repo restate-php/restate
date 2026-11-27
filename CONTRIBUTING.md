@@ -1,10 +1,10 @@
 # Contributing
 
-This repository holds the whole SDK: the Composer packages in `packages/`, the Restate PHP extension in `extension/` (Rust, on [`restate-sdk-shared-core`](https://crates.io/crates/restate-sdk-shared-core) and `ext-php-rs`), the tests, the services the upstream SDK test suite drives ([`test-services/`](test-services/README.md)), and the images and server configuration the suites serve endpoints with ([`docker/`](docker/README.md)).
+This repository holds the whole SDK: the Composer packages in `packages/`, the Restate PHP extension in `extension/` (Rust, on [`restate-sdk-shared-core`](https://crates.io/crates/restate-sdk-shared-core) and `ext-php-rs`), the tests, the services the SDK conformance suite drives ([`test-services/`](test-services/README.md)), and the images and server configuration the suites serve endpoints with ([`docker/`](docker/README.md)).
 
 ## Setting up
 
-You need [devenv](https://devenv.sh) and a container runtime: Docker, or rootless podman with its `docker` CLI. The dev shell provides everything else: nixpkgs' default PHP (8.5 now; `devenv -O languages.php.version:string 8.4 shell` for another supported minor) with its headers and `php-config`, Composer, the Rust toolchain pinned in `extension/rust-toolchain.toml`, libclang and the flags the extension build needs, Java 25 for the upstream suite, just, k6 and jq, and the linters ([Development Environment](docs/decisions/0001-dev-environment.md)). The integration tests start Restate in a container, so the runtime stays on the host.
+You need [devenv](https://devenv.sh) and a container runtime: Docker, or rootless podman with its `docker` CLI. The dev shell provides everything else: nixpkgs' default PHP (8.5 now; `devenv -O languages.php.version:string 8.4 shell` for another supported minor) with its headers and `php-config`, Composer, the Rust toolchain pinned in `extension/rust-toolchain.toml`, libclang and the flags the extension build needs, Java 25 for the conformance suite, just, k6 and jq, and the linters ([Development Environment](docs/decisions/0001-dev-environment.md)). The integration tests start Restate in a container, so the runtime stays on the host.
 
 ```bash
 devenv shell
@@ -39,7 +39,7 @@ just check                     # before every commit: code style, static analysi
 just test integration php-cli  # builds the extension, then runs the integration suite against a real Restate server
 ```
 
-[TESTING.md](TESTING.md) describes every suite (unit, extension, integration, FrankenPHP, PHP-FPM, scale, soak, upstream), the benchmarks and load tests, and CI.
+[TESTING.md](TESTING.md) describes every suite (unit, extension, integration, FrankenPHP, PHP-FPM, scale, soak, conformance), the benchmarks and load tests, and CI.
 
 ## Documentation
 
@@ -50,7 +50,7 @@ User documentation lives in [`docs/`](docs/README.md): the guides for writing se
 - [CONTEXT.md](CONTEXT.md): the glossary, the terms the code and docs use.
 - [docs/decisions/](docs/decisions/README.md): why the SDK is built the way it is; read the record of an area before changing it.
 - [Backend Architecture](docs/internals/architecture.md): how the packages, the extension and shared-core fit together.
-- [Conformance](docs/internals/conformance.md): how the upstream SDK test suite runs against the PHP test services.
+- [Conformance](docs/internals/conformance.md): how the SDK conformance suite runs against the PHP test services.
 - [Public API Boundary](docs/decisions/0016-public-api-boundary.md): what is public API and what is internal (`Restate\Internal`).
 - [Bumping versions](RELEASING.md#bumping-versions): the version and contract rules for changes to the extension's surface.
 - [RELEASING.md](RELEASING.md): for maintainers, how a release is cut.

@@ -46,6 +46,6 @@ These are for working on the SDK itself; start with [CONTRIBUTING.md](../CONTRIB
 
 - [Decision records](decisions/README.md): why the SDK works the way it does.
 - [Backend architecture](internals/architecture.md): how the packages, the extension and shared-core fit together.
-- [Conformance](internals/conformance.md): the upstream SDK test suite.
+- [Conformance](internals/conformance.md): the SDK conformance suite.
 - [TESTING.md](../TESTING.md) and [RELEASING.md](../RELEASING.md); [CONTEXT.md](../CONTEXT.md), the glossary.
 - [Research notes](research/).

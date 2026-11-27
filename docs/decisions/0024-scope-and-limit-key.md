@@ -32,7 +32,7 @@ Restate 1.8.1 (probed): scoped calls, sends (also delayed) and scoped virtual ob
 
 ## Consequences
 
-- The test services' `Proxy` passes `ProxyRequest.scope` (scoped target) and `limitKey` (call or send option) through, and `test-services/exclusions.yaml` is empty: the full upstream suite runs without exclusions.
+- The test services' `Proxy` passes `ProxyRequest.scope` (scoped target) and `limitKey` (call or send option) through, and `test-services/exclusions.yaml` is empty: the full conformance suite runs without exclusions.
 - Scope and limit key need Restate 1.8. Restate 1.7 (protocol v6 by default) cannot take them from a handler (573, retried) and rejects them at the ingress (400).
 - Implementing `Context` includes `scope()`, and the call and send methods take `limitKey:`.
-- The concurrency limiting itself is Restate's; the SDK's part is to deliver the two values. The upstream case `ServiceToServiceScopeConcurrency` checks the limit through the test services; the integration suite checks the values, the per-scope identity of object instances and idempotency keys, and attaching to scoped invocations (`ScopeTest`, `IngressScopeTest`), and the refusals on Restate 1.7.14.
+- The concurrency limiting itself is Restate's; the SDK's part is to deliver the two values. The conformance case `ServiceToServiceScopeConcurrency` checks the limit through the test services; the integration suite checks the values, the per-scope identity of object instances and idempotency keys, and attaching to scoped invocations (`ScopeTest`, `IngressScopeTest`), and the refusals on Restate 1.7.14.

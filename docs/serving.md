@@ -421,7 +421,7 @@ Error responses are `application/json` `{"error": "<message>"}`, like the `401` 
 
 ## Tested Runtimes
 
-The integration suite runs, unchanged, under PHP's built-in server, under FrankenPHP with the ZTS build in classic and in worker mode, and against php-fpm behind nginx (HTTP/1.1 and h2c) and Caddy (h2c), with the settings above. The upstream SDK test suite runs against `php -S` behind a Caddy h2c front door and against php-fpm behind nginx. `php -S` is a test fixture there, not a deployment recommendation. [Status](status.md#supported-platforms) lists the PHP and Restate versions, [TESTING.md](../TESTING.md) how each suite runs.
+The integration suite runs, unchanged, under PHP's built-in server, under FrankenPHP with the ZTS build in classic and in worker mode, and against php-fpm behind nginx (HTTP/1.1 and h2c) and Caddy (h2c), with the settings above. The SDK conformance suite runs against `php -S` behind a Caddy h2c front door and against php-fpm behind nginx. `php -S` is a test fixture there, not a deployment recommendation. [Status](status.md#supported-platforms) lists the PHP and Restate versions, [TESTING.md](../TESTING.md) how each suite runs.
 
 ## Runtime Limitations
 
@@ -429,7 +429,7 @@ The integration suite runs, unchanged, under PHP's built-in server, under Franke
 - Every `$ctx->run()` and every await of a result not yet journaled costs a new attempt and a full replay: O(N²) replay work for N steps, bounded per attempt by the abort timeout ([Long Journals](#long-journals-cost-quadratic-replay)).
 - PHP-FPM's front doors need settings for Restate's length-less bodies and long attempts; at their defaults they fail every attempt above 4 KiB (Caddy), 16 KiB (Apache) or 1 MiB (nginx) ([PHP-FPM and FastCGI](#php-fpm-and-fastcgi)).
 - No bundled PSR-7 implementation and no framework-specific adapters.
-- The upstream SDK test suite passes (see [Conformance](internals/conformance.md)); that is not an official conformance claim.
+- The SDK conformance suite passes (see [Conformance](internals/conformance.md)); that is not an official conformance claim.
 
 ## Design notes
 

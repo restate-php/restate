@@ -37,21 +37,21 @@ Done once.
 ### 1. Prepare
 
 - [ ] Pick the version by semantic versioning of the whole SDK. While it is 0.x: a new minor for breaking changes and new features, a patch for fixes. **A changed contract version (`CONTRACT_VERSION` in `extension/extension/src/lib.rs`) needs a new minor**; the release refuses a patch that changes it.
-- [ ] Check upstream: the Restate server versions the tests run against (`RestateContainer::DEFAULT_IMAGE`, `.github/workflows/upstream.yaml`), `restate-sdk-shared-core`, the PHP minors in the build matrix. Updating them is a change of its own, before the release commit.
+- [ ] Check upstream: the Restate server versions the tests run against (`RestateContainer::DEFAULT_IMAGE`, `.github/workflows/conformance.yaml`), `restate-sdk-shared-core`, the PHP minors in the build matrix. Updating them is a change of its own, before the release commit.
 - [ ] On a branch, one commit "Release X.Y.Z":
   - [ ] `version = "X.Y.Z"` in `extension/extension/Cargo.toml`, then `cd extension && cargo update --workspace` so `extension/Cargo.lock` follows (the archives are built with `--locked`).
   - [ ] For a new minor: `"ext-restate": "~X.Y.0"` in `packages/sdk/composer.json` (`just check-packages` fails until it matches the crate).
   - [ ] The row for `X.Y.Z` in [Compatibility](docs/compatibility.md#versions): shared-core, contract and PHP versions, and "(unreleased)" dropped from it.
   - [ ] The changelog, if one is kept.
-- [ ] `just check` passes locally; for a release that touches the extension or the protocol, also `just test integration php-cli`, `just test integration frankenphp` and `just test upstream`.
-- [ ] Merge to `main` and push. `CI`, `Upstream SDK tests` and `Extension binaries` pass on that commit.
+- [ ] `just check` passes locally; for a release that touches the extension or the protocol, also `just test integration php-cli`, `just test integration frankenphp` and `just test conformance`.
+- [ ] Merge to `main` and push. `CI`, `SDK conformance tests` and `Extension binaries` pass on that commit.
 - [ ] Rehearse the split on that commit: `just split publish --dry-run --version X.Y.Z --remote https://github.com/restate-php/{repository}.git`. For every repository it reports `main` as created, fast-forwarded, up to date or left alone (ahead: the push split already pushed a later commit's split), and the tag (`X.Y.Z` for the extension, `vX.Y.Z` for the packages) as created; it pushes nothing, and fails on what would stop the release ([Release](docs/decisions/0031-release.md), decision 5).
 
 ### 2. Release
 
 - [ ] Actions → **Release** → Run workflow, on `main`. Leave `skip-tests` off unless the tests passed on this exact commit and a re-run is only for publishing.
 - [ ] The `version` job passes: it refuses an existing or older version, a `restate/sdk` constraint that is not `~X.Y.0`, a contract change in a patch, and a missing README or LICENSE.
-- [ ] `ci`, `upstream`, `extension` and `attest` pass.
+- [ ] `ci`, `conformance`, `extension` and `attest` pass.
 - [ ] Approve the `publish` job (with required reviewers on the environment).
 - [ ] If it stops halfway: fix the cause and **Re-run failed jobs**. Pushed repositories and tags are skipped, the extension's draft release is uploaded to again. Never delete or move a tag that was pushed; a package repository whose `main` was changed by hand stops the release until it is put back.
 

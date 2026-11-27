@@ -254,7 +254,7 @@ in
       # The task runner (justfile) and what its recipes use.
       just
       cargo-artifacts
-      # The upstream SDK test suite (restatedev/e2e sdk-tests.jar) is built for Java 25.
+      # The SDK conformance suite (restatedev/e2e sdk-tests.jar) is built for Java 25.
       jdk25_headless
       # Only the library bindgen loads (LIBCLANG_PATH): the `libclang` package's bin/ would put an
       # unwrapped clang ahead of the Nix cc wrapper, and the cc crate (CC=clang) would compile

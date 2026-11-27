@@ -15,8 +15,8 @@ use Restate\Tests\Integration\Support\FaultInjectionTestCase;
  *
  * The endpoint answers an attempt only once it is over, so whatever the attempt did before Restate went away never
  * reached it: the run executes again after the restart, and the journaled result is the second execution's. The PHP
- * worker meanwhile finishes the stale attempt and writes into a closed connection. The upstream KillRuntime and
- * StopRuntime tests cover a restart with nothing in flight.
+ * worker meanwhile finishes the stale attempt and writes into a closed connection. The conformance suite's KillRuntime
+ * and StopRuntime tests cover a restart with nothing in flight.
  */
 #[Group('failure-nightly')]
 #[Group('managed')]

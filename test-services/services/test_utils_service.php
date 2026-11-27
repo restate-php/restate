@@ -7,7 +7,7 @@ use Restate\Payload;
 use Restate\Service;
 use Restate\TerminalError;
 
-// TestUtilsService from the upstream SDK test suite (restatedev/e2e, sdk-tests v2.3, contracts/TestUtilsService.kt).
+// TestUtilsService from the SDK conformance suite (restatedev/e2e, sdk-tests v2.3, contracts/TestUtilsService.kt).
 
 return Service::new('TestUtilsService')
     ->handler('echo', static fn (Context $ctx, string $input): string => $input)

@@ -5,7 +5,7 @@ set ignore-comments
 # Build the PHP extension, its PIE archives, the Cargo workspace's checks and benchmarks
 mod extension
 
-# The PHPUnit suites: unit, integration (per server), serving hazards, soak, release, upstream (TESTING.md)
+# The PHPUnit suites: unit, integration (per server), serving hazards, soak, release, conformance (TESTING.md)
 mod test 'tests'
 
 # Load tests (TESTING.md, Load tests)

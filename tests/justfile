@@ -167,11 +167,11 @@ quickstart source='local' *phpunit:
     esac
     RESTATE_PHP_QUICKSTART={{ quote(source) }} exec vendor/bin/phpunit --testsuite quickstart "$@"
 
-# Java 25 from the dev shell; arguments: [target] [basic|full], see bin/conformance-upstream-local.sh.
-[doc("Build a test-services image and run the upstream Restate SDK test suite against it; arguments go to bin/conformance-upstream-local.sh")]
+# Java 25 from the dev shell; arguments: [server] [basic|full], see bin/conformance-local.sh.
+[doc("Build a test-services image and run the Restate SDK conformance suite against it; arguments go to bin/conformance-local.sh")]
 [positional-arguments]
-upstream *args:
-    bash bin/conformance-upstream-local.sh "$@"
+conformance *args:
+    bash bin/conformance-local.sh "$@"
 
 # The host's extension build (debug), which the unit suite's extension group loads in child
 # processes and the integration suite's own endpoints next to the image's: php -S for

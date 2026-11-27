@@ -16,7 +16,7 @@ use Restate\Tests\Integration\Support\IntegrationEndpoint;
 /**
  * Request identity end to end: a Restate server that signs its requests with an Ed25519 key
  * (`worker.invoker.request-identity-private-key-pem-file`; the top-level `request-identity-private-key-pem-file` the
- * upstream suite sets is deprecated on 1.7.14 and 1.8.1), and the integration endpoint configured with identity keys
+ * conformance suite sets is deprecated on 1.7.14 and 1.8.1), and the integration endpoint configured with identity keys
  * (`RESTATE_PHP_TEST_IDENTITY_KEYS`, read by `Support/endpoint.php`). Each test starts its own environment, because
  * the shared one runs an unsigned Restate and an open endpoint.
  */

@@ -42,5 +42,5 @@ Only the dev shell could build the extension with Nix. Nix users had no way to g
 - **Updating nixpkgs means updating ext-php-rs.nix:** `nix flake update ext-php-rs` in `extension/` (or a new tag in its URL), then `devenv update`. Updating nixpkgs on its own would mean overriding ext-php-rs.nix's nixpkgs in the flake, which loses the cache.
 - The dev shell's nixpkgs is nixos-unstable, as ext-php-rs.nix pins it, instead of devenv's rolling set.
 - `.github/workflows/extension.yaml` also runs `nix flake check ./extension`. It evaluates every system's outputs and runs the checks on the runner.
-- The Docker-based suites (FrankenPHP, php-fpm, upstream) still build the extension from source inside the images, with rustup and `rust-toolchain.toml`. They do not use the flake.
+- The Docker-based suites (FrankenPHP, php-fpm, conformance) still build the extension from source inside the images, with rustup and `rust-toolchain.toml`. They do not use the flake.
 - The first build of the extension in a fresh checkout needs every file under `extension/` tracked by git.

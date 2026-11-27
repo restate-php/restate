@@ -31,7 +31,7 @@ records, so they run to completion across crashes, restarts and deploys.
 - **Ingress client and test harness**: [call services from your app](docs/ingress-client.md);
   [test in PHPUnit](docs/develop/testing.md) against a real Restate server.
 - **Restate's own core**: the [Rust core](https://crates.io/crates/restate-sdk-shared-core) of the official SDKs, as
-  a PHP extension. Passes the [end-to-end suite](docs/internals/conformance.md) the official SDKs run upstream (not an
+  a PHP extension. Passes the [SDK conformance suite](docs/internals/conformance.md) the official SDKs run (not an
   official conformance claim).
 
 ## Example

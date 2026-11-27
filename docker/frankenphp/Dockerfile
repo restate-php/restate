@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # The FrankenPHP images: the endpoint of the integration, load and soak suites
 # (frankenphp-extension; just test integration frankenphp, just load run, just test soak) and the
-# test services of the upstream SDK suite (upstream-frankenphp; just test upstream).
+# test services of the SDK conformance suite (conformance-frankenphp; just test conformance).
 #
 # Build them with docker-bake.hcl (bin/build-image.sh, which the recipes run), from the repository
 # root: it picks the base for a PHP minor and gives it the extension module built for that PHP
@@ -45,9 +45,9 @@ COPY docker/frankenphp/integration.Caddyfile /etc/frankenphp/Caddyfile
 
 CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]
 
-# The upstream suite against FrankenPHP classic mode: test-services/index.php from the baked-in
-# repository on :9080, over h2c or HTTP/1.1 (docker/frankenphp/upstream.Caddyfile).
-FROM frankenphp-extension AS upstream-frankenphp
+# The conformance suite against FrankenPHP classic mode: test-services/index.php from the baked-in
+# repository on :9080, over h2c or HTTP/1.1 (docker/frankenphp/conformance.Caddyfile).
+FROM frankenphp-extension AS conformance-frankenphp
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git unzip \
@@ -60,6 +60,6 @@ COPY . /app
 RUN composer install --no-interaction \
     && php -r 'require "/app/vendor/autoload.php"; new Restate\Internal\Backend\Extension\Backend();'
 
-COPY docker/frankenphp/upstream.Caddyfile /etc/frankenphp/Caddyfile
+COPY docker/frankenphp/conformance.Caddyfile /etc/frankenphp/Caddyfile
 
 EXPOSE 9080

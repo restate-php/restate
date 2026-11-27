@@ -10,7 +10,7 @@ use Restate\Internal\ServiceRegistry;
 use Restate\Tests\Support\FakeProtocolVersions;
 
 /**
- * Discovery manifests of the services in test-services/, which the upstream SDK test suite (restatedev/e2e sdk-tests) drives.
+ * Discovery manifests of the services in test-services/, which the conformance suite (restatedev/e2e sdk-tests) drives.
  *
  * These run in-process through Discovery::manifestJson(); tests/Integration/DiscoveryTest.php checks /discover over HTTP.
  * testDiscoveryListsEveryServiceWithItsHandlersAndTheirTypes() covers which handlers each service has; the other tests

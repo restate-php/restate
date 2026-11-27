@@ -6,7 +6,7 @@ Accepted. Decision 2 is amended by [Just Recipes](0041-just-recipes.md) and [Jus
 
 ## Context
 
-Working on the SDK needs PHP with its development headers, Composer, a pinned Rust toolchain, libclang (`ext-php-rs` runs bindgen over the PHP headers), Java for the upstream conformance suite, and linters for the shell scripts and workflows. The integration, FrankenPHP, php-fpm and upstream suites also run Restate and the endpoint in containers. Contributors and CI should get the same tools, at the same versions, without installing them by hand.
+Working on the SDK needs PHP with its development headers, Composer, a pinned Rust toolchain, libclang (`ext-php-rs` runs bindgen over the PHP headers), Java for the conformance suite, and linters for the shell scripts and workflows. The integration, FrankenPHP, php-fpm and conformance suites also run Restate and the endpoint in containers. Contributors and CI should get the same tools, at the same versions, without installing them by hand.
 
 ## Decision
 

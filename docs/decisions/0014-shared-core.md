@@ -20,7 +20,7 @@ To bump it:
 2. Recheck every workaround below against the new source, and run its pinning tests. Remove a workaround only when shared-core now does the job, and update the version the code comments name.
 3. If the generated protocol module changed, replace the test copy (`extension/core/tests/vm/protocol/`, see `tests/vm/protocol.rs`) with the new version's file.
 4. Confirm that `extension/Cargo.lock` changes only in the shared-core entry, or account for every new dependency.
-5. Run `just check`, the integration suite against Restate 1.8 and 1.7, the FrankenPHP suite and the upstream suite ([TESTING.md](../../TESTING.md)), and update the row in [Extension Versions](../compatibility.md).
+5. Run `just check`, the integration suite against Restate 1.8 and 1.7, the FrankenPHP suite and the conformance suite ([TESTING.md](../../TESTING.md)), and update the row in [Extension Versions](../compatibility.md).
 
 A bump that changes no API the core uses needs no code change; that was the case from 8.6.0 to 8.7.2, where the new code (`ExplicitRecoveryVM`, which needs a bidirectional stream, and the `sql` feature) is unreachable from the core.
 
@@ -34,7 +34,7 @@ The endpoint manifest is negotiated like the TypeScript SDK does it: the newest 
 
 ### Server compatibility
 
-- **Restate 1.8 is the minimum supported server:** protocol v7 and manifest v5 by default. Its ingress drops client-supplied `x-restate-*` headers; the only `x-restate-*` headers the SDK relies on are those Restate itself sends to the endpoint (request identity, invocation id). The integration suite runs against 1.8.1 (`RestateContainer::DEFAULT_IMAGE`), and the upstream suite (`restatedev/e2e` `sdk-tests` v2.3) only against 1.8, since it needs 1.8's admin API.
+- **Restate 1.8 is the minimum supported server:** protocol v7 and manifest v5 by default. Its ingress drops client-supplied `x-restate-*` headers; the only `x-restate-*` headers the SDK relies on are those Restate itself sends to the endpoint (request identity, invocation id). The integration suite runs against 1.8.1 (`RestateContainer::DEFAULT_IMAGE`), and the conformance suite (`restatedev/e2e` `sdk-tests` v2.3) only against 1.8, since it needs 1.8's admin API.
 - **Restate 1.7 is best-effort:** protocol v6 (v7 only with `RESTATE_EXPERIMENTAL_ENABLE_PROTOCOL_V7=true`), manifest up to v4. On v6 the input's scope, limit key and idempotency key are absent, and every v7-only feature fails the attempt with 573 and a message naming the operation and the Restate version it needs (pause: [Pause](0021-pause.md); scope and limit key: [Scope and Limit Key](0024-scope-and-limit-key.md)); a list of preloaded state keys fails registration ([Selective State Preloading](0020-selective-state-preloading.md)). Everything else works; the integration suite with `RESTATE_PHP_RESTATE_IMAGE=docker.restate.dev/restatedev/restate:1.7.14` runs against 1.7.14 as the regression check for protocol v6.
 - **Restate 1.6 and older** negotiate v6 and manifest v4 too, but are not tested.
 
