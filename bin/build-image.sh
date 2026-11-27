@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Builds one image of docker/Dockerfile through docker-bake.hcl, with the extension module for
+# Builds one image of docker/*/Dockerfile through docker-bake.hcl, with the extension module for
 # its PHP, and loads it into the container runtime under the given tag. The recipes and workflows
 # that need an image run this.
 #
 # Usage: bin/build-image.sh [--php <minor>] [--variant <variant>] <target> <tag>
 #
-#   target     a docker/Dockerfile target: frankenphp-extension, fpm-extension,
+#   target     a target of docker/*/Dockerfile: frankenphp-extension, fpm-extension,
 #              fpm-extension-apache, upstream-frankenphp, upstream-fpm-nginx or
 #              quickstart-php-restate
 #   tag        the image's name

@@ -190,7 +190,7 @@ final class IntegrationEndpoint
     }
 
     /**
-     * A PHP-FPM endpoint container (docker/Dockerfile target fpm-extension, run by
+     * A PHP-FPM endpoint container (docker/fpm/Dockerfile target fpm-extension, run by
      * docker/fpm/entrypoint.sh): php-fpm behind `$front` (`nginx`, `nginx-h2c`, `caddy`, or `apache` in the
      * fpm-extension-apache image), serving the repository mounted at /app. `$settings` are more of the entrypoint's
      * RESTATE_PHP_FPM_* variables (profile, timeouts, `clear_env`, router script). Registered for HTTP/1.1; call

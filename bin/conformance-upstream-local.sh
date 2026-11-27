@@ -4,8 +4,8 @@
 #
 # Usage: bin/conformance-upstream-local.sh [target] [basic|full]
 #
-#   target  docker/Dockerfile target to build and test (default: upstream-frankenphp; the PHP 8.4
-#           debug image of docker-bake.hcl, built by bin/build-image.sh)
+#   target  test-services image to build and test: upstream-frankenphp (the default) or
+#           upstream-fpm-nginx, the PHP 8.4 debug image of docker-bake.hcl (bin/build-image.sh)
 #   mode    basic runs the `default` suite only, full runs every suite (default: full)
 #
 # Run it in the dev shell (it provides Java 25). Works with Docker and with rootless podman: under
@@ -38,8 +38,8 @@ case "$MODE" in
     ;;
 esac
 
-if ! grep -Eq "^FROM .* AS ${TARGET}\$" "$ROOT_DIR/docker/Dockerfile"; then
-  echo "Unknown docker/Dockerfile target: $TARGET" >&2
+if ! docker buildx bake -f "$ROOT_DIR/docker-bake.hcl" --print "$TARGET-84-debug" >/dev/null 2>&1; then
+  echo "Unknown test-services target: $TARGET (upstream-frankenphp or upstream-fpm-nginx)" >&2
   exit 64
 fi
 

@@ -1,0 +1,61 @@
+# syntax=docker/dockerfile:1
+# The FrankenPHP images: the endpoint of the integration, load and soak suites
+# (frankenphp-extension; just test integration frankenphp, just load run, just test soak) and the
+# test services of the upstream SDK suite (upstream-frankenphp; just test upstream).
+#
+# Build them with docker-bake.hcl (bin/build-image.sh, which the recipes run), from the repository
+# root: it picks the base for a PHP minor and gives it the extension module built for that PHP
+# minor, ZTS, as the restate-extension context (extension/Dockerfile, the extension flake's
+# portable build). No target compiles the extension.
+#
+# BASE_IMAGE is FrankenPHP's thread-safe (ZTS) runtime: one of the base stages below, by name, or
+# any image.
+ARG BASE_IMAGE=frankenphp-8.4
+
+# The bases of each PHP minor, as stages of their own so that Dependabot, which reads FROM lines
+# only, keeps them up to date. docker-bake.hcl names them for each minor of its PHP_VERSIONS: a
+# new minor needs a line here.
+FROM docker.io/dunglas/frankenphp:1.14.0-php8.4-bookworm AS frankenphp-8.4
+FROM docker.io/dunglas/frankenphp:1.14.0-php8.5-bookworm AS frankenphp-8.5
+FROM docker.io/dunglas/frankenphp:1.14.0-php8.6-bookworm AS frankenphp-8.6
+
+FROM ${BASE_IMAGE} AS base
+
+FROM docker.io/library/composer:2 AS composer-bin
+
+# restate.so for the target's PHP: docker-bake.hcl replaces this stage with the restate-extension
+# context. Without it, docker/extension/install.sh stops the build.
+FROM scratch AS restate-extension
+
+# FrankenPHP with the ZTS extension, serving the repository the harness mounts at /app (the
+# working-tree PHP code) with the integration suite's Caddyfile (RESTATE_PHP_TEST_SERVER=frankenphp,
+# just test integration frankenphp). The worker-mode and soak runs start it with worker.Caddyfile from the
+# repository instead; the load tests (tests/load/compose.yaml, the release build) mount their own
+# over this one. The soak images are this target with the diagnostics builds.
+FROM base AS frankenphp-extension
+
+RUN --mount=from=restate-extension,target=/mnt/restate-extension \
+    --mount=type=bind,source=docker/extension/install.sh,target=/usr/local/bin/install-restate-extension \
+    install-restate-extension \
+    && echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
+    && php --ri restate > /dev/null
+COPY docker/frankenphp/integration.Caddyfile /etc/frankenphp/Caddyfile
+
+CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]
+
+# The upstream suite against FrankenPHP classic mode: test-services/index.php from the baked-in
+# repository on :9080, over h2c or HTTP/1.1 (docker/frankenphp/upstream.Caddyfile).
+FROM frankenphp-extension AS upstream-frankenphp
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git unzip \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=composer-bin /usr/bin/composer /usr/bin/composer
+
+WORKDIR /app
+COPY . /app
+RUN composer install --no-interaction \
+    && php -r 'require "/app/vendor/autoload.php"; new Restate\Internal\Backend\Extension\Backend();'
+COPY docker/frankenphp/upstream.Caddyfile /etc/frankenphp/Caddyfile
+
+EXPOSE 9080

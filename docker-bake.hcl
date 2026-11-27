@@ -1,21 +1,22 @@
-# The images of docker/Dockerfile for each PHP minor, each with the extension module built for its
-# PHP (extension/Dockerfile: the extension flake's portable build, in a container). bin/build-image.sh
-# builds one and is what the recipes and workflows run; by hand:
+# The images of docker/frankenphp, docker/fpm and docker/quickstart (their Dockerfiles) for each
+# PHP minor, each with the extension module built for its PHP (extension/Dockerfile: the
+# extension flake's portable build, in a container). bin/build-image.sh builds one and is what the
+# recipes and workflows run; by hand:
 #
 #   docker buildx bake --load frankenphp-extension-84-debug
 #   docker buildx bake --print fpm-extension              # every fpm-extension image, as JSON
 #   docker buildx bake extension-84-zts-debug --set '*.output=type=local,dest=dist/restate'
 #
-# A target is <Dockerfile target>-<PHP minor without the dot>-<variant>: the variant is debug or
-# release, and for frankenphp-extension also debug-diagnostics or release-diagnostics (the soak
-# suite's builds). An image takes its module from the extension target of its PHP minor, thread
+# A target is <its Dockerfile's target>-<PHP minor without the dot>-<variant>: the variant is
+# debug or release, and for frankenphp-extension also debug-diagnostics or release-diagnostics (the
+# soak suite's builds). An image takes its module from the extension target of its PHP minor, thread
 # safety and variant (extension-<minor>-<nts|zts>-<variant>), so the module and the base image
 # are always of the same PHP. With EXTENSION_DIR set, from $EXTENSION_DIR/<extension target>/
 # instead: a directory with the module built outside Docker (bin/build-image.sh with
 # RESTATE_PHP_IMAGE_EXTENSION=host).
 
-# The PHP minors: docker/Dockerfile has the base stages of each (php-cli-<minor>,
-# frankenphp-<minor>, php-fpm-<minor>), and the extension flake a module for each.
+# The PHP minors: each Dockerfile has a base stage of each (frankenphp-<minor>, php-fpm-<minor>,
+# php-cli-<minor>), and the extension flake a module for each.
 variable "PHP_VERSIONS" {
   type    = list(string)
   default = ["8.4", "8.5", "8.6"]
@@ -74,13 +75,13 @@ target "frankenphp-extension" {
     php     = PHP_VERSIONS
     variant = ["debug", "release", "debug-diagnostics", "release-diagnostics"]
   }
-  dockerfile = "docker/Dockerfile"
+  dockerfile = "docker/frankenphp/Dockerfile"
   target     = "frankenphp-extension"
   contexts = {
     restate-extension = extension_context(php, "zts", variant)
   }
   args = {
-    FRANKENPHP_IMAGE = "frankenphp-${php}"
+    BASE_IMAGE = "frankenphp-${php}"
   }
   tags = ["restate.local/restate-php-frankenphp:php${php}-${variant}"]
 }
@@ -91,13 +92,13 @@ target "upstream-frankenphp" {
     php     = PHP_VERSIONS
     variant = ["debug", "release"]
   }
-  dockerfile = "docker/Dockerfile"
+  dockerfile = "docker/frankenphp/Dockerfile"
   target     = "upstream-frankenphp"
   contexts = {
     restate-extension = extension_context(php, "zts", variant)
   }
   args = {
-    FRANKENPHP_IMAGE = "frankenphp-${php}"
+    BASE_IMAGE = "frankenphp-${php}"
   }
   tags = ["restate.local/restate-php-test-services:upstream-frankenphp-php${php}-${variant}"]
 }
@@ -108,13 +109,13 @@ target "fpm-extension" {
     php     = PHP_VERSIONS
     variant = ["debug", "release"]
   }
-  dockerfile = "docker/Dockerfile"
+  dockerfile = "docker/fpm/Dockerfile"
   target     = "fpm-extension"
   contexts = {
     restate-extension = extension_context(php, official_ts(php), variant)
   }
   args = {
-    PHP_FPM_IMAGE = "php-fpm-${php}"
+    BASE_IMAGE = "php-fpm-${php}"
   }
   tags = ["restate.local/restate-php-fpm:php${php}-${variant}"]
 }
@@ -125,13 +126,13 @@ target "fpm-extension-apache" {
     php     = PHP_VERSIONS
     variant = ["debug", "release"]
   }
-  dockerfile = "docker/Dockerfile"
+  dockerfile = "docker/fpm/Dockerfile"
   target     = "fpm-extension-apache"
   contexts = {
     restate-extension = extension_context(php, official_ts(php), variant)
   }
   args = {
-    PHP_FPM_IMAGE = "php-fpm-${php}"
+    BASE_IMAGE = "php-fpm-${php}"
   }
   tags = ["restate.local/restate-php-fpm:apache-php${php}-${variant}"]
 }
@@ -142,13 +143,13 @@ target "upstream-fpm-nginx" {
     php     = PHP_VERSIONS
     variant = ["debug", "release"]
   }
-  dockerfile = "docker/Dockerfile"
+  dockerfile = "docker/fpm/Dockerfile"
   target     = "upstream-fpm-nginx"
   contexts = {
     restate-extension = extension_context(php, official_ts(php), variant)
   }
   args = {
-    PHP_FPM_IMAGE = "php-fpm-${php}"
+    BASE_IMAGE = "php-fpm-${php}"
   }
   tags = ["restate.local/restate-php-test-services:upstream-fpm-nginx-php${php}-${variant}"]
 }
@@ -159,13 +160,13 @@ target "quickstart-php-restate" {
     php     = PHP_VERSIONS
     variant = ["debug", "release"]
   }
-  dockerfile = "docker/Dockerfile"
+  dockerfile = "docker/quickstart/Dockerfile"
   target     = "quickstart-php-restate"
   contexts = {
     restate-extension = extension_context(php, official_ts(php), variant)
   }
   args = {
-    PHP_IMAGE = "php-cli-${php}"
+    BASE_IMAGE = "php-cli-${php}"
   }
   tags = ["restate-php-quickstart/php-restate:php${php}-${variant}"]
 }

@@ -32,13 +32,13 @@ updates:
           - "*"
 
   # The base images of the endpoint, test-service and quickstart images: Dependabot reads FROM lines
-  # only, so docker/Dockerfile names its bases in stages of their own, one per PHP minor
-  # (php-cli-<minor>, frankenphp-<minor>, php-fpm-<minor>), which docker-bake.hcl picks by name.
+  # only, so docker/*/Dockerfile name their bases in stages of their own, one per PHP minor
+  # (frankenphp-<minor>, php-fpm-<minor>, php-cli-<minor>), which docker-bake.hcl picks by name.
   # Not the compose files: their Restate image is RestateContainer::DEFAULT_IMAGE, which the unit
   # suite checks them against, so it moves with the harness.
   - package-ecosystem: docker
     directories:
-      - /docker
+      - /docker/*
       - /examples/quickstart
       # nixos/nix, which builds the extension module (extension/Dockerfile).
       - /extension

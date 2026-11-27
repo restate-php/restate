@@ -23,7 +23,7 @@ on:
   workflow_call:
     inputs:
       target:
-        description: The docker/Dockerfile target of the test services (its PHP 8.4 debug image)
+        description: The test services image, upstream-frankenphp or upstream-fpm-nginx (its PHP 8.4 debug image)
         type: string
         default: upstream-frankenphp
 

@@ -1,8 +1,9 @@
 #!/bin/sh
 # Installs restate.so from the restate-extension context (mounted at /mnt/restate-extension) into
-# the image's PHP, for docker/Dockerfile's targets: into extension_dir, where `extension=restate`
-# finds it, and checks that it loads into that PHP. A module loads only into the PHP minor and
-# thread safety it was built for, so a mismatch between the base image and the module fails here.
+# the image's PHP, for the targets of docker/*/Dockerfile: into extension_dir, where
+# `extension=restate` finds it, and checks that it loads into that PHP. A module loads only into
+# the PHP minor and thread safety it was built for, so a mismatch between the base image and the
+# module fails here.
 set -eu
 
 module=/mnt/restate-extension/restate.so

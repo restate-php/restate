@@ -31,11 +31,11 @@ services:
       - 127.0.0.1:${LOAD_ADMIN_PORT:-19070}:9070
     cpuset: ${LOAD_CPUSET_RESTATE:-}
 
-  # FrankenPHP with the release ZTS extension (the Dockerfile's frankenphp-extension target, the
-  # release build: `just load run` builds it with bin/build-image.sh), in classic mode with OPcache
-  # on (Caddyfile and php.ini next to this file), serving endpoint.php from the repository. Restate
-  # reaches it as http://endpoint:8080, k6 its /load-stats on the host port. Changing either file
-  # needs a restart, not a rebuild.
+  # FrankenPHP with the release ZTS extension (the frankenphp-extension target of
+  # docker/frankenphp/Dockerfile, the release build: `just load run` builds it with
+  # bin/build-image.sh), in classic mode with OPcache on (Caddyfile and php.ini next to this file),
+  # serving endpoint.php from the repository. Restate reaches it as http://endpoint:8080, k6 its
+  # /load-stats on the host port. Changing either file needs a restart, not a rebuild.
   endpoint:
     image: ${LOAD_ENDPOINT_IMAGE:-restate.local/restate-php-frankenphp:extension-zts-release}
     environment:

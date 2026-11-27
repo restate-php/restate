@@ -13,7 +13,7 @@ on:
       - '.github/workflows/quickstart.yaml'
       - 'bin/build-image.sh'
       - 'docker-bake.hcl'
-      - 'docker/Dockerfile'
+      - 'docker/quickstart/**'
       - 'docker/extension/**'
       - 'examples/quickstart/**'
       - 'extension/**'

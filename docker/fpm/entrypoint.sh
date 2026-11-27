@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Entrypoint of the fpm-extension image (docker/Dockerfile): php-fpm behind one front door, both in the
+# Entrypoint of the fpm-extension image (docker/fpm/Dockerfile): php-fpm behind one front door, both in the
 # foreground; the container stops when either exits. The configuration is rendered from docker/fpm/*.template
 # at start, from these variables:
 #

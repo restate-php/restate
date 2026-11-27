@@ -150,7 +150,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # docker/Dockerfile's FrankenPHP base of each minor (frankenphp-<minor>).
+        # docker/frankenphp/Dockerfile's base of each minor (frankenphp-<minor>).
         php: ['8.4', '8.5', '8.6']
 
     steps:
