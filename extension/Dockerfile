@@ -2,13 +2,14 @@
 # The module (restate.so) for one PHP minor and thread safety, for the CPU of the target platform:
 # the flake's legacyPackages.extensions, cross-compiled on the build platform (no emulation), in an
 # image with /restate.so only. It loads into any PHP of that minor and thread safety on Linux with
-# glibc 2.28 or newer, such as PHP's and FrankenPHP's official images.
+# glibc 2.28 or newer (or musl, LIBC=musl), such as PHP's and FrankenPHP's official images.
 #
 #   docker buildx build extension --build-arg PHP_VERSION=8.4 --build-arg THREAD_SAFETY=zts \
 #       --output type=local,dest=dist/restate
 #
 # PHP_VERSION     8.4, 8.5 or 8.6 (the flake's phps)
 # THREAD_SAFETY   nts (the default) or zts
+# LIBC            glibc (the default) or musl (Alpine)
 # VARIANT         debug (the default), release, debug-diagnostics or release-diagnostics (the
 #                 soak suite's builds): the flake's variants
 #
@@ -46,6 +47,7 @@ COPY --parents .cargo core extension ./
 
 ARG PHP_VERSION=8.4
 ARG THREAD_SAFETY=nts
+ARG LIBC=glibc
 ARG VARIANT=debug
 ARG TARGETARCH
 
@@ -54,7 +56,7 @@ RUN case $TARGETARCH in \
     arm64) arch=aarch64 ;; \
     *) echo "no module for $TARGETARCH" >&2 && exit 64 ;; \
     esac \
-    && module=".#extensions.php${PHP_VERSION/./}.$THREAD_SAFETY.$arch-linux-glibc.$VARIANT" \
+    && module=".#extensions.php${PHP_VERSION/./}.$THREAD_SAFETY.$arch-linux-$LIBC.$VARIANT" \
     && echo "building $module" \
     && nix build --print-build-logs "$module" \
     && mkdir /out \

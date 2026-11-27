@@ -1,0 +1,24 @@
+# The SDK conformance suite's service container in FrankenPHP worker mode (the conformance-frankenphp-worker
+# image): every request goes to the worker script test-services/worker.php, baked into the image at /app, which
+# builds the endpoint once per worker. On :9080, the port the suite calls, over h2c or HTTP/1.1.
+# enable_post_data_reading=0 as docs/serving.md recommends.
+{
+	admin off
+	auto_https off
+	servers :9080 {
+		protocols h1 h2c
+	}
+	frankenphp {
+		php_ini enable_post_data_reading 0
+		worker {
+			name test-services
+			file /app/test-services/worker.php
+		}
+	}
+}
+
+:9080 {
+	root * /app/test-services
+	rewrite * /worker.php
+	php
+}

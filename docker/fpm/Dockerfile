@@ -2,7 +2,8 @@
 # The PHP-FPM images: the endpoint of the integration suite behind nginx or Caddy (fpm-extension;
 # just test integration nginx-fpm, nginx-fpm-h2c, caddy-fpm), with Apache as well for the
 # serving-hazards tests (fpm-extension-apache; just test serving-hazards), and the test services
-# of the SDK conformance suite behind nginx (conformance-fpm-nginx; just test conformance fpm-nginx).
+# of the SDK conformance suite behind nginx or Caddy (conformance-fpm-nginx, conformance-fpm-caddy;
+# just test conformance fpm-nginx, fpm-caddy).
 #
 # Build them with docker-bake.hcl (bin/build-image.sh, which the recipes run), from the repository
 # root: it picks the base for a PHP minor and gives it the extension module built for that PHP
@@ -11,15 +12,19 @@
 #
 # BASE_IMAGE is PHP's official php-fpm image (trixie: its nginx, 1.26, serves h2c and HTTP/1.1 on
 # one port; NTS, except PHP 8.6's, which is ZTS: its NTS images, php:8.6-nts-*, are CLI only):
-# one of the base stages below, by name, or any image.
+# one of the base stages below, by name, or any image. The -alpine bases are musl
+# (docker-bake.hcl's LIBC=musl), with Alpine's nginx.
 ARG BASE_IMAGE=php-fpm-8.4
 
-# The bases of each PHP minor, as stages of their own so that Dependabot, which reads FROM lines
-# only, keeps them up to date. docker-bake.hcl names them for each minor of its PHP_VERSIONS: a
-# new minor needs a line here.
+# The bases of each PHP minor and C library, as stages of their own so that Dependabot, which reads
+# FROM lines only, keeps them up to date. docker-bake.hcl names them for each minor of its
+# PHP_VERSIONS: a new minor needs two lines here.
 FROM docker.io/library/php:8.4-fpm-trixie AS php-fpm-8.4
 FROM docker.io/library/php:8.5-fpm-trixie AS php-fpm-8.5
 FROM docker.io/library/php:8.6-fpm-trixie AS php-fpm-8.6
+FROM docker.io/library/php:8.4-fpm-alpine AS php-fpm-8.4-alpine
+FROM docker.io/library/php:8.5-fpm-alpine AS php-fpm-8.5-alpine
+FROM docker.io/library/php:8.6-fpm-alpine AS php-fpm-8.6-alpine
 
 FROM ${BASE_IMAGE} AS base
 
@@ -39,9 +44,13 @@ FROM scratch AS restate-extension
 # mounts the repository at /app.
 FROM base AS fpm-extension
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends gettext-base nginx \
-    && rm -rf /var/lib/apt/lists/*
+RUN if command -v apk >/dev/null; then \
+        apk add --no-cache bash gettext nginx; \
+    else \
+        apt-get update \
+        && apt-get install -y --no-install-recommends gettext-base nginx \
+        && rm -rf /var/lib/apt/lists/*; \
+    fi
 
 COPY --from=caddy-bin /usr/bin/caddy /usr/bin/caddy
 # Into extension_dir, which depends on the PHP version and thread safety; php.ini (below) enables
@@ -75,9 +84,13 @@ RUN apt-get update \
 # E2E_REQUEST_SIGNING, which the suite's ProxyRequestSigning case sets.
 FROM fpm-extension AS conformance-fpm-nginx
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends git unzip \
-    && rm -rf /var/lib/apt/lists/*
+RUN if command -v apk >/dev/null; then \
+        apk add --no-cache git unzip; \
+    else \
+        apt-get update \
+        && apt-get install -y --no-install-recommends git unzip \
+        && rm -rf /var/lib/apt/lists/*; \
+    fi
 COPY --from=composer-bin /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
@@ -91,3 +104,8 @@ ENV RESTATE_PHP_FPM_FRONT=nginx-h2c \
     RESTATE_PHP_FPM_SCRIPT=/app/test-services/index.php
 
 EXPOSE 9080
+
+# The same behind Caddy php_fastcgi (h2c and HTTP/1.1).
+FROM conformance-fpm-nginx AS conformance-fpm-caddy
+
+ENV RESTATE_PHP_FPM_FRONT=caddy

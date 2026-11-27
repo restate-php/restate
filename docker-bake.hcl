@@ -26,6 +26,18 @@ variable "EXTENSION_DIR" {
   default = ""
 }
 
+# The C library of the FrankenPHP and php-fpm images and of their module: glibc (Debian bases) or
+# musl (their -alpine bases).
+variable "LIBC" {
+  default = "glibc"
+}
+
+# The base stage of a Dockerfile for a PHP minor and LIBC.
+function "base" {
+  params = [prefix, php]
+  result = LIBC == "musl" ? "${prefix}-${php}-alpine" : "${prefix}-${php}"
+}
+
 function "minor" {
   params = [php]
   result = replace(php, ".", "")
@@ -66,6 +78,7 @@ target "extension" {
   args = {
     PHP_VERSION   = php
     THREAD_SAFETY = ts
+    LIBC          = LIBC
     VARIANT       = variant
   }
 }
@@ -82,7 +95,7 @@ target "frankenphp-extension" {
     restate-extension = extension_context(php, "zts", variant)
   }
   args = {
-    BASE_IMAGE = "frankenphp-${php}"
+    BASE_IMAGE = base("frankenphp", php)
   }
   tags = ["restate.local/restate-php-frankenphp:php${php}-${variant}"]
 }
@@ -99,9 +112,26 @@ target "conformance-frankenphp" {
     restate-extension = extension_context(php, "zts", variant)
   }
   args = {
-    BASE_IMAGE = "frankenphp-${php}"
+    BASE_IMAGE = base("frankenphp", php)
   }
   tags = ["restate.local/restate-php-test-services:conformance-frankenphp-php${php}-${variant}"]
+}
+
+target "conformance-frankenphp-worker" {
+  name = "conformance-frankenphp-worker-${minor(php)}-${variant}"
+  matrix = {
+    php     = PHP_VERSIONS
+    variant = ["debug", "release"]
+  }
+  dockerfile = "docker/frankenphp/Dockerfile"
+  target     = "conformance-frankenphp-worker"
+  contexts = {
+    restate-extension = extension_context(php, "zts", variant)
+  }
+  args = {
+    BASE_IMAGE = base("frankenphp", php)
+  }
+  tags = ["restate.local/restate-php-test-services:conformance-frankenphp-worker-php${php}-${variant}"]
 }
 
 target "fpm-extension" {
@@ -116,7 +146,7 @@ target "fpm-extension" {
     restate-extension = extension_context(php, official_ts(php), variant)
   }
   args = {
-    BASE_IMAGE = "php-fpm-${php}"
+    BASE_IMAGE = base("php-fpm", php)
   }
   tags = ["restate.local/restate-php-fpm:php${php}-${variant}"]
 }
@@ -133,7 +163,7 @@ target "fpm-extension-apache" {
     restate-extension = extension_context(php, official_ts(php), variant)
   }
   args = {
-    BASE_IMAGE = "php-fpm-${php}"
+    BASE_IMAGE = base("php-fpm", php)
   }
   tags = ["restate.local/restate-php-fpm:apache-php${php}-${variant}"]
 }
@@ -150,11 +180,29 @@ target "conformance-fpm-nginx" {
     restate-extension = extension_context(php, official_ts(php), variant)
   }
   args = {
-    BASE_IMAGE = "php-fpm-${php}"
+    BASE_IMAGE = base("php-fpm", php)
   }
   tags = ["restate.local/restate-php-test-services:conformance-fpm-nginx-php${php}-${variant}"]
 }
 
+target "conformance-fpm-caddy" {
+  name = "conformance-fpm-caddy-${minor(php)}-${variant}"
+  matrix = {
+    php     = PHP_VERSIONS
+    variant = ["debug", "release"]
+  }
+  dockerfile = "docker/fpm/Dockerfile"
+  target     = "conformance-fpm-caddy"
+  contexts = {
+    restate-extension = extension_context(php, official_ts(php), variant)
+  }
+  args = {
+    BASE_IMAGE = base("php-fpm", php)
+  }
+  tags = ["restate.local/restate-php-test-services:conformance-fpm-caddy-php${php}-${variant}"]
+}
+
+# Debian only: docker/quickstart/Dockerfile has no -alpine bases, so LIBC=musl does not apply.
 target "quickstart-php-restate" {
   name = "quickstart-php-restate-${minor(php)}-${variant}"
   matrix = {
