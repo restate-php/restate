@@ -39,7 +39,7 @@ Done once.
 - [ ] Pick the version by semantic versioning of the whole SDK. While it is 0.x: a new minor for breaking changes and new features, a patch for fixes. **A changed contract version (`CONTRACT_VERSION` in `extension/extension/src/lib.rs`) needs a new minor**; the release refuses a patch that changes it.
 - [ ] Check upstream: the Restate server versions the tests run against (`RestateContainer::DEFAULT_IMAGE`, which the integration and conformance suites both use), `restate-sdk-shared-core`, the PHP minors in the build matrix. Updating them is a change of its own, before the release commit.
 - [ ] On a branch, one commit "Release X.Y.Z":
-  - [ ] `version = "X.Y.Z"` in `extension/extension/Cargo.toml`, then `cd extension && cargo update --workspace` so `extension/Cargo.lock` follows (the archives are built with `--locked`).
+  - [ ] `version = "X.Y.Z"` in `[workspace.package]` of `extension/Cargo.toml`, then `cd extension && cargo update --workspace` so `extension/Cargo.lock` follows (the archives are built with `--locked`).
   - [ ] For a new minor: `"ext-restate": "~X.Y.0"` in `packages/sdk/composer.json` (`just check-packages` fails until it matches the crate).
   - [ ] The row for `X.Y.Z` in [Compatibility](docs/compatibility.md#versions): shared-core, contract and PHP versions, and "(unreleased)" dropped from it.
   - [ ] The changelog, if one is kept.
@@ -72,7 +72,7 @@ Done once.
 
 ## Bumping versions
 
-The version is the `version` in `extension/extension/Cargo.toml`; shared-core 8.7.2 speaks service protocol v5–v8; discovery advertises v7–v8 (Restate 1.8, which negotiates v7, is the minimum).
+The version is the `version` in `[workspace.package]` of `extension/Cargo.toml`, which every crate inherits; shared-core 8.7.2 speaks service protocol v5–v8; discovery advertises v7–v8 (Restate 1.8, which negotiates v7, is the minimum).
 
 - **The version is the release's**, for the packages and the extension alike, by semantic versioning of the whole SDK: while it is 0.x, a new minor version for breaking changes and new features, a patch version for fixes. A release starts with the commit that sets it ([Release](docs/decisions/0031-release.md#releasing)). A released version never changes; until a version is released, changes to the tree update its row instead of adding one.
 - **`restate/sdk`'s `ext-restate` constraint is `~X.Y.0` of that version**: a new minor version changes it in the same commit (`just check-packages` fails otherwise).

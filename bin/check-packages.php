@@ -255,9 +255,9 @@ if (isset($rootReplace['restate/ext-restate'])) {
 }
 // The packages and the extension are released together at the extension's crate version (docs/decisions/0031-release.md),
 // and restate/sdk requires the extension of its own minor version.
-$crate = (string) file_get_contents($root . '/extension/extension/Cargo.toml');
-if (preg_match('/^version = "(\d+)\.(\d+)\.\d+"$/m', $crate, $crateVersion) !== 1) {
-    $fail('extension/extension/Cargo.toml has no version X.Y.Z.');
+$crate = (string) file_get_contents($root . '/extension/Cargo.toml');
+if (preg_match('/^\[workspace\.package\]$(?:\n(?!\[).*)*?\nversion = "(\d+)\.(\d+)\.\d+"$/m', $crate, $crateVersion) !== 1) {
+    $fail('extension/Cargo.toml has no [workspace.package] version X.Y.Z.');
 } else {
     $sdkConstraint = $links($readJson($root . '/packages/sdk/composer.json'), 'require')['ext-restate'] ?? null;
     $wantConstraint = "~{$crateVersion[1]}.{$crateVersion[2]}.0";

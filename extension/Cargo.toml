@@ -6,6 +6,17 @@ members = [
     "extension",
 ]
 
+# What every crate inherits (`version.workspace = true`, …). The version is the extension
+# version (`Restate\Extension\version()`, `phpversion('restate')`); RELEASING.md says when to
+# bump it.
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["Márk Sági-Kazár <mark.sagikazar@gmail.com>"]
+repository = "https://github.com/restate-php/restate"
+publish = false
+
 # `just extension build --release`. Keep `panic = "unwind"`: the extension's panic guard
 # (`restate_php_core::guard`) catches panics with `catch_unwind` and turns them into
 # `ExtensionException`s; with `abort` a panic would kill the PHP process.

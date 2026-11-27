@@ -37,14 +37,14 @@ jobs:
         with:
           persist-credentials: false
 
-      # The crate version (extension/extension/Cargo.toml): what the module reports
+      # The crate version (the workspace's, extension/Cargo.toml): what the module reports
       # and PIE puts in the asset names. The release checks it is the version it releases.
       - name: Read the version
         id: version
         run: |
-          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' extension/extension/Cargo.toml | head -n 1)
+          version=$(sed -n '/^\[workspace\.package\]$/,/^\[/s/^version = "\(.*\)"$/\1/p' extension/Cargo.toml)
           if [ -z "$version" ]; then
-            echo "::error::No version in extension/extension/Cargo.toml"
+            echo "::error::No version in extension/Cargo.toml"
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"

@@ -174,7 +174,7 @@ The integer version of the Extension Surface, returned by `Restate\Extension\con
 
 ### Extension Version
 
-The version of the PHP extension itself: its crate version (`extension/extension/Cargo.toml`), returned by `Restate\Extension\version()` and `phpversion('restate')`, and the version Composer sees for `ext-restate`. It is also the version of every Package: the extension is released with them (see Release), and `restate/sdk` requires the extension of its own minor version (`~X.Y.0`). `docs/compatibility.md` lists each one with the shared-core version, Contract Version and PHP versions it carries. Users and Composer see the Extension Version; the SDK decides compatibility by the Contract Version.
+The version of the PHP extension itself: its crate version (inherited from `[workspace.package]` in `extension/Cargo.toml`), returned by `Restate\Extension\version()` and `phpversion('restate')`, and the version Composer sees for `ext-restate`. It is also the version of every Package: the extension is released with them (see Release), and `restate/sdk` requires the extension of its own minor version (`~X.Y.0`). `docs/compatibility.md` lists each one with the shared-core version, Contract Version and PHP versions it carries. Users and Composer see the Extension Version; the SDK decides compatibility by the Contract Version.
 
 ### Release
 

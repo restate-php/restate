@@ -1,7 +1,7 @@
 # Releases every package and the extension at one version (docs/decisions/0031-release.md).
 #
 # Run it by hand on main. It releases the version in the tree, the extension's crate version
-# (extension/extension/Cargo.toml): bump that first, in a commit with
+# (the workspace's, extension/Cargo.toml): bump that first, in a commit with
 # extension/Cargo.lock and, for a new minor, restate/sdk's ext-restate constraint. Then:
 #
 #   1. version   checks the version (new, newer than the last release) and the tree, and lists the
@@ -67,7 +67,7 @@ jobs:
       - name: Read the version
         id: crate
         run: |
-          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' extension/extension/Cargo.toml | head -n 1)
+          version=$(sed -n '/^\[workspace\.package\]$/,/^\[/s/^version = "\(.*\)"$/\1/p' extension/Cargo.toml)
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       # Fails when the version is already a tag or not newer than the latest vX.Y.Z.
