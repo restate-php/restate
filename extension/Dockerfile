@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # The module (restate.so) for one PHP minor and thread safety, for the CPU of the target platform:
-# the flake's legacyPackages.modules, cross-compiled on the build platform (no emulation), in an
+# the flake's legacyPackages.extensions, cross-compiled on the build platform (no emulation), in an
 # image with /restate.so only. It loads into any PHP of that minor and thread safety on Linux with
 # glibc 2.28 or newer, such as PHP's and FrankenPHP's official images.
 #
@@ -17,8 +17,9 @@
 
 FROM --platform=$BUILDPLATFORM docker.io/nixos/nix:2.36.0 AS nix
 
-# The image builds without Nix's sandbox already. Root is a trusted user, so the flake's
-# nixConfig adds restate-php.cachix.org.
+# Config needed:
+# - flake support
+# - allowing flakes to configure caches
 RUN cat >> /etc/nix/nix.conf <<'EOF'
 experimental-features = nix-command flakes
 accept-flake-config = true
@@ -29,22 +30,20 @@ EOF
 SHELL ["/bin/sh", "-euo", "pipefail", "-c"]
 WORKDIR /src
 
-# What every module builds with but its source (the flake's moduleInputs: the toolchain, the PHP
-# headers, the vendored crates), fetched from the files that decide it only. The flake evaluates
-# with the crates' manifests; this layer lasts until a lock file, the toolchain or a manifest
-# changes.
+# What every extension builds with but its source (the flake's extension-inputs: the toolchain,
+# the PHP headers, the vendored crates), fetched from what the flake evaluates them from only:
+# not the source. This layer lasts until a lock file, the toolchain or a manifest changes.
 FROM nix AS inputs
 
 COPY flake.nix flake.lock rust-toolchain.toml composer.json Cargo.toml Cargo.lock ./
-COPY .cargo .cargo
-COPY core/Cargo.toml core/
 COPY extension/Cargo.toml extension/
-RUN nix build --no-link --print-build-logs .#moduleInputs
+
+RUN nix build --no-link --print-build-logs .#extension-inputs
 
 FROM inputs AS build
 
-# The module's source, as the flake's fileset has it: changes elsewhere (tests, docs) do not
-# rebuild it.
+# The source, as the flake's fileset has it: changes elsewhere (tests, docs) do not rebuild it.
+COPY .cargo .cargo
 COPY core core
 COPY extension extension
 
@@ -52,12 +51,13 @@ ARG PHP_VERSION=8.4
 ARG THREAD_SAFETY=nts
 ARG VARIANT=debug
 ARG TARGETARCH
+
 RUN case $TARGETARCH in \
-        amd64) arch=x86_64 ;; \
-        arm64) arch=aarch64 ;; \
-        *) echo "no module for $TARGETARCH" >&2 && exit 64 ;; \
+    amd64) arch=x86_64 ;; \
+    arm64) arch=aarch64 ;; \
+    *) echo "no module for $TARGETARCH" >&2 && exit 64 ;; \
     esac \
-    && module=".#modules.php${PHP_VERSION/./}.$THREAD_SAFETY.$arch-linux-glibc.$VARIANT" \
+    && module=".#extensions.php${PHP_VERSION/./}.$THREAD_SAFETY.$arch-linux-glibc.$VARIANT" \
     && echo "building $module" \
     && nix build --print-build-logs --out-link /result "$module" \
     && mkdir /out \

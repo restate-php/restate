@@ -18,7 +18,7 @@
 #   container  (the default) extension/Dockerfile, as a bake target: Nix in a container. Its first
 #              build fetches about 1 GiB (the toolchain, the PHP headers, the crates) into a layer
 #              that lasts until a lock file or the toolchain changes.
-#   host       Nix on this machine (nix build ./extension#modules.…), handed to bake as
+#   host       Nix on this machine (nix build ./extension#extensions.…), handed to bake as
 #              EXTENSION_DIR (var/image-extensions/). Where restate-php.cachix.org has the module
 #              (any source CI built, on a Linux machine of the same CPU), Nix downloads only the
 #              module. CI uses this.
@@ -63,7 +63,7 @@ case ${RESTATE_PHP_IMAGE_EXTENSION:-container} in
       arm64) arch=aarch64 ;;
       *) echo "build-image: no extension module for $(docker version --format '{{.Server.Arch}}')" >&2 && exit 64 ;;
     esac
-    out=$(nix build --no-link --print-out-paths "./extension#modules.php$minor.$ts.$arch-linux-glibc.$module_variant")
+    out=$(nix build --no-link --print-out-paths "./extension#extensions.php$minor.$ts.$arch-linux-glibc.$module_variant")
     export EXTENSION_DIR=var/image-extensions
     mkdir -p "$EXTENSION_DIR/$extension"
     install -m 644 "$out/lib/php/extensions/restate.so" "$EXTENSION_DIR/$extension/restate.so"

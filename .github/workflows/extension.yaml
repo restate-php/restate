@@ -118,12 +118,12 @@ jobs:
         run: |
           target=$(uname -m)-linux-glibc
           modules=()
-          for php in $(nix eval --raw ./extension#modules --apply 'modules: toString (builtins.attrNames modules)'); do
+          for php in $(nix eval --raw ./extension#extensions --apply 'extensions: toString (builtins.attrNames extensions)'); do
             modules+=(
-              "./extension#modules.$php.nts.$target.debug"
-              "./extension#modules.$php.zts.$target.debug"
-              "./extension#modules.$php.zts.$target.debug-diagnostics"
-              "./extension#modules.$php.zts.$target.release-diagnostics"
+              "./extension#extensions.$php.nts.$target.debug"
+              "./extension#extensions.$php.zts.$target.debug"
+              "./extension#extensions.$php.zts.$target.debug-diagnostics"
+              "./extension#extensions.$php.zts.$target.release-diagnostics"
             )
           done
           nix build --no-link -L "${modules[@]}"

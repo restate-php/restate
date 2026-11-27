@@ -1,7 +1,7 @@
 {
   description = "The Restate PHP extension (module restate): for every PHP of nixpkgs, and PIE's prebuilt binaries";
 
-  # What restate-php/restate's CI builds: the PIE archives, the modules for each PHP, the Rust
+  # What restate-php/restate's CI builds: the PIE archives, the extension for each PHP, the Rust
   # toolchain. Nix uses it for trusted users who accept the flake's configuration (prompted, or
   # `accept-flake-config = true`); CI configures the cache itself.
   nixConfig = {
@@ -12,7 +12,7 @@
   };
 
   inputs = {
-    ext-php-rs.url = "github:sagikazarmark/ext-php-rs.nix/v0.3.0";
+    ext-php-rs.url = "github:sagikazarmark/ext-php-rs.nix/v0.4.0";
     # ext-php-rs's nixpkgs, as its template recommends. The dev shell of restate-php/restate
     # follows this one too (its devenv.yaml), so the shell and every Nix build share one nixpkgs.
     nixpkgs.follows = "ext-php-rs/nixpkgs";
@@ -75,57 +75,37 @@
         "php86"
       ];
 
-      # The Linux targets of the PIE archives.
-      pieTargets = [
-        "x86_64-linux-glibc"
-        "aarch64-linux-glibc"
-        "x86_64-linux-musl"
-        "aarch64-linux-musl"
-      ];
-
-      # The builds of each module: the profile, and the soak suite's diagnostics feature.
-      variants = {
-        debug = {
-          buildType = "debug";
-        };
-        release = { };
-        debug-diagnostics = {
-          buildType = "debug";
-          buildFeatures = [ "diagnostics" ];
-        };
-        release-diagnostics = {
-          buildFeatures = [ "diagnostics" ];
-        };
-      };
-
-      # modules.<php>.<nts|zts>.<target>.<variant>: one portable module, cross-compiled from
-      # any of the systems.
-      modules =
+      # extensions.<php>.<nts|zts>.<target>.<variant>: the extension for each PHP minor, thread
+      # safety, Linux target of the PIE archives and build, cross-compiled from any of the
+      # systems. The variants are the profile, and the soak suite's diagnostics feature.
+      extensions =
         pkgs:
         let
           platform = rustPhpPlatform pkgs;
         in
-        lib.genAttrs phps (
-          php:
-          lib.genAttrs [ "nts" "zts" ] (
-            ts:
-            lib.genAttrs pieTargets (
-              target:
-              lib.mapAttrs (
-                _: variant:
-                platform.buildRustPhpExtension (
-                  args
-                  // variant
-                  // {
-                    php = pkgs.${php};
-                    target = platform.targets.${target};
-                    zts = ts == "zts";
-                  }
-                )
-              ) variants
-            )
-          )
-        );
+        platform.buildRustPhpExtensions {
+          inherit args;
+          php = map (php: pkgs.${php}) phps;
+          targets = with platform.targets; [
+            x86_64-linux-glibc
+            aarch64-linux-glibc
+            x86_64-linux-musl
+            aarch64-linux-musl
+          ];
+          variants = {
+            debug = {
+              buildType = "debug";
+            };
+            release = { };
+            debug-diagnostics = {
+              buildType = "debug";
+              buildFeatures = [ "diagnostics" ];
+            };
+            release-diagnostics = {
+              buildFeatures = [ "diagnostics" ];
+            };
+          };
+        };
     in
     {
       # The extension for every PHP of nixpkgs, built against the PHP that loads it:
@@ -159,56 +139,40 @@
         # restate-php/restate): every PHP minor × NTS and ZTS × x86_64 and arm64 × Linux with
         # glibc 2.28 or newer and with musl, 24 archives with SHA256SUMS. Cross-compiled on any
         # of the systems.
-        pie = (rustPhpPlatform pkgs).mkPieRelease {
-          extensions = lib.concatMap (
-            php:
-            lib.concatMap (ts: map (target: (modules pkgs).${php}.${ts}.${target}.release) pieTargets) [
-              "nts"
-              "zts"
-            ]
-          ) phps;
-        };
+        pie =
+          let
+            platform = rustPhpPlatform pkgs;
+          in
+          platform.mkPieRelease {
+            extensions = platform.collectExtensions (extensions pkgs) { variant = "release"; };
+          };
       });
 
-      # Each module of packages.pie on its own, and the debug and diagnostics builds the
+      # Each extension of packages.pie on its own, and the debug and diagnostics builds the
       # Docker-based suites use (extension/Dockerfile):
       #
-      #   nix build .#modules.php84.zts.x86_64-linux-glibc.debug
+      #   nix build .#extensions.php84.zts.x86_64-linux-glibc.debug
       #
       # Here rather than in packages, which `nix flake show` and `nix flake check` list.
       legacyPackages = forAllSystems (
         pkgs:
         let
-          all = modules pkgs;
+          platform = rustPhpPlatform pkgs;
+          all = extensions pkgs;
         in
         {
-          modules = all;
+          extensions = all;
 
-          # Everything the glibc modules build with (the toolchain, the PHP headers, the
-          # vendored crates): each module's inputDerivation, for extension/Dockerfile to fetch
-          # before it copies the source in. The variants of a module share their inputs.
-          moduleInputs = pkgs.linkFarm "restate-module-inputs" (
-            lib.concatMap (
-              php:
-              lib.concatMap
-                (
-                  ts:
-                  map
-                    (target: {
-                      name = "${php}-${ts}-${target}";
-                      path = all.${php}.${ts}.${target}.debug.inputDerivation;
-                    })
-                    [
-                      "x86_64-linux-glibc"
-                      "aarch64-linux-glibc"
-                    ]
-                )
-                [
-                  "nts"
-                  "zts"
-                ]
-            ) phps
-          );
+          # Everything the glibc extensions build with but their source (the toolchain, the PHP
+          # headers, the vendored crates), for extension/Dockerfile to fetch before it copies
+          # the source in. The variants of an extension share their inputs.
+          extension-inputs = platform.mkExtensionInputs {
+            name = "restate-extension-inputs";
+            extensions = platform.collectExtensions all {
+              variant = "debug";
+              libc = "glibc";
+            };
+          };
         }
       );
 

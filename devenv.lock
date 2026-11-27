@@ -22,16 +22,16 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1795736892,
-        "narHash": "sha256-PDW21dA0ClmT0tA/4LdxzTIuo8q8XYhSM8lw6qkOuwM=",
+        "lastModified": 1795741817,
+        "narHash": "sha256-LAEP48at4YZ7/tv53gBC83Oj3swx3qiqVUxhQWXsw3o=",
         "owner": "sagikazarmark",
         "repo": "ext-php-rs.nix",
-        "rev": "bdacab6075b7a0b70a84e41bdb09c19f480a0ab4",
+        "rev": "c9c66dd4f9cdb562b91cd960f69d02a1d193c595",
         "type": "github"
       },
       "original": {
         "owner": "sagikazarmark",
-        "ref": "v0.3.0",
+        "ref": "v0.4.0",
         "repo": "ext-php-rs.nix",
         "type": "github"
       }
