@@ -44,14 +44,14 @@ Done once.
   - [ ] The row for `X.Y.Z` in [Compatibility](docs/compatibility.md#versions): shared-core, contract and PHP versions, and "(unreleased)" dropped from it.
   - [ ] The changelog, if one is kept.
 - [ ] `just check` passes locally; for a release that touches the extension or the protocol, also `just test integration php-cli`, `just test integration frankenphp` and `just test conformance`.
-- [ ] Merge to `main` and push. `CI`, `Conformance` and `Extension` pass on that commit.
+- [ ] Merge to `main` and push. `CI` (the conformance suite included, in its runtime cells) and `Extension` pass on that commit.
 - [ ] Rehearse the split on that commit: `just split publish --dry-run --version X.Y.Z --remote https://github.com/restate-php/{repository}.git`. For every repository it reports `main` as created, fast-forwarded, up to date or left alone (ahead: the push split already pushed a later commit's split), and the tag (`X.Y.Z` for the extension, `vX.Y.Z` for the packages) as created; it pushes nothing, and fails on what would stop the release ([Release](docs/decisions/0031-release.md), decision 5).
 
 ### 2. Release
 
-- [ ] Actions → **Release** → Run workflow, on `main`. Leave `skip-tests` off unless the tests passed on this exact commit and a re-run is only for publishing.
-- [ ] The `version` job passes: it refuses an existing or older version, a `restate/sdk` constraint that is not `~X.Y.0`, a contract change in a patch, and a missing README or LICENSE.
-- [ ] `ci`, `conformance`, `extension` and `attest` pass.
+- [ ] Actions → **Release** → Run workflow, on `main`.
+- [ ] The `version` job passes: it refuses an existing or older version, a `restate/sdk` constraint that is not `~X.Y.0`, a contract change in a patch, and a missing README or LICENSE. The release runs no tests ([Test Matrix](docs/decisions/0045-test-matrix.md) decision 8): its summary lists the check runs of the release commit, and whether to release despite a failure there is your call.
+- [ ] `extension` (the 24 archives, built and loaded into PHP's official images) and `attest` pass.
 - [ ] Approve the `publish` job (with required reviewers on the environment).
 - [ ] If it stops halfway: fix the cause and **Re-run failed jobs**. Pushed repositories and tags are skipped, the extension's draft release is uploaded to again. Never delete or move a tag that was pushed; a package repository whose `main` was changed by hand stops the release until it is put back.
 
@@ -72,7 +72,7 @@ Done once.
 
 ## Bumping versions
 
-The version is the `version` in `[workspace.package]` of `extension/Cargo.toml`, which every crate inherits; shared-core 8.7.2 speaks service protocol v5–v8; discovery advertises v7–v8 (Restate 1.8, which negotiates v7, is the minimum).
+The version is the `version` in `[workspace.package]` of `extension/Cargo.toml`, which every crate inherits; shared-core 8.7.3 speaks service protocol v5–v8; discovery advertises v7–v8 (Restate 1.8, which negotiates v7, is the minimum).
 
 - **The version is the release's**, for the packages and the extension alike, by semantic versioning of the whole SDK: while it is 0.x, a new minor version for breaking changes and new features, a patch version for fixes. A release starts with the commit that sets it ([Release](docs/decisions/0031-release.md#releasing)). A released version never changes; until a version is released, changes to the tree update its row instead of adding one.
 - **`restate/sdk`'s `ext-restate` constraint is `~X.Y.0` of that version**: a new minor version changes it in the same commit (`just check-packages` fails otherwise).
