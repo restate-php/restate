@@ -24,7 +24,7 @@ FROM ${BASE_IMAGE} AS base
 FROM docker.io/library/composer:2 AS composer-bin
 
 # restate.so for the target's PHP: docker-bake.hcl replaces this stage with the restate-extension
-# context. Without it, docker/extension/install.sh stops the build.
+# context. Without it, the COPY of restate.so fails.
 FROM scratch AS restate-extension
 
 # FrankenPHP with the ZTS extension, serving the repository the harness mounts at /app (the
@@ -34,10 +34,11 @@ FROM scratch AS restate-extension
 # over this one. The soak images are this target with the diagnostics builds.
 FROM base AS frankenphp-extension
 
-RUN --mount=from=restate-extension,target=/mnt/restate-extension \
-    --mount=type=bind,source=docker/extension/install.sh,target=/usr/local/bin/install-restate-extension \
-    install-restate-extension \
-    && echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
+# Into extension_dir, which depends on the PHP version and thread safety; php --ri fails on a
+# module built for another PHP.
+COPY --from=restate-extension /restate.so /tmp/
+RUN mv /tmp/restate.so "$(php -r 'echo ini_get("extension_dir");')/" \
+    && docker-php-ext-enable restate \
     && php --ri restate > /dev/null
 COPY docker/frankenphp/integration.Caddyfile /etc/frankenphp/Caddyfile
 

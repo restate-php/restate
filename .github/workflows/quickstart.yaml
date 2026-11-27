@@ -14,7 +14,6 @@ on:
       - 'bin/build-image.sh'
       - 'docker-bake.hcl'
       - 'docker/quickstart/**'
-      - 'docker/extension/**'
       - 'examples/quickstart/**'
       - 'extension/**'
       - 'packages/**'

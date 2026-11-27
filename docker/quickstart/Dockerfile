@@ -24,15 +24,16 @@ FROM docker.io/library/php:8.6-cli-bookworm AS php-cli-8.6
 FROM ${BASE_IMAGE} AS base
 
 # restate.so for the target's PHP: docker-bake.hcl replaces this stage with the restate-extension
-# context. Without it, docker/extension/install.sh stops the build.
+# context. Without it, the COPY of restate.so fails.
 FROM scratch AS restate-extension
 
 FROM base AS quickstart-php-restate
 
-RUN --mount=from=restate-extension,target=/mnt/restate-extension \
-    --mount=type=bind,source=docker/extension/install.sh,target=/usr/local/bin/install-restate-extension \
-    install-restate-extension \
-    && echo 'extension=restate' > /usr/local/etc/php/conf.d/restate.ini \
+# Into extension_dir, which depends on the PHP version and thread safety; php --ri fails on a
+# module built for another PHP.
+COPY --from=restate-extension /restate.so /tmp/
+RUN mv /tmp/restate.so "$(php -r 'echo ini_get("extension_dir");')/" \
+    && docker-php-ext-enable restate \
     && php --ri restate > /dev/null
 COPY packages /opt/restate/packages
 COPY extension/extension/Cargo.toml /tmp/restate-extension-Cargo.toml

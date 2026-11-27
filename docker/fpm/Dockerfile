@@ -28,7 +28,7 @@ FROM docker.io/library/composer:2 AS composer-bin
 FROM docker.io/library/caddy:2.11.9 AS caddy-bin
 
 # restate.so for the target's PHP: docker-bake.hcl replaces this stage with the restate-extension
-# context. Without it, docker/extension/install.sh stops the build.
+# context. Without it, the COPY of restate.so fails.
 FROM scratch AS restate-extension
 
 # PHP-FPM endpoint for the integration suite (RESTATE_PHP_TEST_SERVER=nginx-fpm, nginx-fpm-h2c,
@@ -44,9 +44,10 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=caddy-bin /usr/bin/caddy /usr/bin/caddy
-RUN --mount=from=restate-extension,target=/mnt/restate-extension \
-    --mount=type=bind,source=docker/extension/install.sh,target=/usr/local/bin/install-restate-extension \
-    install-restate-extension
+# Into extension_dir, which depends on the PHP version and thread safety; php.ini (below) enables
+# it, and php-fpm -m fails on a module built for another PHP.
+COPY --from=restate-extension /restate.so /tmp/
+RUN mv /tmp/restate.so "$(php -r 'echo ini_get("extension_dir");')/"
 COPY docker/fpm/*.template /etc/restate-fpm/
 COPY docker/fpm/php.ini /usr/local/etc/php/conf.d/zz-restate.ini
 COPY docker/fpm/entrypoint.sh /usr/local/bin/fpm-entrypoint.sh
