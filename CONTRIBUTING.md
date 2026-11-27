@@ -4,7 +4,7 @@ This repository holds the whole SDK: the Composer packages in `packages/`, the R
 
 ## Setting up
 
-You need [devenv](https://devenv.sh) and a container runtime: Docker, or rootless podman with its `docker` CLI. The dev shell provides everything else: nixpkgs' default PHP (8.5 now; `devenv -O languages.php.version:string 8.4 shell` for another supported minor) with its headers and `php-config`, Composer, the Rust toolchain pinned in `extension/rust-toolchain.toml`, libclang and the flags the extension build needs, Java 25 for the conformance suite, just, k6 and jq, and the linters ([Development Environment](docs/decisions/0001-dev-environment.md)). The integration tests start Restate in a container, so the runtime stays on the host.
+You need [devenv](https://devenv.sh) and a container runtime: Docker, or rootless podman with its `docker` CLI. The dev shell provides everything else: nixpkgs' default PHP (8.5 now; `devenv -O languages.php.version:string 8.4 shell` for another supported minor) with its headers and `php-config`, Composer, the Rust toolchain pinned in `extension/rust-toolchain.toml`, libclang and the flags the extension build needs, Java 25 and the jar of the conformance suite, just, k6 and jq, and the linters ([Development Environment](docs/decisions/0001-dev-environment.md)). The integration tests start Restate in a container, so the runtime stays on the host.
 
 ```bash
 devenv shell

@@ -11,6 +11,15 @@ let
   extension = inputs.ext-restate;
   restate-bin = inputs.nix-restate.packages.${system}.restate-bin;
 
+  # The SDK conformance suite the official SDKs run: sdk-tests.jar of restatedev/e2e, at the
+  # release they run (TESTING.md, SDK conformance suite). Pinned by its hash: the release's tag
+  # has moved since it was cut, the jar has not.
+  sdk-tests-jar = pkgs.fetchurl {
+    name = "restate-e2e-sdk-tests-v2.3.jar";
+    url = "https://github.com/restatedev/e2e/releases/download/v2.3/sdk-tests.jar";
+    hash = "sha256-9EUkd6X4ClmdoEF1p94cEZLZFltGtEWWTfgg6hsRf/o=";
+  };
+
   # The paths of the files a `cargo build` produced, from its JSON messages (just extension build).
   # Not in nixpkgs.
   cargo-artifacts = pkgs.rustPlatform.buildRustPackage rec {
@@ -137,6 +146,8 @@ in
 
   env = {
     LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+    # The SDK conformance suite's jar (bin/conformance-local.sh).
+    RESTATE_PHP_CONFORMANCE_JAR = sdk-tests-jar;
   };
 
   packages =
@@ -147,8 +158,6 @@ in
       # The task runner (justfile) and what its recipes use.
       just
       cargo-artifacts
-      # The SDK conformance suite (restatedev/e2e sdk-tests.jar) is built for Java 25.
-      jdk25_headless
       # Only the library bindgen loads (LIBCLANG_PATH): the `libclang` package's bin/ would put an
       # unwrapped clang ahead of the Nix cc wrapper, and the cc crate (CC=clang) would compile
       # ext-php-rs's C shim with it, failing on `stdlib.h`.
@@ -182,6 +191,12 @@ in
   };
 
   languages = {
+    # The SDK conformance suite's jar (sdk-tests-jar above) is built for Java 25.
+    java = {
+      enable = true;
+      jdk.package = pkgs.jdk25_headless;
+    };
+
     # nixpkgs' default PHP (pkgs.php); another minor with
     # `devenv -O languages.php.version:string 8.4 shell`.
     php.enable = true;

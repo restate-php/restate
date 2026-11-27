@@ -8,9 +8,10 @@
 #           to build and test is conformance-<server> of docker-bake.hcl (bin/build-image.sh)
 #   mode    basic runs the `default` suite only, full runs every suite (default: full)
 #
-# Run it in the dev shell (it provides Java 25). Works with Docker and with rootless podman: under
+# Run it in the dev shell: it provides the suite's jar (RESTATE_PHP_CONFORMANCE_JAR, devenv.nix, pinned by
+# hash) and the Java it needs (languages.java). Works with Docker and with rootless podman: under
 # podman it starts a private podman API service for Testcontainers, disables Ryuk, and runs the
-# suite sequentially. Artifacts (the jar, JUnit XML, container logs, the suite's output) go to
+# suite sequentially. Artifacts (JUnit XML, container logs, the suite's output) go to
 # var/conformance/<server>/<mode>/.
 #
 # Environment:
@@ -23,6 +24,7 @@
 #   RESTATE_PHP_CONFORMANCE_EXCLUSIONS_FILE  exclusions YAML (default test-services/exclusions.yaml; empty: none)
 #   RESTATE_PHP_CONFORMANCE_SEQUENTIAL=1     run test classes one at a time (default under podman)
 #   RESTATE_PHP_CONFORMANCE_OUTPUT_DIR       artifacts root (default var/conformance)
+#   RESTATE_PHP_CONFORMANCE_JAR              the suite's jar (the dev shell sets it; another jar to try one)
 #   RESTATE_PHP_RESTATE_IMAGE                Restate image, as for the test harness (default RestateContainer::DEFAULT_IMAGE)
 set -euo pipefail
 
@@ -33,10 +35,6 @@ MODE=${2:-full}
 PHP_VERSION=${RESTATE_PHP_TEST_PHP_VERSION:-8.4}
 VARIANT=${RESTATE_PHP_TEST_EXTENSION_PROFILE:-release}
 LIBC=${RESTATE_PHP_TEST_LIBC:-glibc}
-
-SUITE_VERSION=v2.3
-JAR_URL="https://github.com/restatedev/e2e/releases/download/$SUITE_VERSION/sdk-tests.jar"
-JAR_SHA256="f4452477a5f80a599da04175a7de1c1192d9165b46b445964df820ea1b117ffa"
 
 case "$MODE" in
   basic|full) ;;
@@ -51,19 +49,9 @@ if ! docker buildx bake -f "$ROOT_DIR/docker-bake.hcl" --print "$TARGET-${PHP_VE
   exit 64
 fi
 
-# The jar is built for Java 25. An older java cannot load it, and the run then reports nothing
-# instead of failing, so check up front.
-REQUIRED_JAVA_MAJOR=25
-if ! command -v java >/dev/null 2>&1; then
-  echo "java not found; the conformance suite needs Java $REQUIRED_JAVA_MAJOR+. Run this inside \`devenv shell\`." >&2
-  exit 1
-fi
-JAVA_MAJOR=$(java -XshowSettings:properties -version 2>&1 | sed -n 's/^ *java\.specification\.version = //p' | head -n 1)
-JAVA_MAJOR=${JAVA_MAJOR#1.}
-JAVA_MAJOR=${JAVA_MAJOR%%.*}
-if ! [[ "$JAVA_MAJOR" =~ ^[0-9]+$ ]] || [ "$JAVA_MAJOR" -lt "$REQUIRED_JAVA_MAJOR" ]; then
-  echo "java on PATH ($(command -v java)) is Java ${JAVA_MAJOR:-unknown}; the conformance suite needs Java $REQUIRED_JAVA_MAJOR+." >&2
-  echo "Run this inside \`devenv shell\` (it provides JDK $REQUIRED_JAVA_MAJOR)." >&2
+JAR=${RESTATE_PHP_CONFORMANCE_JAR:-}
+if [ -z "$JAR" ] || [ ! -r "$JAR" ]; then
+  echo "RESTATE_PHP_CONFORMANCE_JAR is not set or not readable: run this inside \`devenv shell\`, which provides the suite's jar and Java." >&2
   exit 1
 fi
 
@@ -76,15 +64,6 @@ if [ -z "$RESTATE_IMAGE" ]; then
   echo "Could not read RestateContainer::DEFAULT_IMAGE; set RESTATE_PHP_RESTATE_IMAGE." >&2
   exit 1
 fi
-
-# The suite jar, pinned by checksum (the action CI uses downloads it by tag).
-JAR="$OUTPUT_DIR/restate-e2e-sdk-tests-$SUITE_VERSION.jar"
-mkdir -p "$OUTPUT_DIR"
-if [ ! -r "$JAR" ]; then
-  curl -L --fail --output "$JAR.part" "$JAR_URL"
-  mv "$JAR.part" "$JAR"
-fi
-printf '%s  %s\n' "$JAR_SHA256" "$JAR" | sha256sum -c --quiet -
 
 # `docker --version` from podman's docker shim does not say podman; `docker version` does.
 PODMAN_SERVICE_PID=""
