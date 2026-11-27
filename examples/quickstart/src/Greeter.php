@@ -6,6 +6,7 @@ namespace App;
 
 use Restate\Attributes as Restate;
 use Restate\Context;
+use Restate\InvocationRetryPolicy;
 
 /**
  * A Basic Service: stateless handlers that Restate runs to completion, across failures and restarts.
@@ -17,7 +18,9 @@ final class Greeter
     {
     }
 
-    #[Restate\Handler]
+    // Restate retries a failed attempt with a growing delay. Capped at 2 seconds here, so that Alice's greeting
+    // (step 5 of the README) returns within seconds rather than minutes.
+    #[Restate\Handler(invocationRetryPolicy: new InvocationRetryPolicy(maxIntervalMillis: 2_000))]
     public function greet(Context $ctx, Greeting $greeting): GreetingResponse
     {
         // Deterministic: Restate records the value, so every retry of this invocation sees the same id.
