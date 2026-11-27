@@ -17,12 +17,12 @@ Accepted. Supersedes decisions 1 to 3 of [Just Recipes](0041-just-recipes.md) an
 
 1. **Every task is a just recipe**, and `composer.json` has no `scripts`. Composer installs the dependencies; just runs everything else:
    - the root `justfile`: `check`, `cs`, `cs-fix`, `analyse`, `lint`, `check-packages`, `serve`, `bench`, `bench-compare` and `split`;
-   - `test` (`tests/justfile`): `unit`, `release`, `integration`, `serving-hazards`, `soak` and `upstream`;
+   - `test` (`tests/justfile`): `unit`, `release`, `integration`, `serving-hazards`, `soak` and `conformance`;
    - `extension` (`extension/justfile`): `build`, `check`, `pie` and the benchmarks;
    - `load` (`tests/load/justfile`): `run`, `up` and `down`.
 2. **One integration recipe, with the server as its argument**: `just test integration <server> [phpunit arguments]`, for `php-cli`, `frankenphp`, `frankenphp-worker`, `nginx-fpm`, `nginx-fpm-h2c` and `caddy-fpm`. It builds the server's image (none for `php-cli`), adds the worker suite for `frankenphp-worker`, and passes everything after the server to PHPUnit, so a group or a filter on any server is the same command: `just test integration <server> --group failure-nightly`. A CI matrix lists servers, never commands.
-3. **What is not the server stays an environment variable**, which the harness reads anyway: the Restate image (`RESTATE_PHP_RESTATE_IMAGE`; the CI job for Restate 1.7 sets it) and the Restate mode (`RESTATE_PHP_TEST_RESTATE`). With `process` or `external` the recipe runs `tests/Integration` without `examples/testing`, which shows a user the default container; with `external` it builds nothing and leaves out the `managed` group with the groups `phpunit.xml.dist` excludes. The devenv profiles' `enterTest` is `RESTATE_PHP_TEST_RESTATE=external just test integration <server>`.
-4. **`bin/` keeps the programs**, as in [0041](0041-just-recipes.md): `bench-compare.sh`, `conformance-upstream-local.sh`, `split.sh` and `check-packages.php`, which a recipe runs with its arguments.
+3. **What is not the server stays an environment variable**, which the harness reads anyway: the Restate image (`RESTATE_PHP_RESTATE_IMAGE`, to run against another Restate release) and the Restate mode (`RESTATE_PHP_TEST_RESTATE`). With `process` the recipe runs `tests/Integration` without `examples/testing`, which shows a user the default container. (The `external` mode and its devenv profiles were removed by [Test Matrix](0045-test-matrix.md).)
+4. **`bin/` keeps the programs**, as in [0041](0041-just-recipes.md): `bench-compare.sh`, `conformance-local.sh`, `split.sh` and `check-packages.php`, which a recipe runs with its arguments.
 
 ### Rejected
 

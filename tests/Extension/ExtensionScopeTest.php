@@ -13,7 +13,7 @@ use Restate\Tests\Support\Protocol\FrameCodec;
 
 /**
  * Scope and limit key through the extension against a real VM: the commands protocol v7 (Restate 1.8) journals, byte
- * for byte, and the 573 failure below v7.
+ * for byte.
  */
 final class ExtensionScopeTest extends ExtensionTestCase
 {
@@ -71,35 +71,6 @@ final class ExtensionScopeTest extends ExtensionTestCase
             bin2hex(FrameCodec::callCommandFrame('Counter', 'add', '1', 'alice', null, 1, 2)),
             bin2hex(self::written($invocation)),
         );
-    }
-
-    public function testAScopedCallIsRefusedBelowV7(): void
-    {
-        foreach ([[self::V5, 5], [self::V6, 6]] as [$contentType, $version]) {
-            $invocation = self::running(contentType: $contentType);
-
-            $exception = self::backendException(static fn () => $invocation->sysCall(new CallTarget(self::counter(), limitKey: 'user-42'), '1'));
-
-            $message = "A call to Counter/alice/add in scope 'tenant-1' needs service protocol v7 (Restate 1.8 or newer), but this invocation negotiated v{$version}";
-            self::assertSame(BackendErrorCategory::Protocol, $exception->category());
-            self::assertSame(573, $exception->getCode());
-            self::assertStringContainsString($message, $exception->getMessage());
-            self::assertSame(bin2hex(FrameCodec::errorFrame(573, $message)), bin2hex(self::written($invocation)));
-            self::assertNull($invocation->takeOutput(), 'the response is complete');
-        }
-    }
-
-    public function testAScopedSendAndAttachAreRefusedBelowV7(): void
-    {
-        $send = self::running(contentType: self::V6);
-        $exception = self::backendException(static fn () => $send->sysSend(new CallTarget(self::counter()), '1', 100));
-        self::assertSame(573, $exception->getCode());
-        self::assertStringContainsString("A send to Counter/alice/add in scope 'tenant-1' needs service protocol v7", $exception->getMessage());
-
-        $attach = self::running(contentType: self::V6);
-        $exception = self::backendException(static fn () => $attach->sysAttachInvocation(AttachTarget::workflow('Checkout', 'order-1', 'tenant-1')));
-        self::assertSame(573, $exception->getCode());
-        self::assertStringContainsString("Attaching to the workflow Checkout/order-1 in scope 'tenant-1' needs service protocol v7", $exception->getMessage());
     }
 
     public function testTheExtensionRefusesALimitKeyWithoutScope(): void

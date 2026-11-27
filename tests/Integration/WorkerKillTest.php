@@ -24,7 +24,7 @@ use Restate\Tests\Support\Protocol\FrameCodec;
  * worker kills itself (the master serves requests too, and a dead worker is never replaced: the endpoint is restarted
  * after each test); elsewhere a kill degrades to an `exit` (see ProcessFaults).
  */
-#[Group('managed')]
+#[Group('runtime')]
 final class WorkerKillTest extends FaultInjectionTestCase
 {
     #[\Override]

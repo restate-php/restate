@@ -14,7 +14,7 @@ use Restate\Tests\Integration\Support\HttpTransportException;
  * SIGKILL), pausing it, and killing, signalling and restarting the endpoint. Runs in the fault-injection environment,
  * so the one every other test shares is never restarted.
  */
-#[Group('managed')]
+#[Group('runtime')]
 final class HarnessLifecycleTest extends FaultInjectionTestCase
 {
     /** A test that failed half-way must not leave the next one without an endpoint. */

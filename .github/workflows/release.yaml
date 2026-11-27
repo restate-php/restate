@@ -4,12 +4,12 @@
 # (extension/extension/Cargo.toml): bump that first, in a commit with
 # extension/Cargo.lock and, for a new minor, restate/sdk's ext-restate constraint. Then:
 #
-#   1. version   checks the version (new, newer than the last release) and the tree;
-#   2. ci, upstream
-#                run CI and the upstream SDK suite on the release commit (skip-tests skips them);
-#   3. extension, attest
-#                build and check the 24 extension archives, then checksum and attest them;
-#   4. publish   pushes, in this order: the extension repository (split, tag X.Y.Z, a release
+#   1. version   checks the version (new, newer than the last release) and the tree, and lists the
+#                release commit's check runs on main in the summary (they don't block the release:
+#                whether to release despite a failure is the person's call);
+#   2. extension, attest
+#                build and verify the 24 extension archives, then checksum and attest them;
+#   3. publish   pushes, in this order: the extension repository (split, tag X.Y.Z, a release
 #                with the archives), each package repository (split, tag vX.Y.Z), and this
 #                repository's release vX.Y.Z.
 #
@@ -20,11 +20,6 @@ name: Release
 
 on:
   workflow_dispatch:
-    inputs:
-      skip-tests:
-        description: Skip CI and the upstream suite on the release commit (escape hatch; the extension archives are still built and checked)
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -44,6 +39,10 @@ jobs:
     name: Version
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      contents: read
+      # The release commit's check runs, for the summary.
+      checks: read
     outputs:
       version: ${{ steps.pick.outputs.version }}
       tag: ${{ steps.pick.outputs.tag }}
@@ -124,30 +123,27 @@ jobs:
         id: repositories
         run: echo "repositories=$(bash bin/split.sh list | awk '{ print $2 }' | paste -sd, -)" >> "$GITHUB_OUTPUT"
 
-  ci:
-    name: CI
-    needs: version
-    if: ${{ !inputs.skip-tests }}
-    uses: ./.github/workflows/ci.yaml
-    secrets:
-      CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
-  upstream:
-    name: Upstream SDK tests
-    needs: version
-    if: ${{ !inputs.skip-tests }}
-    uses: ./.github/workflows/upstream.yaml
-    # What the upstream workflow needs to publish its test results.
-    permissions:
-      contents: read
-      issues: read
-      checks: write
-      pull-requests: write
+      # What ran on the release commit, for the person releasing: never fails the release.
+      - name: Report the commit's checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "### Checks on $GITHUB_SHA"
+            echo
+            echo "| Check | Conclusion |"
+            echo "| --- | --- |"
+            gh api --paginate "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs" \
+              --jq '.check_runs[] | "| \(.name) | \(.conclusion // .status) |"' | sort || echo "| (could not list the check runs) | |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   extension:
-    name: Extension binaries
+    name: Extension
     needs: version
     uses: ./.github/workflows/extension.yaml
+    # The archives only: the flake's checks are tests, which ran on main.
+    with:
+      checks: false
     secrets:
       CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
@@ -209,9 +205,7 @@ jobs:
 
   publish:
     name: Publish
-    needs: [version, ci, upstream, attest]
-    # ci and upstream are skipped with skip-tests; anything failed or cancelled stops the release.
-    if: ${{ !failure() && !cancelled() }}
+    needs: [version, attest]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     # Holds the GitHub App's key; give it required reviewers to approve each release.

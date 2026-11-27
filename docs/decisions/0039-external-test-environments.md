@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Amends decisions 5 and 6 of [Native Restate for the Test Harness](0038-native-restate-for-the-test-harness.md): the harness can connect to a Restate and an endpoint it does not run, and the repository uses devenv-extras' services for a part of the integration suite.
+Accepted. Amends decisions 5 and 6 of [Native Restate for the Test Harness](0038-native-restate-for-the-test-harness.md): the harness can connect to a Restate and an endpoint it does not run, and the repository uses devenv-extras' services for a part of the integration suite. Decisions 2 to 5 (the `managed` group, the suite's external mode, the devenv profiles and their CI job) are superseded by [Test Matrix](0045-test-matrix.md); decision 1, `ExternalRestate` and `ExternalEndpoint`, stands.
 
 ## Context
 

@@ -167,8 +167,8 @@ final class PayloadMappingTest extends IntegrationTestCase
         $service = json_decode($response->body, true, flags: JSON_THROW_ON_ERROR);
         self::assertIsArray($service);
         self::assertIsArray($service['handlers'] ?? null);
-        // Restate 1.7 returns the schemas with their object keys sorted, 1.8 in the order they were registered. Member
-        // order carries no meaning in JSON Schema, so compare with sorted keys; lists (`required`, `enum`) keep theirs.
+        // Member order carries no meaning in JSON Schema, and Restate's admin API need not keep it, so compare with
+        // sorted keys; lists (`required`, `enum`) keep theirs.
         $handlers = self::sortedKeys(array_column($service['handlers'], null, 'name'));
 
         $address = self::sortedKeys([

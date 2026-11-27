@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Restate\Tests\Worker;
 
+use PHPUnit\Framework\Attributes\Group;
 use Restate\Tests\Integration\Support\HttpClient;
 use Restate\Tests\Integration\Support\WorkerProbe;
 use Restate\Tests\Support\Workload\HttpDriver;
@@ -14,6 +15,7 @@ use Restate\Tests\Support\Workload\Workload;
  * shared endpoint (`just test integration frankenphp-worker`), and these tests check that it really was served by long-lived
  * worker script runs, each answering many requests from endpoints it built once, in one FrankenPHP process.
  */
+#[Group('runtime')]
 final class WorkerModeTest extends WorkerTestCase
 {
     private const int LONG_LIVED = 50;
@@ -45,7 +47,7 @@ final class WorkerModeTest extends WorkerTestCase
             $instance = $response->header(WorkerProbe::HEADER_INSTANCE);
             $requests = (int) $response->header(WorkerProbe::HEADER_REQUESTS);
             self::assertIsString($instance, 'The response does not name its worker.');
-            // One FrankenPHP process (the container's first, or the devenv process), whichever worker thread answers.
+            // One FrankenPHP process (the container's first), whichever worker thread answers.
             $pid ??= $response->header(WorkerProbe::HEADER_PID);
             self::assertIsString($pid, 'The response does not name its process.');
             self::assertSame($pid, $response->header(WorkerProbe::HEADER_PID), 'Every worker thread runs in the one FrankenPHP process.');

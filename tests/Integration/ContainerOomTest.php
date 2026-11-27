@@ -19,7 +19,6 @@ use Restate\Testing\PhpCliServer;
  * container).
  */
 #[Group('failure-nightly')]
-#[Group('managed')]
 final class ContainerOomTest extends FaultInjectionTestCase
 {
     #[\Override]

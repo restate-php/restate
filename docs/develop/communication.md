@@ -270,9 +270,6 @@ The SDK checks both before the call or send is journaled, and throws an `\Invali
 - a limit key is not one or two such levels separated by `/`;
 - a limit key is given for a target without a scope.
 
-> [!NOTE]
-> Needs Restate 1.8 or newer. On 1.7 a call or send with a scope or limit key fails the attempt, and Restate retries it ([Compatibility](../compatibility.md#restate-17)).
-
 ## Design notes
 
 Background for contributors:

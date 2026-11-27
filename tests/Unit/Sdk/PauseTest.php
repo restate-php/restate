@@ -14,8 +14,6 @@ use Restate\Internal\Backend\Invocation;
 use Restate\Internal\Backend\InvocationInput;
 use Restate\Internal\Backend\ResponseHead;
 use Restate\Internal\Backend\RunCompletionStatus;
-use Restate\Internal\BackendErrorCategory;
-use Restate\Internal\BackendException;
 use Restate\Internal\ClosureErrorMapper;
 use Restate\Internal\ExecutionHooks;
 use Restate\Internal\SuspensionException;
@@ -150,22 +148,6 @@ final class PauseTest extends TestCase
 
         self::assertCount(1, $seen);
         self::assertInstanceOf(PauseError::class, $seen[0]);
-    }
-
-    /** Below protocol v7 the VM refuses the pause and has already failed the attempt; the run throws that failure. */
-    public function testARefusedRunPauseFailsTheRunWithTheBackendError(): void
-    {
-        $refused = new BackendException('Pausing the invocation needs service protocol v7', 573, category: BackendErrorCategory::Protocol);
-        $invocation = ScriptedInvocation::new();
-        $invocation->runPauseFailure = $refused;
-        $ctx = Contexts::service($invocation);
-
-        try {
-            $ctx->run('charge', static fn (): never => throw new PauseError('approval needed'));
-            self::fail('Expected the refused pause to fail the run.');
-        } catch (BackendException $e) {
-            self::assertSame($refused, $e);
-        }
     }
 
     public function testARetryPolicyMayPauseOnceExhausted(): void

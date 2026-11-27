@@ -28,7 +28,7 @@ use Restate\Tests\Support\Protocol\FrameCodec;
  * worker's output is lost in full (FaultInjectionTestCase::killedWorkerLosesItsOutput()). The PR suite cuts at five
  * representative places; the `failure-nightly` group sweeps every frame boundary and every half frame.
  */
-#[Group('managed')]
+#[Group('runtime')]
 final class TruncatedResponseTest extends FaultInjectionTestCase
 {
     /** @var ?list<int> the frame types of batch's first attempt */

@@ -147,9 +147,6 @@ An invocation retry policy pauses with `onMaxAttempts: InvocationRetryPolicy::ON
 
 Resume a paused invocation with `restate invocations resume <id>`, in the Restate UI, or through the admin API (`PATCH /invocations/{id}/resume`). Add `?deployment=latest` to move an invocation pinned to an older deployment to the latest one, for example after you deployed a fix.
 
-> [!NOTE]
-> Needs Restate 1.8 or newer. On 1.7 the attempt fails instead with error 573 and a message saying that pausing needs a newer Restate (for a pausing run retry policy: "Feature 'pause' is not supported …", at the run's first retryable failure), and Restate retries it like any other failure ([Compatibility](../compatibility.md#restate-17)).
-
 ## Mapping exceptions with an error mapper
 
 An error mapper classifies exceptions, so your domain code does not need to know about Restate. It receives every exception that is not already a `TerminalError`, `RetryableError` or `PauseError`, from handlers and from `$ctx->run()` callbacks, and from the interceptors around them:

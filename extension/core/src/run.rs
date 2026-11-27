@@ -72,8 +72,7 @@ pub(crate) fn retryable_outcome(
 /// under [`crate::RetryPolicy::pause_now`], which leaves shared-core no
 /// outcome but `NextRetry::Pause`. The submitted error coming back (the same
 /// comparison as [`retryable_outcome`]) means the VM wrote the pause and the
-/// attempt must stop; any other error, such as 573 below protocol v7, is
-/// returned.
+/// attempt must stop; any other error is returned.
 pub(crate) fn pause_outcome(
     result: VMResult<()>,
     submitted_code: u16,

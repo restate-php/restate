@@ -22,8 +22,8 @@ Each script parsed its own options, kept its usage text in a comment, and found 
 
    `just --list` (and `just --list <module>`) lists them, with their arguments. A recipe's settings stay environment variables when the PHPUnit suites read them too.
 2. **Composer scripts stay the entry points of the common tasks**: `composer check`, `composer test`, `composer test:*`, `composer build:extension`, `composer bench*`, `composer load`. Several of them call a recipe. A recipe's logic is not repeated in a Composer script.
-3. **`bin/` keeps the programs**: `bench-compare.sh`, `conformance-upstream-local.sh`, `split.sh` and `check-packages.php`. Each of them does more than dispatch, such as a base checkout in a worktree with its own `composer install`, or a release's split, so a recipe around it would only move it.
-4. **The dev shell provides just and `cargo-artifacts`**, the tool `just extension build` reads the module's path from cargo's output with (`devenv.nix`).
+3. **`bin/` keeps the programs**: `bench-compare.sh`, `conformance-local.sh`, `split.sh` and `check-packages.php`. Each of them does more than dispatch, such as a base checkout in a worktree with its own `composer install`, or a release's split, so a recipe around it would only move it.
+4. **The dev shell provides just and `cargo-artifacts`**, the tool `just extension build` reads the module's path from cargo's output with (`nix/packages/cargo-artifacts`, through `nix/overlay.nix`).
 5. **The PIE archives are `nix build ./extension#pie`** (`just extension pie`), not `devenv build outputs.pie`. The extension flake declares restate-php.cachix.org in its `nixConfig`. The dev shell no longer pulls ext-php-rs.cachix.org, which had none of the paths the archives need that cache.nixos.org lacks.
 
 ### Rejected

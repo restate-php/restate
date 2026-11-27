@@ -70,8 +70,8 @@ final class IntegrationEndpoints
     {
         $uri = is_string($server['REQUEST_URI'] ?? null) ? $server['REQUEST_URI'] : '/';
 
-        // StatePreloadTest: its key list needs discovery manifest v5, which Restate 1.7 does not read, so it must stay
-        // out of the endpoint every test relies on.
+        // StatePreloadTest: its key list needs discovery manifest v5, so it stays out of the endpoint every test relies
+        // on, whose manifest tests read at older manifest versions too (v4).
         if ($uri === self::STATE_PRELOAD_PATH || str_starts_with($uri, self::STATE_PRELOAD_PATH . '/')) {
             $path = substr($uri, strlen(self::STATE_PRELOAD_PATH));
             $this->faults->serve($this->statePreload(), ['REQUEST_URI' => $path === '' ? '/' : $path] + $server, $body);

@@ -23,7 +23,7 @@ final class DiscoveryTest extends IntegrationTestCase
         // StatePreloadTest registers a second deployment, under /state-preload.
         $deployments = array_values(array_filter($deployments, static fn (mixed $deployment): bool => is_array($deployment) && !str_ends_with((string) ($deployment['uri'] ?? ''), '/state-preload')));
         self::assertCount(1, $deployments);
-        self::assertSame(5, $deployments[0]['min_protocol_version'] ?? null);
+        self::assertSame(7, $deployments[0]['min_protocol_version'] ?? null);
         self::assertSame(8, $deployments[0]['max_protocol_version'] ?? null);
     }
 

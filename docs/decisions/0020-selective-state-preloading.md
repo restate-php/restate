@@ -45,20 +45,19 @@ new InvocationConfiguration(statePreload: ['profile', 'cart']); // preload only 
 
 > Service PreloadedProfile preloads a list of state keys, which needs discovery manifest version 5 (Restate 1.8 or newer); this server negotiated version 4. Upgrade Restate, or preload all state (true) or none (false).
 
-Restate 1.7.14 relays it in the admin error (`META0003 … got status code '500 Internal Server Error' … Body: {"error":"Service PreloadedProfile preloads a list …"}`). Both upstream SDKs that have the feature fail the same way. Degrading to fully lazy state would keep reads correct, but it would silently turn every read of the hot keys into a suspension: a performance change the user did not ask for and would only notice in production. `true`, `false` and `[]` need only manifest v3, so they work on Restate 1.7.
+Restate 1.7.14 relayed it in the admin error (`META0003 … got status code '500 Internal Server Error' … Body: {"error":"Service PreloadedProfile preloads a list …"}`). Both upstream SDKs that have the feature fail the same way. Degrading to fully lazy state would keep reads correct, but it would silently turn every read of the hot keys into a suspension: a performance change the user did not ask for and would only notice in production. `true`, `false` and `[]` need only manifest v3, so they work on Restate 1.7.
 
-**Server minimum:** a key list needs Restate 1.8 (already the minimum supported server); booleans work on 1.7.
+**Server minimum:** a key list needs Restate 1.8, the minimum supported server (Restate 1.7 and older cannot invoke the deployment anyway: the SDK advertises service protocol v7 as its minimum). The manifest negotiation stays generic, so the refusal on manifest v4 remains.
 
 ## Evidence
 
 - Unit `StatePreloadTest` (14): manifest fields for each value, unset leaves nothing, invalid lists, v5 output on objects and workflows with handler overrides, refusal on v4 for service- and handler-level lists, booleans and `[]` on v4, plain service and service handler rejected.
-- Integration `StatePreloadTest` (service `PreloadedProfile` in `tests/Integration/Services/state_preload.php`, `statePreload: ['hot']`, with a `readEager` handler overriding it with `true`; served by a second endpoint under `/state-preload` that the test registers, so Restate 1.7 can still register the main one):
+- Integration `StatePreloadTest` (service `PreloadedProfile` in `tests/Integration/Services/state_preload.php`, `statePreload: ['hot']`, with a `readEager` handler overriding it with `true`; served by a second endpoint under `/state-preload` that the test registers, so the main endpoint's manifest can still be read at manifest v4):
   - Restate 1.8.1: the admin API stores `state_preload_policy` `{"Partial": ["hot"]}` for the service and `"All"` for `readEager`. Reading `hot` returns in the first attempt; reading `cold` or a missing key returns in the second (the lazy fetch suspended the first); `readEager` reads `cold` in the first attempt.
-  - Restate 1.7.14: registration fails with the message above, and the service stays unknown to the ingress (404).
 - `LazyCounter` (test services and `VirtualObjectTest`) uses `statePreload: false`.
 
 ## Consequences
 
-- Users on Restate 1.7 who configure a key list find out at registration, with the fix in the message.
+- A key list on a manifest below v5 fails discovery, with the fix in the message (with Restate 1.8 required, only a client asking for an older manifest sees it).
 - The whitelist is best-effort: a whitelisted key that does not fit in the eager state size limit, or does not exist, is fetched on read. Handlers must not assume a listed key is free to read.
 - If Java or the e2e suite add preloading cases later, the test services need nothing: the e2e services do not configure state preloading.

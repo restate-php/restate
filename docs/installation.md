@@ -10,7 +10,7 @@ This page covers what the Restate PHP SDK needs, which Composer packages it is m
 | `restate/ingress`: calling services from other code | 8.4, 8.5 or 8.6 | Not needed | 1.8 or newer |
 | `restate/testing`: the test harness | 8.4, 8.5 or 8.6 | Not needed in the test process. The endpoint it serves needs it. | Starts its own (1.8.1 by default), in Docker or podman or as a local `restate-server` |
 
-Restate 1.7 works best-effort: a few features that need 1.8 fail there with a message saying so ([Compatibility](compatibility.md#restate-17)).
+Restate 1.7 and older are not supported: Restate 1.7.14 registers an endpoint built with this SDK but fails every invocation with `RT0013` (incompatible service protocol versions) ([Compatibility](compatibility.md#restate-server-versions)).
 
 The extension has prebuilt binaries for Linux on x86_64 and arm64, with glibc 2.28 or newer or with musl (Alpine). Everywhere else, [build it from source](#building-from-source) or [use Nix](#with-nix). [Compatibility](compatibility.md) has the full matrix.
 

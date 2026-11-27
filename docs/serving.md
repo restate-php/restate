@@ -192,7 +192,7 @@ $handler = Endpoint::psr([$greeter], $responseFactory, identityKeys: $identityKe
 
 **Configured keys fail closed.** Building the endpoint throws `InvalidArgumentException` when the configured list is empty, or a key is an empty string or `false`, which is what `getenv()` returns for a variable that is not set. A missing key therefore stops the endpoint instead of turning verification off. A malformed key throws `InvalidArgumentException` too. Under PHP-FPM, check `clear_env` ([PHP-FPM and FastCGI](#php-fpm-and-fastcgi)).
 
-**Giving Restate its key.** Restate signs its requests once it has an Ed25519 private key: a PKCS#8 PEM file named by `worker.invoker.request-identity-private-key-pem-file` (environment variable `RESTATE_WORKER__INVOKER__REQUEST_IDENTITY_PRIVATE_KEY_PEM_FILE`). Restate 1.7.14 and 1.8.1 still read the top-level `request-identity-private-key-pem-file`, with a deprecation warning. The endpoint's identity key is the matching public key as `publickeyv1_<base58 of the 32 key bytes>`.
+**Giving Restate its key.** Restate signs its requests once it has an Ed25519 private key: a PKCS#8 PEM file named by `worker.invoker.request-identity-private-key-pem-file` (environment variable `RESTATE_WORKER__INVOKER__REQUEST_IDENTITY_PRIVATE_KEY_PEM_FILE`). Restate 1.8.1 still reads the top-level `request-identity-private-key-pem-file`, with a deprecation warning. The endpoint's identity key is the matching public key as `publickeyv1_<base58 of the 32 key bytes>`.
 
 **Creating a key pair.** Generate the private key with OpenSSL and start Restate with it; Restate logs the matching identity key when it loads the file:
 
@@ -209,7 +209,7 @@ An endpoint that does not trust the key refuses discovery, so Restate cannot reg
 
 **What a request must carry.** When keys are configured, invocation and discovery requests must carry `x-restate-signature-scheme: v1` and a valid `x-restate-jwt-v1` token. Invalid, missing or explicitly unsigned identity is rejected with `401` before discovery or handler execution. The endpoint answers `/health` first and unknown paths with `404` before it checks identity. With a logger, the rejection is logged at error level, with the verifier's reason in `restate.identity.error` (for example `invalid JWT: ExpiredSignature`).
 
-**The audience is the request path:** `/invoke/<Service>/<handler>` or `/discover`. Restate never puts an object or workflow key in the path (the key travels in the invocation's start message), so `/invoke/Counter/add` is the audience for every Counter key. Restate signs the path it appends to the deployment URI, not including the path of the deployment URI itself (1.8.1 and 1.7.14 alike). The SDK therefore compares the token with the request path's last three segments when they are `/invoke/<Service>/<handler>`, or with `/discover`, whatever prefix the endpoint is mounted under.
+**The audience is the request path:** `/invoke/<Service>/<handler>` or `/discover`. Restate never puts an object or workflow key in the path (the key travels in the invocation's start message), so `/invoke/Counter/add` is the audience for every Counter key. Restate signs the path it appends to the deployment URI, not including the path of the deployment URI itself (as of 1.8.1). The SDK therefore compares the token with the request path's last three segments when they are `/invoke/<Service>/<handler>`, or with `/discover`, whatever prefix the endpoint is mounted under.
 
 **The token checks**, with zero leeway:
 
@@ -421,7 +421,7 @@ Error responses are `application/json` `{"error": "<message>"}`, like the `401` 
 
 ## Tested Runtimes
 
-The integration suite runs, unchanged, under PHP's built-in server, under FrankenPHP with the ZTS build in classic and in worker mode, and against php-fpm behind nginx (HTTP/1.1 and h2c) and Caddy (h2c), with the settings above. The upstream SDK test suite runs against `php -S` behind a Caddy h2c front door and against php-fpm behind nginx. `php -S` is a test fixture there, not a deployment recommendation. [Status](status.md#supported-platforms) lists the PHP and Restate versions, [TESTING.md](../TESTING.md) how each suite runs.
+The integration suite runs, unchanged, under PHP's built-in server, under FrankenPHP with the ZTS build in classic and in worker mode, and against php-fpm behind nginx (HTTP/1.1 and h2c) and Caddy (h2c), with the settings above. The SDK conformance suite runs against `php -S` behind a Caddy h2c front door and against php-fpm behind nginx. `php -S` is a test fixture there, not a deployment recommendation. [Status](status.md#supported-platforms) lists the PHP and Restate versions, [TESTING.md](../TESTING.md) how each suite runs.
 
 ## Runtime Limitations
 
@@ -429,7 +429,7 @@ The integration suite runs, unchanged, under PHP's built-in server, under Franke
 - Every `$ctx->run()` and every await of a result not yet journaled costs a new attempt and a full replay: O(N²) replay work for N steps, bounded per attempt by the abort timeout ([Long Journals](#long-journals-cost-quadratic-replay)).
 - PHP-FPM's front doors need settings for Restate's length-less bodies and long attempts; at their defaults they fail every attempt above 4 KiB (Caddy), 16 KiB (Apache) or 1 MiB (nginx) ([PHP-FPM and FastCGI](#php-fpm-and-fastcgi)).
 - No bundled PSR-7 implementation and no framework-specific adapters.
-- The upstream SDK test suite passes (see [Conformance](internals/conformance.md)); that is not an official conformance claim.
+- The SDK conformance suite passes (see [Conformance](internals/conformance.md)); that is not an official conformance claim.
 
 ## Design notes
 

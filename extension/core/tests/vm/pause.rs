@@ -1,21 +1,15 @@
 //! Pausing the invocation instead of retrying it: a handler's pause request
 //! (`notify_pause`), a run's pause request (`propose_run_pause`), and a run
-//! retry policy that pauses once exhausted. All of it needs protocol v7
-//! (Restate 1.8); below it shared-core reports 573 (unsupported feature),
-//! which Restate retries like any other error.
+//! retry policy that pauses once exhausted, on protocol v7 (what Restate 1.8
+//! negotiates).
 
 use crate::protocol::{
     propose_run_completion_message, ErrorBehavior, ErrorMessage, Message,
     ProposeRunCompletionMessage, RunCommandMessage,
 };
 use crate::support::*;
-use restate_php_core::{
-    Bytes, ErrorCategory, Handle, OnMaxAttempts, Progress, RetryPolicy, RunRetryOutcome, Vm,
-};
+use restate_php_core::{Bytes, Handle, OnMaxAttempts, Progress, RetryPolicy, RunRetryOutcome, Vm};
 use std::time::Duration;
-
-/// shared-core's "unsupported feature for the negotiated protocol version".
-const UNSUPPORTED_FEATURE: u32 = 573;
 
 fn executing_run(invocation: Invocation) -> (Vm, Handle) {
     let mut vm = invocation.running();
@@ -45,20 +39,6 @@ fn fixed_delay(max_attempts: u32, on_max_attempts: OnMaxAttempts) -> RetryPolicy
     }
 }
 
-/// The attempt failed with 573 for Restate to retry, saying a pause needs v7
-/// and keeping the failure's message.
-fn assert_pause_refused(error: &ErrorMessage, version: u32, message: &str) {
-    assert_eq!(error.code, UNSUPPORTED_FEATURE, "{error:?}");
-    assert_eq!(error.behavior, ErrorBehavior::Retry as i32);
-    assert_eq!(
-        error.message,
-        format!(
-            "Pausing the invocation needs service protocol v7 (Restate 1.8 or newer), but this \
-             invocation negotiated v{version}; failing the attempt instead: {message}"
-        )
-    );
-}
-
 #[test]
 fn a_handler_pause_ends_the_attempt_asking_restate_to_pause() {
     let mut vm = Invocation::new().content_type(V7).running();
@@ -73,20 +53,6 @@ fn a_handler_pause_ends_the_attempt_asking_restate_to_pause() {
     assert_eq!(error.next_retry_delay, None);
     assert_eq!(error.related_command_index, None);
     assert!(vm.take_output().is_none(), "the response is complete");
-}
-
-/// Below v7 the request cannot be expressed; the attempt fails with 573
-/// instead, which Restate retries.
-#[test]
-fn a_handler_pause_is_refused_below_v7() {
-    for (content_type, version) in [(V5, 5), (V6, 6)] {
-        let mut vm = Invocation::new().content_type(content_type).running();
-
-        vm.notify_pause(b"needs a fix".to_vec(), b"".to_vec());
-
-        assert_pause_refused(&single(&output(&mut vm)), version, "needs a fix");
-        assert!(vm.take_output().is_none(), "the response is complete");
-    }
 }
 
 #[test]
@@ -139,21 +105,6 @@ fn a_run_pause_of_a_new_run_journals_the_run_first() {
         frames[1].decode::<ErrorMessage>().behavior,
         ErrorBehavior::Pause as i32
     );
-}
-
-#[test]
-fn a_run_pause_is_refused_below_v7() {
-    for (content_type, version) in [(V5, 5), (V6, 6)] {
-        let (mut vm, handle) = executing_run(retried_run(content_type, 0));
-
-        let error = vm
-            .propose_run_pause(handle, b"approval needed".to_vec(), Duration::ZERO)
-            .unwrap_err();
-
-        assert_eq!(error.category(), ErrorCategory::Protocol, "{content_type}");
-        assert_eq!(error.code(), Some(573));
-        assert_pause_refused(&single(&output(&mut vm)), version, "approval needed");
-    }
 }
 
 /// Proposes a retryable failure of `charge` under `policy` and returns the
@@ -244,41 +195,11 @@ fn an_exponential_policy_pauses_once_its_duration_is_used_up() {
     assert_eq!(error.behavior, ErrorBehavior::Pause as i32);
 }
 
-/// Below v7 shared-core refuses a retryable failure under a pausing policy
-/// with 573, also while attempts are left.
-#[test]
-fn a_pausing_policy_is_refused_below_v7_for_a_retryable_failure() {
-    let (mut vm, handle) = executing_run(retried_run(V6, 0));
-
-    let error = vm
-        .propose_run_retryable(
-            handle,
-            retryable(503, b"unavailable".to_vec(), &[]),
-            Duration::ZERO,
-            None,
-            fixed_delay(3, OnMaxAttempts::Pause),
-        )
-        .unwrap_err();
-
-    assert_eq!(error.category(), ErrorCategory::Protocol);
-    assert_eq!(error.code(), Some(573));
-    // shared-core's own check, with its own message.
-    let reported: ErrorMessage = single(&output(&mut vm));
-    assert_eq!(reported.code, UNSUPPORTED_FEATURE);
-    assert_eq!(reported.behavior, ErrorBehavior::Retry as i32);
-    assert!(
-        reported
-            .message
-            .starts_with("Feature 'pause' is not supported"),
-        "{reported:?}"
-    );
-}
-
 /// A success or terminal failure never uses the policy, so a pausing policy
-/// does not make it fail below v7.
+/// does not stop the run from completing.
 #[test]
-fn a_pausing_policy_does_not_stop_a_run_from_completing_below_v7() {
-    let (mut vm, handle) = executing_run(Invocation::new().content_type(V6));
+fn a_pausing_policy_does_not_stop_a_run_from_completing() {
+    let (mut vm, handle) = executing_run(Invocation::new().content_type(V7));
     vm.propose_run_success(
         handle,
         Bytes::from_static(b"42"),
@@ -292,7 +213,7 @@ fn a_pausing_policy_does_not_stop_a_run_from_completing_below_v7() {
         ))
     );
 
-    let (mut vm, handle) = executing_run(Invocation::new().content_type(V6));
+    let (mut vm, handle) = executing_run(Invocation::new().content_type(V7));
     vm.propose_run_failure(
         handle,
         terminal_failure(402, "declined"),

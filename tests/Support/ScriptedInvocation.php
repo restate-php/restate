@@ -76,9 +76,6 @@ final class ScriptedInvocation implements Invocation, ReplayStateProvider
     /** What proposeRunCompletionRetryable() reports; Completed also completes the run with the failure. */
     public RunCompletionStatus $retryableRunStatus = RunCompletionStatus::AttemptEnded;
 
-    /** What proposeRunCompletionPause() throws, as the VM does below protocol v7; null: it ends the attempt. */
-    public ?\Throwable $runPauseFailure = null;
-
     /** @var list<array{0: string, 1: list<mixed>, 2: mixed}> operation, arguments, result */
     private array $journal = [];
 
@@ -457,9 +454,6 @@ final class ScriptedInvocation implements Invocation, ReplayStateProvider
     public function proposeRunCompletionPause(int $handle, string $message, int $attemptDurationMillis): void
     {
         $this->record(__FUNCTION__, [$handle, $message, $attemptDurationMillis]);
-        if ($this->runPauseFailure !== null) {
-            throw $this->runPauseFailure;
-        }
     }
 
     public function sysGetState(string $key): int

@@ -7,7 +7,7 @@ use Restate\InvocationHandle;
 use Restate\Service;
 use Restate\Target;
 
-// Proxy from the upstream SDK test suite (restatedev/e2e, sdk-tests v2.3, contracts/Proxy.kt).
+// Proxy from the SDK conformance suite (restatedev/e2e, sdk-tests v2.3, contracts/Proxy.kt).
 
 // ProxyRequest.scope scopes the target (Target::scoped()); ProxyRequest.limitKey is the call's or send's limit key
 // within it (ServiceToServiceScopeConcurrency).

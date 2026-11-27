@@ -33,6 +33,7 @@ final class LongJournalTest extends ScaleTestCase
      * `post_max_size` (8M). The endpoint's `enable_post_data_reading=0` (a PhpCliServer default) keeps PHP from
      * warning about it, which with `display_errors` on would corrupt the response (docs/decisions/0032-stray-output.md).
      */
+    #[Group('runtime')]
     public function testAJournalOverEightMebibytesReplays(): void
     {
         $this->assertLongJournal(10, 1 << 20, timeout: 120.0);

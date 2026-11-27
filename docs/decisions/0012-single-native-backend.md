@@ -25,7 +25,7 @@ Matching shared-core (replay, journal mismatch detection, suspension, retries, e
 
 ### Why not FFI
 
-A backend that loaded the same Rust core through PHP's FFI came first, and the extension replaced it once it passed the same integration and upstream suites, on every PHP build the SDK supports (below). Both run the same core; the extension installs and loads like any PHP extension (prebuilt binaries through PIE, [Prebuilt Extension Binaries](0030-prebuilt-extension-binaries.md)), while FFI needs `ext-ffi`, which production PHP builds often lack or restrict (`ffi.enable=preload` by default), plus a shared library shipped beside the PHP code. Keeping both would have meant two bridges to one core to test and release.
+A backend that loaded the same Rust core through PHP's FFI came first, and the extension replaced it once it passed the same integration and conformance suites, on every PHP build the SDK supports (below). Both run the same core; the extension installs and loads like any PHP extension (prebuilt binaries through PIE, [Prebuilt Extension Binaries](0030-prebuilt-extension-binaries.md)), while FFI needs `ext-ffi`, which production PHP builds often lack or restrict (`ffi.enable=preload` by default), plus a shared library shipped beside the PHP code. Keeping both would have meant two bridges to one core to test and release.
 
 ## Evidence
 

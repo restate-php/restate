@@ -1,4 +1,4 @@
-# The upstream SDK test suite's service container (the upstream-frankenphp image): every request goes to
+# The SDK conformance suite's service container (the conformance-frankenphp image): every request goes to
 # test-services/index.php, baked into the image at /app, in FrankenPHP classic mode on :9080, the port the
 # suite calls, over h2c or HTTP/1.1. enable_post_data_reading=0 as docs/serving.md recommends. Classic
 # mode starts every request afresh, as php -S does, so FrankenPHP's default threads (twice the CPUs)

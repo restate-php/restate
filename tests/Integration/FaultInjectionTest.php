@@ -17,7 +17,7 @@ use Restate\Tests\Support\Protocol\FrameCodec;
  * Restate commits every frame it decoded before the response broke off, so a run executes again exactly when its
  * proposed completion did not arrive whole. The full failure-injection scenarios build on this.
  */
-#[Group('managed')]
+#[Group('runtime')]
 final class FaultInjectionTest extends FaultInjectionTestCase
 {
     public function testAResponseCutAfterTheRunCommandMakesTheRunExecuteAgain(): void

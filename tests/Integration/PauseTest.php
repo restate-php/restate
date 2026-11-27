@@ -11,10 +11,7 @@ use Restate\Tests\Integration\Support\IntegrationTestCase;
 /**
  * Pausing the invocation instead of retrying it (`PauseError`, `OnMaxAttempts::Pause`), with the `Pauses` service in
  * tests/Integration/Services/pauses.php: each handler pauses until the test fixes its condition, then returns how many
- * attempts it took.
- *
- * Restate 1.8 (service protocol v7) pauses the invocation; resuming it through the admin API runs it again. Restate 1.7
- * (v6) cannot pause: the attempt fails with 573 and a message saying why, and Restate keeps retrying.
+ * attempts it took. Restate pauses the invocation; resuming it through the admin API runs it again.
  */
 final class PauseTest extends IntegrationTestCase
 {
@@ -35,14 +32,6 @@ final class PauseTest extends IntegrationTestCase
         $id = bin2hex(random_bytes(8));
         $invocationId = self::send("Pauses/{$handler}", $id);
 
-        if (!self::supportsPause()) {
-            self::assertPauseRefused($invocationId, $handler === 'runExhausted'
-                ? "Feature 'pause' is not supported"
-                : 'Pausing the invocation needs service protocol v7 (Restate 1.8 or newer), but this invocation negotiated v6; failing the attempt instead: ' . sprintf($message, $id));
-
-            return;
-        }
-
         self::restate()->waitForInvocationStatus($invocationId, 'paused', self::WAIT_SECONDS);
         // Paused by the SDK, not by Restate giving up: no attempt after the one that asked to pause. (Restate 1.8 keeps
         // no failure in sys_invocation for a paused invocation, so $message only shows in its log.)
@@ -60,35 +49,6 @@ final class PauseTest extends IntegrationTestCase
         self::assertSame('completed', self::invocationRow($invocationId, 'status', 'last_failure')['status']);
     }
 
-    private static function supportsPause(): bool
-    {
-        return version_compare(self::restate()->serverVersion(), '1.8.0', '>=');
-    }
-
-    /**
-     * On Restate 1.7 the pause cannot be requested: the attempt fails with 573 and $message, Restate retries it, and
-     * the invocation never pauses. The test kills it afterwards.
-     */
-    private static function assertPauseRefused(string $invocationId, string $message): void
-    {
-        $deadline = microtime(true) + self::WAIT_SECONDS;
-        do {
-            $row = self::invocationRow($invocationId, 'status', 'last_failure');
-            if (str_starts_with(is_string($row['last_failure'] ?? null) ? $row['last_failure'] : '', '[573 ')) {
-                break;
-            }
-            usleep(100_000);
-        } while (microtime(true) < $deadline);
-
-        try {
-            // Restate puts the SDK's code in the message; last_failure_error_code is its own (RT0007).
-            self::assertStringStartsWith("[573 Unsupported feature] {$message}", self::failureMessage($row));
-            self::assertSame('backing-off', $row['status']);
-        } finally {
-            HttpClient::patch(self::restate()->adminUrl() . "/invocations/{$invocationId}/kill");
-        }
-    }
-
     private static function send(string $path, string $id): string
     {
         $sent = self::invoke("{$path}/send", json_encode($id, JSON_THROW_ON_ERROR));
@@ -96,15 +56,6 @@ final class PauseTest extends IntegrationTestCase
         self::assertIsString($invocationId, "send returned no invocation id: {$sent}");
 
         return $invocationId;
-    }
-
-    /** @param array<string, mixed> $row */
-    private static function failureMessage(array $row): string
-    {
-        $failure = $row['last_failure'] ?? null;
-        self::assertIsString($failure, json_encode($row, JSON_THROW_ON_ERROR));
-
-        return $failure;
     }
 
     /** @return list<string> one line per attempt */

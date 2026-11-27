@@ -9,8 +9,7 @@ use Restate\Tests\Integration\Support\HttpResponse;
 use Restate\Tests\Integration\Support\IntegrationTestCase;
 
 /**
- * Named signals between invocations (service `Signals` in tests/Integration/Services/signals.php). Named signals exist
- * on every protocol version the SDK speaks (v5 to v7), so this runs unchanged against Restate 1.7 (v6) and 1.8 (v7).
+ * Named signals between invocations (service `Signals` in tests/Integration/Services/signals.php).
  */
 final class SignalTest extends IntegrationTestCase
 {

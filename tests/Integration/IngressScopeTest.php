@@ -7,15 +7,13 @@ namespace Restate\Tests\Integration;
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\HttpFactory;
 use Restate\Ingress\IngressClient;
-use Restate\Ingress\IngressException;
 use Restate\Target;
 use Restate\Tests\Integration\Support\IntegrationTestCase;
 
 /**
  * Scope and limit key through the ingress client against the real Restate server, with the services in
  * tests/Integration/Services/scopes.php: the scoped routes, the limit key header, and attaching to a scoped workflow
- * run or idempotent invocation through the id `/restate/lookup` computes. Restate 1.7 refuses scoped requests (its
- * vqueues are experimental and off by default).
+ * run or idempotent invocation through the id `/restate/lookup` computes.
  */
 final class IngressScopeTest extends IntegrationTestCase
 {
@@ -23,11 +21,6 @@ final class IngressScopeTest extends IntegrationTestCase
     {
         $scope = self::scope();
         $info = self::client()->scope($scope)->serviceClient('ScopeInfo');
-        if (!self::supportsScope()) {
-            self::assertRefused(static fn () => $info->request('describe', 'hello')->limitKey('eu/user-42')->call());
-
-            return;
-        }
 
         $called = $info->request('describe', 'hello')->limitKey('eu/user-42')->call();
         $sent = $info->request('describe', 'hello')->limitKey('user-7')->sendAfter(10)->attach();
@@ -44,11 +37,6 @@ final class IngressScopeTest extends IntegrationTestCase
         $key = 'run-' . bin2hex(random_bytes(4));
         $restate = self::client();
         $workflow = $restate->scope($scope)->workflowClient('ScopeWorkflow', $key);
-        if (!self::supportsScope()) {
-            self::assertRefused(static fn () => $workflow->submit('go'));
-
-            return;
-        }
 
         $submission = $workflow->submit('go');
         $result = $workflow->attach();
@@ -67,11 +55,6 @@ final class IngressScopeTest extends IntegrationTestCase
         $restate = self::client();
         $counter = Target::object('ScopedCounter', $key, 'add')->scoped($scope);
         $info = Target::service('ScopeInfo', 'describe')->scoped($scope);
-        if (!self::supportsScope()) {
-            self::assertRefused(static fn () => $restate->send($counter, 5, 'add-five'));
-
-            return;
-        }
 
         $added = $restate->send($counter, 5, 'add-five')->attach();
         $described = $restate->send($info, 'hello', 'describe-once')->attach();
@@ -80,23 +63,6 @@ final class IngressScopeTest extends IntegrationTestCase
         self::assertSame([5, $scope], [$added['count'], $added['scope']]);
         self::assertSame($added, $restate->idempotentInvocation($counter, 'add-five')->attach());
         self::assertSame($described, $restate->idempotentInvocation($info, 'describe-once')->output()->value());
-    }
-
-    private static function supportsScope(): bool
-    {
-        return version_compare(self::restate()->serverVersion(), '1.8.0', '>=');
-    }
-
-    /** Restate 1.7 refuses a scoped request at the ingress, unless its experimental vqueues are enabled. */
-    private static function assertRefused(\Closure $request): void
-    {
-        try {
-            $request();
-            self::fail('Restate 1.7 accepted a scoped request.');
-        } catch (IngressException $e) {
-            self::assertSame(400, $e->statusCode());
-            self::assertSame('scoped invocations require vqueues to be enabled', $e->errorMessage());
-        }
     }
 
     private static function scope(): string

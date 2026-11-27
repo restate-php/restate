@@ -26,20 +26,22 @@ fn every_supported_protocol_version_is_negotiated() {
     }
 }
 
-/// The range Discovery advertises is exactly the range the VM negotiates.
+/// Discovery advertises v7 (Restate 1.8) up to shared-core's maximum, so
+/// Restate 1.7 and older cannot invoke the deployment. The VM still negotiates
+/// every version shared-core speaks, v5 and v6 included.
 #[test]
-fn the_reported_protocol_range_is_what_the_vm_negotiates() {
+fn the_reported_protocol_range_starts_at_v7_and_the_vm_negotiates_it() {
     let versions = protocol_versions();
-    assert_eq!((versions.min, versions.max), (5, 8));
+    assert_eq!((versions.min, versions.max), (7, 8));
 
     let content_type = |version: u32| format!("application/vnd.restate.invocation.v{version}");
-    for version in versions.min..=versions.max {
+    for version in 5..=versions.max {
         assert!(
             Vm::new(headers(&content_type(version))).is_ok(),
             "v{version}"
         );
     }
-    for version in [versions.min - 1, versions.max + 1] {
+    for version in [4, versions.max + 1] {
         assert!(
             Vm::new(headers(&content_type(version))).is_err(),
             "v{version}"

@@ -14,7 +14,7 @@ use crate::validation;
 use bytes::Bytes;
 use restate_sdk_shared_core::{
     AwakeableHandle, CoreVM, NonEmptyValue, NotificationHandle, PayloadOptions, RunExitResult,
-    UnresolvedFuture, VMOptions, Value, Version, VM,
+    UnresolvedFuture, VMOptions, Value, VM,
 };
 use std::collections::{BTreeSet, HashMap};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -39,17 +39,6 @@ pub struct Vm {
     /// Captures shared-core's log events while [`Vm::logged`] runs; none
     /// when the VM was created without a log level.
     logs: Option<LogCapture>,
-}
-
-/// shared-core's "unsupported feature for the negotiated protocol version".
-const UNSUPPORTED_FEATURE: u16 = restate_sdk_shared_core::error::codes::UNSUPPORTED_FEATURE.code();
-
-/// `Service/handler`, or `Service/key/handler` for a keyed target.
-fn target_name(service: &str, key: Option<&str>, handler: &str) -> String {
-    match key {
-        Some(key) => format!("{service}/{key}/{handler}"),
-        None => format!("{service}/{handler}"),
-    }
 }
 
 fn now() -> Result<Duration> {
@@ -179,42 +168,13 @@ impl Vm {
     }
 
     /// Ends the attempt asking Restate to pause the invocation instead of
-    /// retrying it; it stays paused until someone resumes it. Needs protocol
-    /// v7: below it the attempt fails with 573 instead (see
-    /// [`Vm::refuse_pause_below_v7`]), which Restate retries like any error.
-    /// Message and stack trace may be any bytes; see
-    /// [`validation::lossy_text`].
+    /// retrying it; it stays paused until someone resumes it. Message and
+    /// stack trace may be any bytes; see [`validation::lossy_text`].
     pub fn notify_pause(&mut self, message: impl Into<Vec<u8>>, stacktrace: impl Into<Vec<u8>>) {
-        let message = validation::lossy_text(message);
-        if self.refuse_pause_below_v7(&message).is_some() {
-            return;
-        }
-        let error = restate_sdk_shared_core::Error::internal(message)
+        let error = restate_sdk_shared_core::Error::internal(validation::lossy_text(message))
             .with_stacktrace(validation::lossy_text(stacktrace))
             .with_should_pause(true);
         self.core.notify_error(error, None);
-    }
-
-    /// Below protocol v7 a pause cannot be expressed. shared-core would fail
-    /// the attempt with 573 and a message naming its internal feature
-    /// ("error behavior" for a handler, "pause" for a run) instead of the
-    /// failure; this fails it with 573 too, but says what was asked and keeps
-    /// the failure's message. Returns the error when it refused.
-    fn refuse_pause_below_v7(&mut self, message: &str) -> Option<Error> {
-        let version = self.core.get_response_head().version;
-        if version >= Version::V7 {
-            return None;
-        }
-        let error = restate_sdk_shared_core::Error::new(
-            UNSUPPORTED_FEATURE,
-            format!(
-                "Pausing the invocation needs service protocol v7 (Restate 1.8 or newer), but this \
-                 invocation negotiated v{}; failing the attempt instead: {message}",
-                version as u32
-            ),
-        );
-        self.core.notify_error(error.clone(), None);
-        Some(Error::from(error))
     }
 
     pub fn end(&mut self) -> Result<()> {
@@ -310,7 +270,7 @@ impl Vm {
         Ok(self.core.propose_run_completion(
             handle.into(),
             RunExitResult::Success(bytes),
-            retry_policy.for_final_result().into(),
+            retry_policy.into(),
         )?)
     }
 
@@ -323,7 +283,7 @@ impl Vm {
         Ok(self.core.propose_run_completion(
             handle.into(),
             RunExitResult::TerminalFailure(failure.into()),
-            retry_policy.for_final_result().into(),
+            retry_policy.into(),
         )?)
     }
 
@@ -332,9 +292,8 @@ impl Vm {
     /// the policy's limits still apply. Once the policy is exhausted the
     /// failure, with its code and metadata, is the run's terminal result
     /// (metadata needs protocol v6). A policy with
-    /// [`crate::OnMaxAttempts::Pause`] pauses the invocation instead (protocol
-    /// v7; below it the proposal fails with 573 whether or not the policy is
-    /// exhausted); see [`RunRetryOutcome::AttemptEnded`].
+    /// [`crate::OnMaxAttempts::Pause`] pauses the invocation instead; see
+    /// [`RunRetryOutcome::AttemptEnded`].
     pub fn propose_run_retryable(
         &mut self,
         handle: Handle,
@@ -365,10 +324,8 @@ impl Vm {
     /// Restate to pause the invocation instead of retrying. The run stays
     /// unfinished: once the invocation is resumed it executes again. Shared
     /// core reports the failure with the run as the related command, like a
-    /// retryable failure, under [`RetryPolicy::pause_now`]. Needs protocol
-    /// v7: below it this fails with 573 (see [`Vm::refuse_pause_below_v7`]),
-    /// which ends the attempt for Restate to retry. `message` may be any
-    /// bytes; see [`validation::lossy_text`].
+    /// retryable failure, under [`RetryPolicy::pause_now`]. `message` may be
+    /// any bytes; see [`validation::lossy_text`].
     pub fn propose_run_pause(
         &mut self,
         handle: Handle,
@@ -377,9 +334,6 @@ impl Vm {
     ) -> Result<()> {
         let failure = RetryableFailure::new(500, message, vec![]);
         let (code, message) = (failure.code(), failure.message().to_owned());
-        if let Some(error) = self.refuse_pause_below_v7(&message) {
-            return Err(error);
-        }
 
         let result = self.core.propose_run_completion(
             handle.into(),
@@ -479,9 +433,7 @@ impl Vm {
 
     // --- Communication
 
-    /// Calls a handler; the handle completes with the call's result. A scope
-    /// or limit key needs protocol v7: below it the attempt fails with 573
-    /// (see [`Vm::require_v7`]).
+    /// Calls a handler; the handle completes with the call's result.
     pub fn sys_call(
         &mut self,
         target: CallTarget,
@@ -489,7 +441,6 @@ impl Vm {
         idempotency_key: Option<String>,
     ) -> Result<Handle> {
         let target = target.into_shared(idempotency_key)?;
-        self.require_v7_for_scoped_target("A call", &target)?;
         let handle = self
             .core
             .sys_call(target, payload, None, PayloadOptions::default())?;
@@ -497,8 +448,7 @@ impl Vm {
     }
 
     /// Sends a one-way invocation, after `delay` when given; the handle
-    /// completes with the new invocation's id. A scope or limit key needs
-    /// protocol v7, as for [`Vm::sys_call`].
+    /// completes with the new invocation's id.
     pub fn sys_send(
         &mut self,
         target: CallTarget,
@@ -507,7 +457,6 @@ impl Vm {
         idempotency_key: Option<String>,
     ) -> Result<Handle> {
         let target = target.into_shared(idempotency_key)?;
-        self.require_v7_for_scoped_target("A send", &target)?;
         let execution_time = match delay {
             Some(delay) => Some(now()? + delay),
             None => None,
@@ -522,10 +471,9 @@ impl Vm {
         Ok(handle.invocation_id_notification_handle.into())
     }
 
-    /// Attaches to an invocation; the handle completes with its result. A
-    /// scoped target needs protocol v7, as for [`Vm::sys_call`].
+    /// Attaches to an invocation; the handle completes with its result.
     pub fn sys_attach_invocation(&mut self, target: AttachTarget) -> Result<Handle> {
-        self.require_v7_for_scoped_attach("Attaching to", &target)?;
+        validation::scope_value(target.scope().map(str::to_owned))?;
         Ok(self.core.sys_attach_invocation(target.into())?.into())
     }
 
@@ -533,75 +481,8 @@ impl Vm {
     /// [`Vm::sys_attach_invocation`], or with [`NotificationResult::Void`]
     /// while it runs.
     pub fn sys_get_invocation_output(&mut self, target: AttachTarget) -> Result<Handle> {
-        self.require_v7_for_scoped_attach("Getting the output of", &target)?;
+        validation::scope_value(target.scope().map(str::to_owned))?;
         Ok(self.core.sys_get_invocation_output(target.into())?.into())
-    }
-
-    fn require_v7_for_scoped_target(
-        &mut self,
-        operation: &str,
-        target: &restate_sdk_shared_core::Target,
-    ) -> Result<()> {
-        match &target.scope {
-            None => Ok(()),
-            Some(scope) => self.require_v7(|| {
-                format!(
-                    "{operation} to {} in scope '{scope}'",
-                    target_name(&target.service, target.key.as_deref(), &target.handler)
-                )
-            }),
-        }
-    }
-
-    fn require_v7_for_scoped_attach(
-        &mut self,
-        operation: &str,
-        target: &AttachTarget,
-    ) -> Result<()> {
-        let scope = validation::scope_value(target.scope().map(str::to_owned))?;
-        match (scope, target) {
-            (None, _) | (_, AttachTarget::Invocation { .. }) => Ok(()),
-            (Some(scope), AttachTarget::Workflow { name, key, .. }) => self.require_v7(|| {
-                format!("{operation} the workflow {name}/{key} in scope '{scope}'")
-            }),
-            (
-                Some(scope),
-                AttachTarget::Idempotency {
-                    service_name,
-                    service_key,
-                    handler_name,
-                    idempotency_key,
-                    ..
-                },
-            ) => self.require_v7(|| {
-                format!(
-                    "{operation} the request to {} with idempotency key '{idempotency_key}' in scope '{scope}'",
-                    target_name(service_name, service_key.as_deref(), handler_name)
-                )
-            }),
-        }
-    }
-
-    /// Scope and limit key cannot be expressed below protocol v7. shared-core
-    /// would fail the attempt with 573 and "Feature 'scope' is not supported
-    /// …"; this fails it with 573 too (Restate retries the invocation), but
-    /// names the operation and the Restate version that supports it.
-    fn require_v7(&mut self, what: impl FnOnce() -> String) -> Result<()> {
-        let version = self.core.get_response_head().version;
-        if version >= Version::V7 {
-            return Ok(());
-        }
-        let error = restate_sdk_shared_core::Error::new(
-            UNSUPPORTED_FEATURE,
-            format!(
-                "{} needs service protocol v7 (Restate 1.8 or newer), but this invocation \
-                 negotiated v{}",
-                what(),
-                version as u32
-            ),
-        );
-        self.core.notify_error(error.clone(), None);
-        Err(Error::from(error))
     }
 
     pub fn sys_cancel_invocation(&mut self, invocation_id: String) -> Result<()> {

@@ -23,11 +23,17 @@ inputs:
     inputs:
       nixpkgs:
         follows: nixpkgs
-  # devenv modules, for the profiles that serve the integration suite's endpoint outside the test
-  # harness (devenv.nix `profiles`, docs/decisions/0039-external-test-environments.md):
+    overlays:
+      - default
+  # devenv modules, for the load profile, which serves the load endpoint and Restate outside Docker
+  # (devenv.nix `profiles`, docs/decisions/0040-load-tests-in-compose.md):
   # languages.php.frankenphp and services.restate. Its modules need no overlay, so no flake.
   extras:
     url: github:sagikazarmark/devenv-extras
     flake: false
 imports:
   - extras/modules
+# restate-bin is BSL 1.1, which nixpkgs counts as unfree.
+nixpkgs:
+  permitted_unfree_packages:
+    - restate-bin

@@ -122,11 +122,11 @@ An API description produced by Restate after a service endpoint is registered. P
 
 Alignment between the PHP SDK and the reference Restate SDK capability surface. A capability is feature-parity complete only when the public PHP API exists, the backend protocol behavior exists, and local evidence verifies the behavior.
 
-Upstream Conformance Evidence complements feature parity but does not establish it: the upstream suite exercises the protocol through the test services, not every public PHP API.
+Conformance Evidence complements feature parity but does not establish it: the conformance suite exercises the protocol through the test services, not every public PHP API.
 
-### Upstream Conformance Evidence
+### Conformance Evidence
 
-Evidence from the upstream Restate SDK test suite. Exclusions (`test-services/exclusions.yaml`) can classify failures, but an excluded case is not evidence that a feature works.
+Evidence from the Restate SDK conformance suite. Exclusions (`test-services/exclusions.yaml`) can classify failures, but an excluded case is not evidence that a feature works.
 
 ### Integration Harness
 
@@ -166,7 +166,7 @@ The Rust crate `extension/core`: the single implementation of every operation th
 
 ### Extension Surface
 
-Everything the PHP extension defines, all in the internal `Restate\Extension` namespace, which no package may declare anything in (`just check-packages`): the `Vm` class (one invocation's VM, owned by the PHP object; awaits take a handle or an Await Tree), the `IdentityVerifier` class (sdk-shared-core's request identity verifier for an endpoint's keys), the `ExtensionException` class every failure is thrown as (with a `category` such as `protocol` or `journal_mismatch`), the two handshake functions `version()` and `contract_version()`, `protocol_versions()` (the service protocol range the core speaks), and, only in builds with the `diagnostics` cargo feature, `diagnostics()` (live VMs and Rust heap, for the soak suite). Values cross as PHP values (binary strings and arrays), never JSON or base64. `extension/restate.stub.php` describes it, and a test keeps the two identical. Only `Restate\Internal\Backend\Extension` uses it.
+Everything the PHP extension defines, all in the internal `Restate\Extension` namespace, which no package may declare anything in (`just check-packages`): the `Vm` class (one invocation's VM, owned by the PHP object; awaits take a handle or an Await Tree), the `IdentityVerifier` class (sdk-shared-core's request identity verifier for an endpoint's keys), the `ExtensionException` class every failure is thrown as (with a `category` such as `protocol` or `journal_mismatch`), the two handshake functions `version()` and `contract_version()`, `protocol_versions()` (the service protocol range discovery advertises: v7, Restate 1.8, up to the newest the core speaks), and, only in builds with the `diagnostics` cargo feature, `diagnostics()` (live VMs and Rust heap, for the soak suite). Values cross as PHP values (binary strings and arrays), never JSON or base64. `extension/restate.stub.php` describes it, and a test keeps the two identical. Only `Restate\Internal\Backend\Extension` uses it.
 
 ### Contract Version
 
@@ -178,7 +178,7 @@ The version of the PHP extension itself: its crate version (`extension/extension
 
 ### Release
 
-One version of the SDK, published by one manual run of `.github/workflows/release.yaml` on `main`: every Package and the extension at the version in the extension crate, after CI, the upstream suite and the extension builds pass on that commit. Each package directory and `extension/` is pushed to a read-only repository of its own (a Split Repository, which Packagist and PIE read; `.github/workflows/split.yaml` also pushes its `main` on every push to this repository's `main`, so `dev-main` follows it), tagged `vX.Y.Z` (the extension's bare `X.Y.Z`); this repository gets the release `vX.Y.Z`. See `docs/decisions/0031-release.md`.
+One version of the SDK, published by one manual run of `.github/workflows/release.yaml` on `main`: every Package and the extension at the version in the extension crate, after CI, the conformance suite and the extension builds pass on that commit. Each package directory and `extension/` is pushed to a read-only repository of its own (a Split Repository, which Packagist and PIE read; `.github/workflows/split.yaml` also pushes its `main` on every push to this repository's `main`, so `dev-main` follows it), tagged `vX.Y.Z` (the extension's bare `X.Y.Z`); this repository gets the release `vX.Y.Z`. See `docs/decisions/0031-release.md`.
 
 ### Thread-Safe Extension Build
 
@@ -270,11 +270,11 @@ In PHP the SDK unwinds the handler with the internal `SuspensionException`, an `
 
 ### Pause
 
-An invocation that Restate keeps in status `paused` instead of retrying it, until someone resumes it (CLI, UI, or the admin API's `PATCH /invocations/{id}/resume`, optionally on a newer deployment); it then runs again, replaying its journal. The SDK asks for one with a `PauseError` thrown by a handler, by a `ctx.run` callback (the run gets no result and executes again on resume) or returned by an Error Mapper, and with a `ctx.run` retry policy that pauses once exhausted (`OnMaxAttempts::Pause`). Restate itself pauses when an invocation retry policy with `onMaxAttempts: PAUSE` gives up. Needs service protocol v7 (Restate 1.8); on 1.7 the attempt fails with 573 instead and is retried. Not a Suspension: a suspended invocation resumes by itself once what it waits for exists (see `docs/decisions/0021-pause.md`).
+An invocation that Restate keeps in status `paused` instead of retrying it, until someone resumes it (CLI, UI, or the admin API's `PATCH /invocations/{id}/resume`, optionally on a newer deployment); it then runs again, replaying its journal. The SDK asks for one with a `PauseError` thrown by a handler, by a `ctx.run` callback (the run gets no result and executes again on resume) or returned by an Error Mapper, and with a `ctx.run` retry policy that pauses once exhausted (`OnMaxAttempts::Pause`). Restate itself pauses when an invocation retry policy with `onMaxAttempts: PAUSE` gives up. Not a Suspension: a suspended invocation resumes by itself once what it waits for exists (see `docs/decisions/0021-pause.md`).
 
 ### Scope
 
-A namespace for invocations, virtual object instances and workflow runs (for example one per tenant) that is part of the target's identity: an object or workflow key, and an idempotency key, name a different instance in each scope and outside any scope, and Restate co-locates everything in one scope. It is also what the cluster's concurrency rules (the rule book) apply to. The SDK sets it on the target (`Target::scoped()`, `$ctx->scope()`, `$ingress->scope()`) of calls, sends and attach targets; the callee reads it from `$ctx->request()->scope`. 1 to 36 characters from `[a-zA-Z0-9_.-]`. Needs service protocol v7 (Restate 1.8); on 1.7 a scoped call or send fails the attempt with 573 and is retried (see `docs/decisions/0024-scope-and-limit-key.md`).
+A namespace for invocations, virtual object instances and workflow runs (for example one per tenant) that is part of the target's identity: an object or workflow key, and an idempotency key, name a different instance in each scope and outside any scope, and Restate co-locates everything in one scope. It is also what the cluster's concurrency rules (the rule book) apply to. The SDK sets it on the target (`Target::scoped()`, `$ctx->scope()`, `$ingress->scope()`) of calls, sends and attach targets; the callee reads it from `$ctx->request()->scope`. 1 to 36 characters from `[a-zA-Z0-9_.-]`. See `docs/decisions/0024-scope-and-limit-key.md`.
 
 ### Limit Key
 

@@ -87,7 +87,7 @@ pub fn idempotency_key(key: Option<String>) -> Option<String> {
 }
 
 /// The scope and limit key of a call or send target: each, when given, must be
-/// non-empty, and a limit key needs a scope (protocol v7). Their format is the
+/// non-empty, and a limit key needs a scope. Their format is the
 /// PHP side's concern (`Restate\Target::scoped()`); Restate enforces it too.
 pub fn scope_and_limit_key(
     scope: Option<String>,

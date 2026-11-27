@@ -98,9 +98,6 @@ Once the policy gives up, `onMaxAttempts` decides what happens:
 | `OnMaxAttempts::Fail` (default) | The last failure becomes the step's terminal failure, and `$ctx->run()` throws it as a `TerminalError`. Replay throws the same error. |
 | `OnMaxAttempts::Pause` | The invocation pauses instead, until someone resumes it. The step records no result and runs again after the resume ([Pausing invocations](errors.md#pausing-invocations)). |
 
-> [!NOTE]
-> `OnMaxAttempts::Pause` needs Restate 1.8 or newer. On 1.7 every retryable failure of such a step fails the attempt with error 573, and Restate retries it like any other failure ([Compatibility](../compatibility.md#restate-17)).
-
 The terminal failure keeps the last exception's message. Its status code and metadata come from a `RetryableError`, which takes them as `TerminalError` does (a status code of 400–599 other than 570, which Restate reserves); any other exception gives 500 and no metadata:
 
 ```php

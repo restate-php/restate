@@ -31,7 +31,7 @@ records, so they run to completion across crashes, restarts and deploys.
 - **Ingress client and test harness**: [call services from your app](docs/ingress-client.md);
   [test in PHPUnit](docs/develop/testing.md) against a real Restate server.
 - **Restate's own core**: the [Rust core](https://crates.io/crates/restate-sdk-shared-core) of the official SDKs, as
-  a PHP extension. Passes the [end-to-end suite](docs/internals/conformance.md) the official SDKs run upstream (not an
+  a PHP extension. Passes the [SDK conformance suite](docs/internals/conformance.md) the official SDKs run (not an
   official conformance claim).
 
 ## Example
@@ -207,7 +207,7 @@ For Restate itself (the server, its UI and CLI, deployment, operations), see the
 | | Supported |
 | --- | --- |
 | PHP | 8.4, 8.5, 8.6; NTS and ZTS |
-| Restate server | 1.8 or newer; 1.7 best-effort, [without a few features](docs/compatibility.md#restate-17) |
+| Restate server | 1.8 or newer ([Compatibility](docs/compatibility.md#restate-server-versions)) |
 | Prebuilt extension | Linux x86_64 and arm64, glibc 2.28+ and musl. Elsewhere, including macOS: build from source |
 
 Endpoints use Restate's request/response protocol, not bidirectional streaming. [Compatibility](docs/compatibility.md)

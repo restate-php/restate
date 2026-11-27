@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Restate\Tests\Integration;
 
-use Restate\Tests\Integration\Support\HttpClient;
 use Restate\Tests\Integration\Support\IntegrationTestCase;
 
 /**
@@ -12,25 +11,14 @@ use Restate\Tests\Integration\Support\IntegrationTestCase;
  * tests/Integration/Services/scopes.php: the callee sees the scope and limit key it was called with, and Restate keeps
  * an object instance and an idempotent invocation per scope.
  *
- * Restate 1.8 (service protocol v7) takes them. Restate 1.7 (v6) cannot: the attempt fails with 573 and a message
- * saying why, and Restate keeps retrying.
- *
- * The concurrency limit itself (a rule on `scope/limitKey` holding back invocations) is the upstream suite's
+ * The concurrency limit itself (a rule on `scope/limitKey` holding back invocations) is the conformance suite's
  * `ServiceToServiceScopeConcurrency`, which runs the test services' `Proxy` against the same SDK code.
  */
 final class ScopeTest extends IntegrationTestCase
 {
-    private const float WAIT_SECONDS = 20.0;
-
     public function testACallWithinAScopeCarriesTheScopeAndLimitKey(): void
     {
         $scope = self::scope();
-        if (!self::supportsScope()) {
-            self::assertRefused('Scopes/call', ['scope' => $scope, 'limitKey' => 'eu/user-42'], "A call to ScopeInfo/describe in scope '{$scope}'");
-
-            return;
-        }
-
         $callee = self::invokeJson('Scopes/call', ['scope' => $scope, 'limitKey' => 'eu/user-42']);
 
         self::assertSame($scope, $callee['scope']);
@@ -42,12 +30,6 @@ final class ScopeTest extends IntegrationTestCase
     public function testADelayedSendWithinAScopeCarriesTheScopeAndLimitKey(): void
     {
         $scope = self::scope();
-        if (!self::supportsScope()) {
-            self::assertRefused('Scopes/send', ['scope' => $scope, 'limitKey' => 'user-7'], "A send to ScopeInfo/describe in scope '{$scope}'");
-
-            return;
-        }
-
         $callee = self::invokeJson('Scopes/send', ['scope' => $scope, 'limitKey' => 'user-7']);
 
         self::assertSame([$scope, 'user-7'], [$callee['scope'], $callee['limitKey']]);
@@ -57,12 +39,6 @@ final class ScopeTest extends IntegrationTestCase
     {
         $scopes = [self::scope(), self::scope()];
         $key = 'counter-' . bin2hex(random_bytes(4));
-        if (!self::supportsScope()) {
-            self::assertRefused('Scopes/objectPerScope', ['scopes' => $scopes, 'key' => $key], "A call to ScopedCounter/{$key}/add in scope '{$scopes[0]}'");
-
-            return;
-        }
-
         $result = self::invokeJson('Scopes/objectPerScope', ['scopes' => $scopes, 'key' => $key]);
 
         // Three instances of ScopedCounter/{key}, each with its own state; the idempotent `add-once` ran once per
@@ -79,21 +55,10 @@ final class ScopeTest extends IntegrationTestCase
     {
         $scope = self::scope();
         $request = ['scope' => $scope, 'idempotencyKey' => 'once-' . bin2hex(random_bytes(4)), 'workflowKey' => 'run-' . bin2hex(random_bytes(4))];
-        if (!self::supportsScope()) {
-            self::assertRefused('Scopes/attach', $request, "A send to ScopeInfo/describe in scope '{$scope}'");
-
-            return;
-        }
-
         $result = self::invokeJson('Scopes/attach', $request);
 
         self::assertSame([$scope, $request['idempotencyKey']], [$result['idempotent']['scope'], $result['idempotent']['idempotencyKey']]);
         self::assertSame($scope, $result['workflow']['scope']);
-    }
-
-    private static function supportsScope(): bool
-    {
-        return version_compare(self::restate()->serverVersion(), '1.8.0', '>=');
     }
 
     private static function scope(): string
@@ -112,38 +77,5 @@ final class ScopeTest extends IntegrationTestCase
 
         /** @var array<string, mixed> $result */
         return $result;
-    }
-
-    /**
-     * On Restate 1.7 a scope cannot be sent: the attempt fails with 573 and $what in the message, Restate retries it.
-     * The test kills the invocation afterwards.
-     *
-     * @param array<string, mixed> $request
-     */
-    private static function assertRefused(string $path, array $request, string $what): void
-    {
-        $sent = json_decode(self::invoke("{$path}/send", json_encode($request, JSON_THROW_ON_ERROR)), true, flags: JSON_THROW_ON_ERROR);
-        $invocationId = is_array($sent) ? ($sent['invocationId'] ?? null) : null;
-        self::assertIsString($invocationId);
-
-        $deadline = microtime(true) + self::WAIT_SECONDS;
-        do {
-            $row = self::invocationRow($invocationId, 'status', 'last_failure');
-            if (str_starts_with(is_string($row['last_failure'] ?? null) ? $row['last_failure'] : '', '[573 ')) {
-                break;
-            }
-            usleep(100_000);
-        } while (microtime(true) < $deadline);
-
-        try {
-            self::assertSame(
-                "[573 Unsupported feature] {$what} needs service protocol v7 (Restate 1.8 or newer), but this invocation negotiated v6",
-                strtok(is_string($row['last_failure'] ?? null) ? $row['last_failure'] : '', "\n"),
-                json_encode($row, JSON_THROW_ON_ERROR),
-            );
-            self::assertSame('backing-off', $row['status']);
-        } finally {
-            HttpClient::patch(self::restate()->adminUrl() . "/invocations/{$invocationId}/kill");
-        }
     }
 }

@@ -5,16 +5,16 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1795741817,
-        "narHash": "sha256-LAEP48at4YZ7/tv53gBC83Oj3swx3qiqVUxhQWXsw3o=",
+        "lastModified": 1795784352,
+        "narHash": "sha256-88SRDBQf/qw0O5Kvaj4QemsGoa4eLoWagVthWBli/bI=",
         "owner": "sagikazarmark",
         "repo": "ext-php-rs.nix",
-        "rev": "c9c66dd4f9cdb562b91cd960f69d02a1d193c595",
+        "rev": "879af563e1298dafe40bb465896f55a0a8b6dfaf",
         "type": "github"
       },
       "original": {
         "owner": "sagikazarmark",
-        "ref": "v0.4.0",
+        "ref": "v0.4.1",
         "repo": "ext-php-rs.nix",
         "type": "github"
       }

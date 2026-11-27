@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Restate\Tests\Integration;
 
+use PHPUnit\Framework\Attributes\Group;
 use Restate\Tests\Integration\Support\HttpClient;
 use Restate\Tests\Integration\Support\IntegrationTestCase;
 use Restate\Tests\Support\Protocol\FrameCodec;
@@ -42,6 +43,7 @@ final class NonUtf8Test extends IntegrationTestCase
      * Request headers reach PHP as raw bytes. Restate itself sends ASCII, so this drives the endpoint directly with a
      * hand-built invocation (start message + input) and a Latin-1 header, as a client in front of it could.
      */
+    #[Group('runtime')]
     public function testRequestHeaderThatIsNotUtf8DoesNotFailTheInvocation(): void
     {
         $response = HttpClient::post(
