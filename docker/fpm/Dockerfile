@@ -48,6 +48,7 @@ COPY --from=caddy-bin /usr/bin/caddy /usr/bin/caddy
 # it, and php-fpm -m fails on a module built for another PHP.
 COPY --from=restate-extension /restate.so /tmp/
 RUN mv /tmp/restate.so "$(php -r 'echo ini_get("extension_dir");')/"
+
 COPY docker/fpm/*.template /etc/restate-fpm/
 COPY docker/fpm/php.ini /usr/local/etc/php/conf.d/zz-restate.ini
 COPY docker/fpm/entrypoint.sh /usr/local/bin/fpm-entrypoint.sh
@@ -81,6 +82,7 @@ COPY --from=composer-bin /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 COPY . /app
+
 RUN composer install --no-interaction \
     && php -r 'require "/app/vendor/autoload.php"; new Restate\Internal\Backend\Extension\Backend();'
 

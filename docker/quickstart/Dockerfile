@@ -37,6 +37,7 @@ RUN mv /tmp/restate.so "$(php -r 'echo ini_get("extension_dir");')/" \
     && php --ri restate > /dev/null
 COPY packages /opt/restate/packages
 COPY extension/extension/Cargo.toml /tmp/restate-extension-Cargo.toml
+
 ENV COMPOSER_HOME=/opt/composer
 
 RUN version=$(sed -n 's/^version = "\(.*\)"/\1/p' /tmp/restate-extension-Cargo.toml) \

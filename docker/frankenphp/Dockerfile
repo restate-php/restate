@@ -40,6 +40,7 @@ COPY --from=restate-extension /restate.so /tmp/
 RUN mv /tmp/restate.so "$(php -r 'echo ini_get("extension_dir");')/" \
     && docker-php-ext-enable restate \
     && php --ri restate > /dev/null
+
 COPY docker/frankenphp/integration.Caddyfile /etc/frankenphp/Caddyfile
 
 CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]
@@ -55,8 +56,10 @@ COPY --from=composer-bin /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 COPY . /app
+
 RUN composer install --no-interaction \
     && php -r 'require "/app/vendor/autoload.php"; new Restate\Internal\Backend\Extension\Backend();'
+
 COPY docker/frankenphp/upstream.Caddyfile /etc/frankenphp/Caddyfile
 
 EXPOSE 9080
