@@ -13,7 +13,7 @@ bytes = "1.10"
 # `request_identity`: the request identity verifier the official SDKs share
 # (`identity`). It verifies with jsonwebtoken, whose crypto is `rust_crypto`
 # (pure Rust, as in the TypeScript SDK; `aws_lc_rs` builds AWS-LC from C).
-restate-sdk-shared-core = { version = "=8.7.2", features = ["sha2_random_seed", "request_identity", "rust_crypto"] }
+restate-sdk-shared-core = { version = "=8.7.3", features = ["sha2_random_seed", "request_identity", "rust_crypto"] }
 # shared-core logs through it; `logs` captures its events. Already in the
 # lockfile through shared-core.
 tracing = "0.1"
